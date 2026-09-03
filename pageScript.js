@@ -10,16 +10,10 @@ function pageScript() {
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
-
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
-
-  const originalPerformanceNow = window.performance.now.bind(
-    window.performance
-  );
-
+  const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalDateNow = Date.now;
-
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   let timers = [];
@@ -28,15 +22,11 @@ function pageScript() {
     const newtimers = [];
     timers.forEach((timer) => {
       originalClearInterval(timer.id);
-      if (timer.customTimerId) {
-        originalClearInterval(timer.customTimerId);
-      }
+      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
         const newTimerId = originalSetInterval(
           timer.handler,
-          speedConfig.cbSetIntervalChecked
-            ? timer.timeout / speedConfig.speed
-            : timer.timeout,
+          speedConfig.cbSetIntervalChecked ? timer.timeout / speedConfig.speed : timer.timeout,
           ...timer.args
         );
         timer.customTimerId = newTimerId;
@@ -60,9 +50,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) {
-          originalClearInterval(timer.customTimerId);
-        }
+        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       }
     });
   };
@@ -72,9 +60,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) {
-          originalclearTimeout(timer.customTimerId);
-        }
+        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
       }
     });
   };
@@ -87,14 +73,7 @@ function pageScript() {
       speedConfig.Interval ? timeout / speedConfig.speed : timeout,
       ...args
     );
-    timers.push({
-      id: id,
-      handler: handler,
-      timeout: timeout,
-      args: args,
-      finished: NaN,
-      customTimerId: NaN,
-    });
+    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
   };
 
@@ -132,20 +111,21 @@ function pageScript() {
 
     Date.now = () => {
       const originalValue = originalDateNow();
+      const dateNowRate = speedConfig.cbDateNowChecked
+        ? Number(speedConfig.speed) || 0
+        : 100;
 
       if (dateNowValue === null) {
         dateNowValue = originalValue;
       } else {
         const elapsed = originalValue - previusDateNowValue;
-        const dateNowRate = speedConfig.cbDateNowChecked
-          ? Number(speedConfig.speed) || 0
-          : 100;
-
-        // Keep Date.now spoofed; when disabled, advance at 100x speed.
         dateNowValue += elapsed * dateNowRate;
       }
 
       previusDateNowValue = originalValue;
+
+      // Keep the returned value spoofed and ensure Math.floor(dateNowValue)
+      // continues using the same 100x spoofed clock when Date.now is disabled.
       return Math.floor(dateNowValue);
     };
   })();
@@ -157,7 +137,7 @@ function pageScript() {
     const callbackTick = [];
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
-      return originalRequestAnimationFrame((timestamp) => {
+      return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
         if (index == -1) {
@@ -167,15 +147,10 @@ function pageScript() {
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index];
           tickFrame += speedConfig.speed;
-
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
-              try {
-                callback(performance.now());
-              } catch (e) {
-                console.error(e);
-              }
+              try { callback(performance.now()); } catch (e) { console.error(e); }
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
               if (originalPerformanceNow() - startTime > 15) {
