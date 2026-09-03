@@ -111,21 +111,25 @@ function pageScript() {
 
     Date.now = () => {
       const originalValue = originalDateNow();
-      const dateNowRate = speedConfig.cbDateNowChecked
-        ? Number(speedConfig.speed) || 0
-        : 100;
 
       if (dateNowValue === null) {
         dateNowValue = originalValue;
-      } else {
-        const elapsed = originalValue - previusDateNowValue;
+        previusDateNowValue = originalValue;
+        return Math.floor(dateNowValue);
+      }
+
+      const elapsed = originalValue - previusDateNowValue;
+
+      if (speedConfig.cbDateNowChecked) {
+        const dateNowRate = Number(speedConfig.speed) || 0;
         dateNowValue += elapsed * dateNowRate;
+      } else {
+        // Date.now disabled: keep the spoof active at exactly 100x speed.
+        // The disabled-speed path also returns the requested Math.floor(dateNowValue).
+        dateNowValue += elapsed * 100;
       }
 
       previusDateNowValue = originalValue;
-
-      // Keep the returned value spoofed and ensure Math.floor(dateNowValue)
-      // continues using the same 100x spoofed clock when Date.now is disabled.
       return Math.floor(dateNowValue);
     };
   })();
