@@ -23,4 +23,12 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   }
+
+  // Relay the one-time startup RAF completion without changing the
+  // Date.now or RAF configuration selected by the user.
+  if (e.data.command === "startupRAFComplete") {
+    chrome.runtime.sendMessage({
+      command: "startupRAFComplete",
+    });
+  }
 });
