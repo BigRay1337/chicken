@@ -4,32 +4,20 @@ let speedConfig = {
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
   cbDateNowChecked: true,
-  cbRequestAnimationFrameChecked: true,
+  cbRequestAnimationFrameChecked: false,
 };
-
-// Date.now OFF automatically keeps requestAnimationFrame enabled in pageScript.
-const normalizeSpeedConfig = (config) => ({
-  ...config,
-  cbRequestAnimationFrameChecked:
-    Boolean(config.cbRequestAnimationFrameChecked) ||
-    config.cbDateNowChecked === false,
-});
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
-    speedConfig = normalizeSpeedConfig(request.config);
-    window.postMessage({
-      ...request,
-      config: speedConfig,
-    });
+    speedConfig = request.config;
+    window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
-    sendResponse(normalizeSpeedConfig(speedConfig));
+    sendResponse(speedConfig);
   }
 });
 
 window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
-    speedConfig = normalizeSpeedConfig(speedConfig);
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
