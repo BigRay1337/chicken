@@ -139,10 +139,8 @@ function pageScript() {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : Math.floor(dateNowValue);
+          : 0.7;
 
-        // Keep dateNowValue continuously updated. The explicit 0 + form
-        // keeps the returned value numeric even when the Date.now speed is 0.
         dateNowValue += elapsed * dateNowRate;
       }
 
