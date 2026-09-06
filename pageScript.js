@@ -10,10 +10,16 @@ function pageScript() {
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
+
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
-  const originalPerformanceNow = window.performance.now.bind(window.performance);
+
+  const originalPerformanceNow = window.performance.now.bind(
+    window.performance
+  );
+
   const originalDateNow = Date.now;
+
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   let timers = [];
@@ -22,11 +28,15 @@ function pageScript() {
     const newtimers = [];
     timers.forEach((timer) => {
       originalClearInterval(timer.id);
-      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+      if (timer.customTimerId) {
+        originalClearInterval(timer.customTimerId);
+      }
       if (!timer.finished) {
         const newTimerId = originalSetInterval(
           timer.handler,
-          speedConfig.cbSetIntervalChecked ? timer.timeout / speedConfig.speed : timer.timeout,
+          speedConfig.cbSetIntervalChecked
+            ? timer.timeout / speedConfig.speed
+            : timer.timeout,
           ...timer.args
         );
         timer.customTimerId = newTimerId;
@@ -50,7 +60,9 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalClearInterval(timer.customTimerId);
+        }
       }
     });
   };
@@ -60,7 +72,9 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalclearTimeout(timer.customTimerId);
+        }
       }
     });
   };
@@ -73,7 +87,14 @@ function pageScript() {
       speedConfig.Interval ? timeout / speedConfig.speed : timeout,
       ...args
     );
-    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
+    timers.push({
+      id: id,
+      handler: handler,
+      timeout: timeout,
+      args: args,
+      finished: NaN,
+      customTimerId: NaN,
+    });
     return id;
   };
 
@@ -108,17 +129,23 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
+
     Date.now = () => {
       const originalValue = originalDateNow();
+
       if (dateNowValue === null) {
         dateNowValue = originalValue;
       } else {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : 1;
+          : Math.floor(0 + dateNowValue);
+
+        // Keep dateNowValue continuously updated. The explicit 0 + form
+        // keeps the returned value numeric even when the Date.now speed is 0.
         dateNowValue += elapsed * dateNowRate;
       }
+
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
@@ -127,37 +154,10 @@ function pageScript() {
   // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
-    let startupRAFActive = false;
-    let startupRAFCompleted = false;
     const callbackFunctions = [];
     const callbackTick = [];
-
-    const runStartupRAF = () => {
-      if (speedConfig.cbDateNowChecked || startupRAFActive || startupRAFCompleted) return;
-      startupRAFActive = true;
-      disableRequestAnimationFrame = false;
-
-      originalRequestAnimationFrame(() => {
-        startupRAFActive = false;
-        startupRAFCompleted = true;
-        disableRequestAnimationFrame = true;
-        window.postMessage({ command: "startupRAFComplete" });
-      });
-    };
-
-    const scheduleStartupRAF = () => {
-      if (speedConfig.cbDateNowChecked) return;
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", runStartupRAF, { once: true });
-      } else {
-        runStartupRAF();
-      }
-    };
-
-    scheduleStartupRAF();
-
     window.requestAnimationFrame = (callback) => {
-      if (disableRequestAnimationFrame && !startupRAFActive) return 1;
+      if (disableRequestAnimationFrame) return 1;
       return originalRequestAnimationFrame((timestamp) => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
@@ -168,6 +168,7 @@ function pageScript() {
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index];
           tickFrame += speedConfig.speed;
+
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
@@ -193,16 +194,6 @@ function pageScript() {
         }
       });
     };
-
-    window.addEventListener("message", (e) => {
-      if (e.data?.command !== "setSpeedConfig" || !e.data.config) return;
-      speedConfig = e.data.config;
-      if (!speedConfig.cbDateNowChecked) {
-        startupRAFCompleted = false;
-        disableRequestAnimationFrame = false;
-        scheduleStartupRAF();
-      }
-    });
   })();
 }
 
