@@ -10,16 +10,10 @@ function pageScript() {
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
-
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
-
-  const originalPerformanceNow = window.performance.now.bind(
-    window.performance
-  );
-
+  const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalDateNow = Date.now;
-
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   let timers = [];
@@ -28,9 +22,7 @@ function pageScript() {
     const newtimers = [];
     timers.forEach((timer) => {
       originalClearInterval(timer.id);
-      if (timer.customTimerId) {
-        originalClearInterval(timer.customTimerId);
-      }
+      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
         const newTimerId = originalSetInterval(
           timer.handler,
@@ -60,9 +52,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) {
-          originalClearInterval(timer.customTimerId);
-        }
+        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       }
     });
   };
@@ -72,9 +62,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) {
-          originalclearTimeout(timer.customTimerId);
-        }
+        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
       }
     });
   };
@@ -87,14 +75,7 @@ function pageScript() {
       speedConfig.Interval ? timeout / speedConfig.speed : timeout,
       ...args
     );
-    timers.push({
-      id: id,
-      handler: handler,
-      timeout: timeout,
-      args: args,
-      finished: NaN,
-      customTimerId: NaN,
-    });
+    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
   };
 
@@ -129,10 +110,8 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
-
     Date.now = () => {
       const originalValue = originalDateNow();
-
       if (dateNowValue === null) {
         dateNowValue = originalValue;
       } else {
@@ -140,10 +119,8 @@ function pageScript() {
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
           : Math.floor(0 + dateNowValue);
-
         dateNowValue += elapsed * dateNowRate;
       }
-
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
@@ -157,8 +134,7 @@ function pageScript() {
 
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
-
-      return originalRequestAnimationFrame((timestamp) => {
+      return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
 
@@ -166,11 +142,18 @@ function pageScript() {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(performance.now());
-        } else if (speedConfig.cbRequestAnimationFrameChecked) {
+        } else if (
+          speedConfig.cbRequestAnimationFrameChecked ||
+          !speedConfig.cbDateNowChecked
+        ) {
           tickFrame = callbackTick[index];
           tickFrame += Number(speedConfig.speed) || 0;
 
-          if (tickFrame >= 1) {
+          // Date.now OFF => keep native RAF running once per browser frame.
+          if (!speedConfig.cbDateNowChecked) {
+            callback(performance.now());
+            tickFrame = 0;
+          } else if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
               try {
