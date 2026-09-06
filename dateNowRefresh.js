@@ -24,7 +24,7 @@
       refreshScheduled = true;
       window.setTimeout(function () {
         window.location.reload();
-      }, 1111.1);
+      }, 1000);
     }
 
     previousEnabled = enabled;

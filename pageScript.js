@@ -10,10 +10,16 @@ function pageScript() {
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
+
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
-  const originalPerformanceNow = window.performance.now.bind(window.performance);
+
+  const originalPerformanceNow = window.performance.now.bind(
+    window.performance
+  );
+
   const originalDateNow = Date.now;
+
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   let timers = [];
@@ -22,11 +28,15 @@ function pageScript() {
     const newtimers = [];
     timers.forEach((timer) => {
       originalClearInterval(timer.id);
-      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+      if (timer.customTimerId) {
+        originalClearInterval(timer.customTimerId);
+      }
       if (!timer.finished) {
         const newTimerId = originalSetInterval(
           timer.handler,
-          speedConfig.cbSetIntervalChecked ? timer.timeout / speedConfig.speed : timer.timeout,
+          speedConfig.cbSetIntervalChecked
+            ? timer.timeout / speedConfig.speed
+            : timer.timeout,
           ...timer.args
         );
         timer.customTimerId = newTimerId;
@@ -50,7 +60,9 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalClearInterval(timer.customTimerId);
+        }
       }
     });
   };
@@ -60,7 +72,9 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalclearTimeout(timer.customTimerId);
+        }
       }
     });
   };
@@ -73,7 +87,14 @@ function pageScript() {
       speedConfig.Interval ? timeout / speedConfig.speed : timeout,
       ...args
     );
-    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
+    timers.push({
+      id: id,
+      handler: handler,
+      timeout: timeout,
+      args: args,
+      finished: NaN,
+      customTimerId: NaN,
+    });
     return id;
   };
 
@@ -114,23 +135,19 @@ function pageScript() {
 
       if (dateNowValue === null) {
         dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
-        return Math.floor(dateNowValue);
-      }
-
-      const elapsed = originalValue - previusDateNowValue;
-
-      if (speedConfig.cbDateNowChecked) {
-        const dateNowRate = Number(speedConfig.speed) || 0;
-        dateNowValue += elapsed * dateNowRate;
       } else {
-        // Date.now disabled: keep the spoof active at exactly 100x speed.
-        // The disabled-speed path also returns the requested Math.floor(dateNowValue).
-        dateNowValue += elapsed * 100;
+        const elapsed = originalValue - previusDateNowValue;
+        const dateNowRate = speedConfig.cbDateNowChecked
+          ? Number(speedConfig.speed) || 0
+          : Math.floor(0 + dateNowValue);
+
+        // Keep dateNowValue continuously updated. The explicit 0 + form
+        // keeps the returned value numeric even when the Date.now speed is 0.
+        dateNowValue += elapsed * dateNowRate;
       }
 
       previusDateNowValue = originalValue;
-      return Math.floor(dateNowValue);
+      return Math.floor(0 + dateNowValue);
     };
   })();
 
@@ -141,7 +158,7 @@ function pageScript() {
     const callbackTick = [];
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
-      return originalRequestAnimationFrame(() => {
+      return originalRequestAnimationFrame((timestamp) => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
         if (index == -1) {
@@ -151,10 +168,15 @@ function pageScript() {
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index];
           tickFrame += speedConfig.speed;
+
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
-              try { callback(performance.now()); } catch (e) { console.error(e); }
+              try {
+                callback(performance.now());
+              } catch (e) {
+                console.error(e);
+              }
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
               if (originalPerformanceNow() - startTime > 15) {
