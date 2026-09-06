@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   const originalClearInterval = window.clearInterval;
@@ -141,8 +141,6 @@ function pageScript() {
           ? Number(speedConfig.speed) || 0
           : Math.floor(0 + dateNowValue);
 
-        // Keep dateNowValue continuously updated. The explicit 0 + form
-        // keeps the returned value numeric even when the Date.now speed is 0.
         dateNowValue += elapsed * dateNowRate;
       }
 
@@ -156,18 +154,21 @@ function pageScript() {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
+
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
+
       return originalRequestAnimationFrame((timestamp) => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
+
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(performance.now());
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index];
-          tickFrame += speedConfig.speed;
+          tickFrame += Number(speedConfig.speed) || 0;
 
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
