@@ -1,1 +1,77 @@
-<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><script defer="defer" src="/static/js/main.dd343bce.js"></script><link href="/static/css/main.e6c13ad2.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>HTML5 Universal Speed Hack</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 320px; min-height: 360px; padding: 16px; font-family: Arial, sans-serif; background: #111; color: #eee; }
+    h1 { font-size: 18px; margin: 0 0 14px; }
+    .speed-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
+    input[type="number"] { width: 100%; padding: 8px; border: 1px solid #444; border-radius: 6px; background: #1c1c1c; color: #fff; }
+    label { display: block; margin: 10px 0; cursor: pointer; }
+    input[type="checkbox"] { margin-right: 8px; }
+    button { width: 100%; padding: 10px; margin-top: 8px; border: 0; border-radius: 6px; background: #2d7ff9; color: #fff; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #333; }
+    #status { min-height: 18px; margin-top: 10px; font-size: 12px; color: #aaa; }
+    .note { margin-top: 12px; font-size: 11px; color: #888; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <h1>HTML5 Universal Speed Hack</h1>
+  <div class="speed-row">
+    <label for="speed" style="margin:0;white-space:nowrap">Speed</label>
+    <input id="speed" type="number" min="0" max="100" step="0.1" value="1">
+  </div>
+  <label><input id="setInterval" type="checkbox" checked> Speed setInterval</label>
+  <label><input id="setTimeout" type="checkbox"> Speed setTimeout</label>
+  <label><input id="performanceNow" type="checkbox"> Speed performance.now()</label>
+  <label><input id="raf" type="checkbox"> Speed requestAnimationFrame</label>
+  <button id="apply">Apply</button>
+  <button id="reset" class="secondary">Reset</button>
+  <div id="status"></div>
+  <div class="note">Date.now is not modified and changing settings never reloads the page.</div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const defaultConfig = { speed: 1, cbSetIntervalChecked: true, cbSetTimeoutChecked: false, cbPerformanceNowChecked: false, cbRequestAnimationFrameChecked: false };
+
+    function readConfig() {
+      return {
+        speed: Number($("speed").value) || 0,
+        cbSetIntervalChecked: $("setInterval").checked,
+        cbSetTimeoutChecked: $("setTimeout").checked,
+        cbPerformanceNowChecked: $("performanceNow").checked,
+        cbRequestAnimationFrameChecked: $("raf").checked
+      };
+    }
+
+    function showConfig(config) {
+      $("speed").value = Number(config.speed) || 0;
+      $("setInterval").checked = !!config.cbSetIntervalChecked;
+      $("setTimeout").checked = !!config.cbSetTimeoutChecked;
+      $("performanceNow").checked = !!config.cbPerformanceNowChecked;
+      $("raf").checked = !!config.cbRequestAnimationFrameChecked;
+    }
+
+    function sendConfig(config) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs && tabs[0];
+        if (!tab || tab.id == null) {
+          $("status").textContent = "No active tab.";
+          return;
+        }
+        chrome.tabs.sendMessage(tab.id, { command: "setSpeedConfig", config }, () => {
+          void chrome.runtime.lastError;
+          $("status").textContent = "Applied without refreshing the page.";
+        });
+      });
+    }
+
+    $("apply").addEventListener("click", () => sendConfig(readConfig()));
+    $("reset").addEventListener("click", () => { showConfig(defaultConfig); sendConfig(defaultConfig); });
+    showConfig(defaultConfig);
+  </script>
+</body>
+</html>
