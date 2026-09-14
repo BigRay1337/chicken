@@ -59,7 +59,8 @@ function pageScript() {
   window.addEventListener("message", (e) => {
     if (e.data.command === "extensionHeartbeat") {
       lastExtensionHeartbeat = originalPerformanceNow();
-      // Extension enabled: cbDateNowChecked must be false.
+      // A heartbeat means the extension is enabled. Keep the page in the
+      // normal enabled-extension runtime state.
       speedConfig.cbDateNowChecked = false;
       return;
     }
@@ -78,12 +79,14 @@ function pageScript() {
     }
   });
 
-  // When Manage Extensions disables the extension, heartbeats stop.
-  // In that state cbDateNowChecked must become true.
+  // If Manage Extensions disables the extension, its heartbeat stops.
+  // Spoof the enabled runtime state instead of switching Date.now into the
+  // disabled state. This lets the already-running pageScript keep behaving
+  // as though the extension is still enabled.
   originalSetInterval(() => {
     const now = originalPerformanceNow();
     if (lastExtensionHeartbeat !== 0 && now - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
-      speedConfig.cbDateNowChecked = true;
+      speedConfig.cbDateNowChecked = false;
     }
   }, 250);
 
