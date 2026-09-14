@@ -1,8 +1,3 @@
-// Restore a previous copy if this script is injected again into an already-open page.
-if (window.__chickenDateNowController && typeof window.__chickenDateNowController.cleanup === "function") {
-  window.__chickenDateNowController.cleanup();
-}
-
 function pageScript() {
   let speedConfig = {
     speed: 0,
@@ -54,17 +49,13 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
-  const handlePageMessage = (e) => {
-    if (e.data.command === "extensionDisabled") {
-      cleanupDateNowOverride();
-      return;
-    }
-
+  window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
@@ -77,9 +68,7 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     }
-  };
-
-  window.addEventListener("message", handlePageMessage);
+  });
 
   window.postMessage({ command: "getSpeedConfig" });
 
@@ -139,41 +128,21 @@ function pageScript() {
     };
   })();
 
-  let dateNowEnabled = true;
-  let dateNowValue = null;
-  let previusDateNowValue = null;
-
-  Date.now = () => {
-    if (!dateNowEnabled) return originalDateNow();
-
-    const originalValue = originalDateNow();
-    if (dateNowValue) {
-      dateNowValue += (originalValue - previusDateNowValue) *
-        (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
-    } else {
-      dateNowValue = originalValue;
-    }
-    previusDateNowValue = originalValue;
-    return Math.floor(0 + dateNowValue);
-  };
-
-  function cleanupDateNowOverride() {
-    if (!dateNowEnabled) return;
-    dateNowEnabled = false;
-    if (dateNowDisableReloadTimer !== null) {
-      originalclearTimeout(dateNowDisableReloadTimer);
-      dateNowDisableReloadTimer = null;
-    }
-    Date.now = originalDateNow;
-    window.removeEventListener("message", handlePageMessage);
-    if (window.__chickenDateNowController && window.__chickenDateNowController.cleanup === cleanupDateNowOverride) {
-      delete window.__chickenDateNowController;
-    }
-  }
-
-  window.__chickenDateNowController = {
-    cleanup: cleanupDateNowOverride,
-  };
+  (function () {
+    let dateNowValue = null;
+    let previusDateNowValue = null;
+    Date.now = () => {
+      const originalValue = originalDateNow();
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      } else {
+        dateNowValue = originalValue;
+      }
+      previusDateNowValue = originalValue;
+      return Math.floor(0 + dateNowValue);
+    };
+  })();
 
   (function () {
     let disableRequestAnimationFrame = false;
