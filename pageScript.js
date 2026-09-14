@@ -17,7 +17,9 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
+  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 700;
   let pageInitializing = true;
+  let lastExtensionHeartbeat = 0;
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
@@ -49,13 +51,20 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "extensionHeartbeat") {
+      lastExtensionHeartbeat = originalPerformanceNow();
+      if (!speedConfig.cbDateNowChecked) {
+        speedConfig.cbDateNowChecked = true;
+      }
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
@@ -69,6 +78,16 @@ function pageScript() {
       }
     }
   });
+
+  // The content script sends a heartbeat while the extension is enabled.
+  // When Manage Extensions disables the extension, heartbeats stop and this
+  // page-level script sets cbDateNowChecked to false.
+  originalSetInterval(() => {
+    const now = originalPerformanceNow();
+    if (lastExtensionHeartbeat !== 0 && now - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
+      speedConfig.cbDateNowChecked = false;
+    }
+  }, 250);
 
   window.postMessage({ command: "getSpeedConfig" });
 
