@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -17,9 +17,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 700;
   let pageInitializing = true;
-  let lastExtensionHeartbeat = 0;
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
@@ -51,20 +49,13 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "extensionHeartbeat") {
-      lastExtensionHeartbeat = originalPerformanceNow();
-      // A heartbeat means the extension is enabled. Keep the page in the
-      // normal enabled-extension runtime state.
-      speedConfig.cbDateNowChecked = false;
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
@@ -78,17 +69,6 @@ function pageScript() {
       }
     }
   });
-
-  // If Manage Extensions disables the extension, its heartbeat stops.
-  // Spoof the enabled runtime state instead of switching Date.now into the
-  // disabled state. This lets the already-running pageScript keep behaving
-  // as though the extension is still enabled.
-  originalSetInterval(() => {
-    const now = originalPerformanceNow();
-    if (lastExtensionHeartbeat !== 0 && now - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
-      speedConfig.cbDateNowChecked = false;
-    }
-  }, 250);
 
   window.postMessage({ command: "getSpeedConfig" });
 
