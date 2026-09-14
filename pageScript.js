@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -59,9 +59,8 @@ function pageScript() {
   window.addEventListener("message", (e) => {
     if (e.data.command === "extensionHeartbeat") {
       lastExtensionHeartbeat = originalPerformanceNow();
-      if (!speedConfig.cbDateNowChecked) {
-        speedConfig.cbDateNowChecked = true;
-      }
+      // Extension enabled: cbDateNowChecked must be false.
+      speedConfig.cbDateNowChecked = false;
       return;
     }
 
@@ -79,13 +78,12 @@ function pageScript() {
     }
   });
 
-  // The content script sends a heartbeat while the extension is enabled.
-  // When Manage Extensions disables the extension, heartbeats stop and this
-  // page-level script sets cbDateNowChecked to false.
+  // When Manage Extensions disables the extension, heartbeats stop.
+  // In that state cbDateNowChecked must become true.
   originalSetInterval(() => {
     const now = originalPerformanceNow();
     if (lastExtensionHeartbeat !== 0 && now - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
-      speedConfig.cbDateNowChecked = false;
+      speedConfig.cbDateNowChecked = true;
     }
   }, 250);
 
