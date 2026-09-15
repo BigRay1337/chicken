@@ -22,14 +22,5 @@ window.addEventListener("message", (e) => {
       command: "setSpeedConfig",
       config: speedConfig,
     });
-  } else if (e.data.command === "dateNowPageChanged") {
-    speedConfig = {
-      ...speedConfig,
-      cbDateNowChecked: false,
-    };
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
   }
 });
