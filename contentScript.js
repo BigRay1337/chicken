@@ -8,7 +8,6 @@ let speedConfig = {
 };
 
 let extensionContextAlive = true;
-let startupStateSent = false;
 
 const setDateNowState = (value) => {
   speedConfig.cbDateNowChecked = value;
@@ -19,14 +18,15 @@ const setDateNowState = (value) => {
 };
 
 // Every fresh/re-enabled content-script instance starts with Date.now disabled
-// by the speed hack. NaN is intentional and is preserved by postMessage.
+// by the speed hack. NaN is intentional.
 setDateNowState(NaN);
-startupStateSent = true;
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
     window.postMessage(request);
+  } else if (request.command == "setDateNowChecked") {
+    setDateNowState(request.value);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
   }
@@ -41,10 +41,10 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// A disabled extension cannot run its service worker/content script anymore,
-// but already-injected content scripts can remain in existing pages. Watch for
-// the extension context disappearing and make the page-side Date.now override
-// fall back to the enabled/true state.
+// When this extension is disabled, Chrome can leave an already-injected
+// content script running in an existing page even though the extension APIs
+// are no longer available. Detect that orphaned state and tell the MAIN-world
+// page script to fall back to cbDateNowChecked=true.
 const checkExtensionContext = () => {
   if (!extensionContextAlive) return;
 
