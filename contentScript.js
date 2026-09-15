@@ -13,12 +13,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
-  } else if (request.command == "setDateNowChecked") {
-    speedConfig.cbDateNowChecked = request.enabled;
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
   }
 });
 
