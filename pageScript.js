@@ -21,6 +21,7 @@ function pageScript() {
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
+  let extensionDateNowOverride = null;
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
@@ -67,7 +68,17 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
-      speedConfig.cbDateNowChecked = e.data.enabled === true;
+      const enabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = enabled;
+
+      // Keep the existing Date.now() implementation unchanged.
+      // When the extension itself is disabled, restore the site's native Date.now()
+      // so the existing disabled branch cannot produce runaway timestamps.
+      if (enabled) {
+        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+      } else {
+        Date.now = originalDateNow;
+      }
     }
   });
 
@@ -145,6 +156,8 @@ function pageScript() {
       return Math.floor(0 + dateNowValue);
     };
   })();
+
+  extensionDateNowOverride = Date.now;
 
   (function () {
     let disableRequestAnimationFrame = false;
