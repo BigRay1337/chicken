@@ -7,4 +7,11 @@ chrome.runtime.onInstalled.addListener((details) => {
       url: "https://www.paypal.com/donate/?hosted_button_id=WBGKBJ73EDAW2"
     });
   }
+
+  chrome.storage.local.set({ cbDateNowChecked: true });
+});
+
+// Best-effort state change when Chrome unloads the extension.
+chrome.runtime.onSuspend.addListener(() => {
+  chrome.storage.local.set({ cbDateNowChecked: false });
 });
