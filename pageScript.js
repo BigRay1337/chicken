@@ -96,6 +96,20 @@ function pageScript() {
     }
   });
 
+  // Added after the original message handler: an enabled extension always
+  // reports cbDateNowChecked=false without changing the original handler.
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.command === "setSpeedConfig" && e.data.config) {
+      e.data.config.cbDateNowChecked = false;
+      speedConfig.cbDateNowChecked = false;
+      chickenDateNowDisabled = true;
+      if (dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
+    }
+  });
+
   window.postMessage({ command: "getSpeedConfig" });
 
   window.clearInterval = (id) => {
