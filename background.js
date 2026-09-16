@@ -8,3 +8,23 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
+
+chrome.management.onEnabled.addListener(async (info) => {
+  if (info.id !== chrome.runtime.id) return;
+
+  const tabs = await chrome.tabs.query({});
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        world: "MAIN",
+        func: () => window.postMessage({ command: "extensionEnabled" })
+      });
+    } catch (error) {
+      console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
+    }
+  }
+});
