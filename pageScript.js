@@ -1,7 +1,4 @@
 function pageScript() {
-  if (window.__chickenPageScriptInstalled) return;
-  window.__chickenPageScriptInstalled = true;
-
   let speedConfig = {
     speed: 0,
     cbSetIntervalChecked: true,
@@ -10,8 +7,6 @@ function pageScript() {
     cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
-
-  let spoofedCbDateNowChecked = true;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -23,6 +18,7 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
+
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
@@ -53,26 +49,16 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "extensionState") {
-      // This only changes the value exposed as cbDateNowChecked.
-      // speedConfig.cbDateNowChecked remains untouched.
-      spoofedCbDateNowChecked = e.data.enabled === true;
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = {
-        ...e.data.config,
-        // Never let the spoofed value change the real Date.now setting.
-        cbDateNowChecked: speedConfig.cbDateNowChecked,
-      };
+      speedConfig = e.data.config;
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -81,17 +67,6 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
-    }
-
-    if (e.data.command === "getSpeedConfig") {
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: {
-          ...speedConfig,
-          // Report the spoofed value while keeping the real value unchanged.
-          cbDateNowChecked: spoofedCbDateNowChecked,
-        },
-      });
     }
   });
 
