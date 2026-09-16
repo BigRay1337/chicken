@@ -13,6 +13,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
+  } else if (request.command == "extensionDisabled") {
+    speedConfig.cbDateNowChecked = null;
+    window.postMessage({
+      command: "extensionDisabled",
+    });
+  } else if (request.command == "extensionEnabled") {
+    speedConfig.cbDateNowChecked = true;
+    window.postMessage({
+      command: "extensionEnabled",
+    });
   }
 });
 
