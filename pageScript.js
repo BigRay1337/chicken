@@ -55,32 +55,6 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
-  // Added safety layer: keep the original Date.now code unchanged.
-  let chickenDateNowDisabled = false;
-  let chickenDateNowFrozenValue = null;
-
-  window.addEventListener("message", (e) => {
-    if (
-      e.data &&
-      e.data.command === "setSpeedConfig" &&
-      e.data.config
-    ) {
-      chickenDateNowDisabled = e.data.config.cbDateNowChecked === false;
-
-      if (chickenDateNowDisabled) {
-        chickenDateNowFrozenValue = originalDateNow();
-
-        // Keep the original Date.now branch from using
-        // Math.floor(0 + dateNowValue) as the multiplier.
-        e.data.config = {
-          ...e.data.config,
-          cbDateNowChecked: true,
-          __chickenDateNowDisabled: true
-        };
-      }
-    }
-  }, true);
-
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
@@ -161,7 +135,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : 0.7);
       } else {
         dateNowValue = originalValue;
       }
@@ -169,18 +143,6 @@ function pageScript() {
       return Math.floor(0 + dateNowValue);
     };
   })();
-
-  // Added safe Date.now wrapper.
-  // The original Math.floor(0 + dateNowValue) remains unchanged above.
-  const chickenPatchedDateNow = Date.now;
-
-  Date.now = () => {
-    if (chickenDateNowDisabled && chickenDateNowFrozenValue !== null) {
-      return Math.floor(0 + chickenDateNowFrozenValue);
-    }
-
-    return chickenPatchedDateNow();
-  };
 
   (function () {
     let disableRequestAnimationFrame = false;
