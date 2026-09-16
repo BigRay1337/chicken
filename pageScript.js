@@ -56,25 +56,13 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = false;
-      return;
-    }
-
-    if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
 
-      // Keep the original timer available, but do not trigger a page refresh when Date.now is disabled.
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
       } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
@@ -145,12 +133,11 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue !== null && Number.isFinite(dateNowValue)) {
+      if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
           (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
