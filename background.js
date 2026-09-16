@@ -9,25 +9,27 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-async function postExtensionState(command) {
-  const tabs = await chrome.tabs.query({});
+function postExtensionState(command) {
+  chrome.tabs.query({}, (tabs) => {
+    for (const tab of tabs) {
+      if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
 
-  for (const tab of tabs) {
-    if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
-
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: true },
-        world: "MAIN",
-        func: (stateCommand) => {
-          window.postMessage({ command: stateCommand }, "*");
-        },
-        args: [command]
-      });
-    } catch (error) {
-      console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
+      try {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: true },
+          world: "MAIN",
+          func: (stateCommand) => {
+            window.postMessage({ command: stateCommand }, "*");
+          },
+          args: [command]
+        }).catch((error) => {
+          console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
+        });
+      } catch (error) {
+        console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
+      }
     }
-  }
+  });
 }
 
 chrome.management.onDisabled.addListener((info) => {
