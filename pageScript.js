@@ -71,13 +71,12 @@ function pageScript() {
       const enabled = e.data.enabled === true;
       speedConfig.cbDateNowChecked = enabled;
 
-      // Keep the existing Date.now() implementation unchanged.
-      // When the extension itself is disabled, restore the site's native Date.now()
-      // so the existing disabled branch cannot produce runaway timestamps.
+      // Keep Date.now running through the existing speed calculation.
+      // The checkbox/state can still be false without restoring native Date.now().
       if (enabled) {
         if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-      } else {
-        Date.now = originalDateNow;
+      } else if (extensionDateNowOverride !== null) {
+        Date.now = extensionDateNowOverride;
       }
     }
   });
@@ -140,7 +139,8 @@ function pageScript() {
     };
   })();
 
-  // Date.now code intentionally left unchanged.
+  // Date.now code keeps the requested Math.floor(0 + dateNowValue) return.
+  // Date.now speed remains active even when cbDateNowChecked is false.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
@@ -148,7 +148,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+          (speedConfig.speed > 0 ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
       }
@@ -159,9 +159,9 @@ function pageScript() {
 
   extensionDateNowOverride = Date.now;
 
-  // Start with Date.now disabled immediately. The site's native Date.now()
-  // is restored so the existing disabled branch cannot affect the page.
-  Date.now = originalDateNow;
+  // cbDateNowChecked is false immediately, but Date.now remains installed
+  // so the speed calculation continues without freezing the website.
+  Date.now = extensionDateNowOverride;
   speedConfig.cbDateNowChecked = false;
 
   (function () {
