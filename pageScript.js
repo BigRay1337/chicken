@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: NaN,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -49,23 +49,13 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setDateNowChecked") {
-      speedConfig.cbDateNowChecked = e.data.value;
-      if (e.data.value === true) {
-        if (dateNowDisableReloadTimer !== null) {
-          originalclearTimeout(dateNowDisableReloadTimer);
-          dateNowDisableReloadTimer = null;
-        }
-      }
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
