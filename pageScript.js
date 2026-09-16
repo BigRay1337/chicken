@@ -22,12 +22,21 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
+  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 1000;
+  let lastExtensionHeartbeat = originalDateNow();
+
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
     dateNowDisableReloadTimer = originalSetTimeout(() => {
       dateNowDisableReloadTimer = null;
       window.location.reload();
     }, DATE_NOW_DISABLED_RELOAD_MS);
+  };
+
+  const checkExtensionHeartbeat = () => {
+    if (originalDateNow() - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
+      speedConfig.cbDateNowChecked = false;
+    }
   };
 
   let timers = [];
@@ -54,6 +63,8 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
+  originalSetInterval(checkExtensionHeartbeat, 250);
+
   window.addEventListener("message", (e) => {
     if (!e.data || !e.data.command) return;
 
@@ -78,6 +89,12 @@ function pageScript() {
 
     if (e.data.command === "extensionEnabled") {
       speedConfig.cbDateNowChecked = true;
+      lastExtensionHeartbeat = originalDateNow();
+      return;
+    }
+
+    if (e.data.command === "extensionHeartbeat") {
+      lastExtensionHeartbeat = originalDateNow();
       return;
     }
   });
