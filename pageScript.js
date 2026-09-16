@@ -21,6 +21,7 @@ function pageScript() {
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
+  let extensionDisableDateNowTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
@@ -49,13 +50,32 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "extensionDisabled") {
+      speedConfig.cbDateNowChecked = false;
+
+      if (extensionDisableDateNowTimer !== null) {
+        originalclearTimeout(extensionDisableDateNowTimer);
+      }
+
+      extensionDisableDateNowTimer = originalSetTimeout(() => {
+        extensionDisableDateNowTimer = null;
+        speedConfig.cbDateNowChecked = true;
+      }, 2000);
+
+      return;
+    }
+
+    if (e.data.command === "extensionEnabled") {
+      speedConfig.cbDateNowChecked = true;
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
