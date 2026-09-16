@@ -24,6 +24,12 @@
       "service_worker": "background.js"
     },
   
+    "permissions": [
+      "management",
+      "scripting",
+      "tabs"
+    ],
+  
     "content_scripts": [
       {
         "all_frames": true,
