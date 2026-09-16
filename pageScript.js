@@ -1,5 +1,4 @@
 function pageScript() {
-  // Do not install the page hooks twice when the extension is re-enabled.
   if (window.__chickenPageScriptInstalled) return;
   window.__chickenPageScriptInstalled = true;
 
@@ -12,10 +11,7 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // This is deliberately separate from speedConfig.cbDateNowChecked.
-  // It is only the value that is reported/spoofed to the page.
   let spoofedCbDateNowChecked = true;
-  let lastExtensionState = true;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -27,7 +23,6 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
@@ -65,18 +60,19 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "extensionState") {
-      const enabled = e.data.enabled === true;
-      lastExtensionState = enabled;
-
-      // Spoof only the reported value. The real speedConfig.cbDateNowChecked
-      // is intentionally untouched, so Date.now itself is not disabled.
-      spoofedCbDateNowChecked = enabled;
+      // This only changes the value exposed as cbDateNowChecked.
+      // speedConfig.cbDateNowChecked remains untouched.
+      spoofedCbDateNowChecked = e.data.enabled === true;
       return;
     }
 
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = e.data.config;
+      speedConfig = {
+        ...e.data.config,
+        // Never let the spoofed value change the real Date.now setting.
+        cbDateNowChecked: speedConfig.cbDateNowChecked,
+      };
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -92,16 +88,14 @@ function pageScript() {
         command: "setSpeedConfig",
         config: {
           ...speedConfig,
-          // Only the exposed/reporting copy is spoofed.
+          // Report the spoofed value while keeping the real value unchanged.
           cbDateNowChecked: spoofedCbDateNowChecked,
         },
       });
     }
   });
 
-  window.postMessage({
-    command: "getSpeedConfig",
-  });
+  window.postMessage({ command: "getSpeedConfig" });
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
