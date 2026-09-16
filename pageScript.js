@@ -22,9 +22,6 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
-  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 750;
-  let lastExtensionHeartbeat = 0;
-
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
     dateNowDisableReloadTimer = originalSetTimeout(() => {
@@ -32,32 +29,6 @@ function pageScript() {
       window.location.reload();
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
-
-  const setExtensionEnabledState = (enabled) => {
-    speedConfig.cbDateNowChecked = enabled;
-    if (enabled && dateNowDisableReloadTimer !== null) {
-      originalclearTimeout(dateNowDisableReloadTimer);
-      dateNowDisableReloadTimer = null;
-    }
-  };
-
-  // contentScript.js sends this while the extension is enabled.
-  // When the extension is disabled from Manage Extensions, its content
-  // script stops and this heartbeat expires, setting cbDateNowChecked false.
-  window.addEventListener("message", (e) => {
-    if (e.source !== window || !e.data) return;
-    if (e.data.command === "extensionHeartbeat") {
-      lastExtensionHeartbeat = originalDateNow();
-      setExtensionEnabledState(true);
-    }
-  });
-
-  originalSetInterval(() => {
-    if (lastExtensionHeartbeat === 0) return;
-    if (originalDateNow() - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
-      setExtensionEnabledState(false);
-    }
-  }, 250);
 
   let timers = [];
   const reloadTimers = () => {
@@ -78,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
