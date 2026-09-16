@@ -75,6 +75,10 @@ function pageScript() {
     if (e.data && e.data.command === "extensionEnabled") {
       speedConfig.cbDateNowChecked = true;
     }
+
+    if (e.data && e.data.command === "extensionForceDateNowDisabled") {
+      speedConfig.cbDateNowChecked = false;
+    }
   });
 
   window.postMessage({ command: "getSpeedConfig" });
