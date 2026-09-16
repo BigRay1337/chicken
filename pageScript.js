@@ -1,4 +1,8 @@
 function pageScript() {
+  // Do not install the page hooks twice when the extension is re-enabled.
+  if (window.__chickenPageScriptInstalled) return;
+  window.__chickenPageScriptInstalled = true;
+
   let speedConfig = {
     speed: 0,
     cbSetIntervalChecked: true,
@@ -7,6 +11,11 @@ function pageScript() {
     cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
+
+  // This is deliberately separate from speedConfig.cbDateNowChecked.
+  // It is only the value that is reported/spoofed to the page.
+  let spoofedCbDateNowChecked = true;
+  let lastExtensionState = true;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -49,13 +58,22 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "extensionState") {
+      const enabled = e.data.enabled === true;
+      lastExtensionState = enabled;
+
+      // Spoof only the reported value. The real speedConfig.cbDateNowChecked
+      // is intentionally untouched, so Date.now itself is not disabled.
+      spoofedCbDateNowChecked = enabled;
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
@@ -68,9 +86,22 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     }
+
+    if (e.data.command === "getSpeedConfig") {
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: {
+          ...speedConfig,
+          // Only the exposed/reporting copy is spoofed.
+          cbDateNowChecked: spoofedCbDateNowChecked,
+        },
+      });
+    }
   });
 
-  window.postMessage({ command: "getSpeedConfig" });
+  window.postMessage({
+    command: "getSpeedConfig",
+  });
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
