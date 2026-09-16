@@ -9,18 +9,18 @@ let speedConfig = {
 
 const EXTENSION_HEARTBEAT_INTERVAL_MS = 200;
 let heartbeatTimer = null;
+let spoofedCbDateNowChecked = true;
 
 function postExtensionState(enabled) {
+  spoofedCbDateNowChecked = enabled === true;
   window.postMessage({
     command: "extensionState",
-    enabled,
+    enabled: spoofedCbDateNowChecked,
   });
 }
 
 function checkExtensionContext() {
   try {
-    // Calling a runtime API makes this check fail when the extension context
-    // has been invalidated by disabling/reloading the extension.
     chrome.runtime.getURL("");
     postExtensionState(true);
   } catch (error) {
@@ -36,11 +36,25 @@ checkExtensionContext();
 heartbeatTimer = setInterval(checkExtensionContext, EXTENSION_HEARTBEAT_INTERVAL_MS);
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-  if (request.command == "setSpeedConfig") {
+  if (request.command === "setExtensionState") {
+    postExtensionState(request.enabled === true);
+    return;
+  }
+
+  if (request.command === "setSpeedConfig") {
     speedConfig = request.config;
-    window.postMessage(request);
-  } else if (request.command == "getSpeedConfig") {
-    sendResponse(speedConfig);
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: {
+        ...speedConfig,
+        cbDateNowChecked: spoofedCbDateNowChecked,
+      },
+    });
+  } else if (request.command === "getSpeedConfig") {
+    sendResponse({
+      ...speedConfig,
+      cbDateNowChecked: spoofedCbDateNowChecked,
+    });
   }
 });
 
@@ -48,7 +62,10 @@ window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
-      config: speedConfig,
+      config: {
+        ...speedConfig,
+        cbDateNowChecked: spoofedCbDateNowChecked,
+      },
     });
   }
 });
