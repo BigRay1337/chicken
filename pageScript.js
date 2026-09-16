@@ -19,17 +19,6 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
-  let dateNowDisableReloadTimer = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -56,28 +45,13 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked === true;
       speedConfig = e.data.config;
       reloadTimers();
-
-      if (previousDateNowEnabled && speedConfig.cbDateNowChecked !== true) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked === true && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
     }
 
     if (e.data.command === "extensionDateNowState") {
-      // Disable: false. Enable: true.
+      // Manage Extensions disabled = false, enabled = true.
       speedConfig.cbDateNowChecked = e.data.enabled === true;
-
-      if (speedConfig.cbDateNowChecked === false) {
-        if (dateNowDisableReloadTimer !== null) {
-          originalclearTimeout(dateNowDisableReloadTimer);
-          dateNowDisableReloadTimer = null;
-        }
-      }
     }
   });
 
@@ -142,18 +116,23 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
+    window.DateNowOriginal = originalDateNow;
+
     Date.now = () => {
+      // When disabled, cbDateNowChecked is false and Date.now returns the
+      // unmodified browser value. When enabled, use the existing speed logic.
+      if (speedConfig.cbDateNowChecked !== true) {
+        return originalDateNow();
+      }
+
       const originalValue = originalDateNow();
       if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked === true ? speedConfig.speed : Math.floor(0 + dateNowValue));
+        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
       } else {
         dateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
-      return speedConfig.cbDateNowChecked === true
-        ? Math.floor(0 + dateNowValue)
-        : NaN;
+      return Math.floor(0 + dateNowValue);
     };
   })();
 
