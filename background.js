@@ -9,10 +9,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// Re-enable Date.now when the extension is enabled again from chrome://extensions.
-chrome.management.onEnabled.addListener(async (info) => {
-  if (info.id !== chrome.runtime.id) return;
-
+async function setDateNowExtensionStateInOpenTabs(enabled) {
   const tabs = await chrome.tabs.query({});
 
   for (const tab of tabs) {
@@ -22,20 +19,29 @@ chrome.management.onEnabled.addListener(async (info) => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         world: "MAIN",
-        func: () => {
+        func: (extensionEnabled) => {
           window.postMessage({
             command: "setExtensionDateNowState",
-            enabled: true,
+            enabled: extensionEnabled,
           });
         },
-      });
-
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: true },
-        files: ["contentScript.js"],
+        args: [enabled],
       });
     } catch (error) {
-      console.debug("Could not re-enable Chicken in tab", tab.id, error);
+      console.debug("Could not change Date.now state in tab", tab.id, error);
     }
   }
+}
+
+// Force cbDateNowChecked=false immediately when this extension is disabled.
+chrome.management.onDisabled.addListener((info) => {
+  if (info.id !== chrome.runtime.id) return;
+  setDateNowExtensionStateInOpenTabs(false);
+});
+
+// Restore cbDateNowChecked=true when this extension is enabled again.
+chrome.management.onEnabled.addListener((info) => {
+  if (info.id !== chrome.runtime.id) return;
+
+  setDateNowExtensionStateInOpenTabs(true);
 });
