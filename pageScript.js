@@ -61,8 +61,10 @@ function pageScript() {
       speedConfig = e.data.config;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
+      // Keep the original timer available, but do not trigger a page refresh when Date.now is disabled.
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
       } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
@@ -133,11 +135,12 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
+      if (dateNowValue !== null && Number.isFinite(dateNowValue)) {
         dateNowValue += (originalValue - previusDateNowValue) *
           (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
+        previusDateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
