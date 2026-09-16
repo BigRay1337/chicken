@@ -8,3 +8,34 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
+
+// Re-enable Date.now when the extension is enabled again from chrome://extensions.
+chrome.management.onEnabled.addListener(async (info) => {
+  if (info.id !== chrome.runtime.id) return;
+
+  const tabs = await chrome.tabs.query({});
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        world: "MAIN",
+        func: () => {
+          window.postMessage({
+            command: "setExtensionDateNowState",
+            enabled: true,
+          });
+        },
+      });
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ["contentScript.js"],
+      });
+    } catch (error) {
+      console.debug("Could not re-enable Chicken in tab", tab.id, error);
+    }
+  }
+});
