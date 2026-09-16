@@ -7,22 +7,33 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// When Chicken is enabled again, inject the scripts into already-open pages.
+chrome.management.onDisabled.addListener(async (info) => {
+  if (info.id !== chrome.runtime.id) return;
+
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        command: "setExtensionState",
+        enabled: false,
+      });
+    } catch (error) {}
+  }
+});
+
 chrome.management.onEnabled.addListener(async (info) => {
   if (info.id !== chrome.runtime.id) return;
 
   const tabs = await chrome.tabs.query({});
-
   for (const tab of tabs) {
     if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
-
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         world: "MAIN",
         files: ["pageScript.js"]
       });
-
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         files: ["contentScript.js"]
