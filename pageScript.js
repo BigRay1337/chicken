@@ -68,6 +68,22 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     }
+
+    if (e.data.command === "extensionDisabled") {
+      speedConfig.cbDateNowChecked = false;
+      if (typeof window.__chickenDisableDateNow === "function") {
+        window.__chickenDisableDateNow();
+      }
+      return;
+    }
+
+    if (e.data.command === "extensionEnabled") {
+      speedConfig.cbDateNowChecked = true;
+      if (typeof window.__chickenEnableDateNow === "function") {
+        window.__chickenEnableDateNow();
+      }
+      return;
+    }
   });
 
   window.postMessage({ command: "getSpeedConfig" });
@@ -131,7 +147,25 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
-    Date.now = () => {
+    let dateNowOverrideEnabled = true;
+
+    const installDateNowOverride = () => {
+      if (dateNowOverrideEnabled) return;
+      dateNowOverrideEnabled = true;
+      Date.now = dateNowOverride;
+    };
+
+    const disableDateNowOverride = () => {
+      dateNowOverrideEnabled = false;
+      Date.now = originalDateNow;
+      speedConfig.cbDateNowChecked = false;
+      if (dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
+    };
+
+    const dateNowOverride = () => {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
@@ -142,6 +176,11 @@ function pageScript() {
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
+
+    Date.now = dateNowOverride;
+
+    window.__chickenDisableDateNow = disableDateNowOverride;
+    window.__chickenEnableDateNow = installDateNowOverride;
   })();
 
   (function () {
