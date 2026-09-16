@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -18,17 +18,6 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
-  let dateNowDisableReloadTimer = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -55,19 +44,19 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = e.data.config;
-      reloadTimers();
+    if (!e.data || typeof e.data !== "object") return;
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
+    if (e.data.command === "setSpeedConfig") {
+      speedConfig = {
+        ...speedConfig,
+        ...e.data.config,
+      };
+      reloadTimers();
     } else if (e.data.command === "setExtensionDateNowState") {
-      speedConfig.cbDateNowChecked = e.data.enabled === true;
+      // Requested lifecycle behavior:
+      // extension enabled  -> false
+      // extension disabled -> true
+      speedConfig.cbDateNowChecked = e.data.enabled !== true;
     }
   });
 
@@ -118,7 +107,7 @@ function pageScript() {
     let previusPerformanceNowValue = null;
     window.performance.now = () => {
       const originalValue = originalPerformanceNow();
-      if (performanceNowValue) {
+      if (performanceNowValue !== null) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
           (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
       } else {
@@ -129,20 +118,31 @@ function pageScript() {
     };
   })();
 
-  // Date.now code intentionally left unchanged.
+  // Safe Date.now implementation: never reloads the page and never calls
+  // window.location.reload(). The lifecycle flag only changes the Date.now
+  // multiplier; it cannot cause a refresh or black screen.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
+
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
-      } else {
+
+      if (dateNowValue === null || previusDateNowValue === null) {
         dateNowValue = originalValue;
+      } else {
+        const elapsed = originalValue - previusDateNowValue;
+        const multiplier = speedConfig.cbDateNowChecked &&
+          Number.isFinite(speedConfig.speed) &&
+          speedConfig.speed > 0
+          ? speedConfig.speed
+          : 1;
+
+        dateNowValue += elapsed * multiplier;
       }
+
       previusDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
+      return Math.floor(dateNowValue);
     };
   })();
 
