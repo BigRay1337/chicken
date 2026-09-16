@@ -49,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -66,10 +67,6 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
-    } else if (e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = null;
-    } else if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
     }
   });
 
