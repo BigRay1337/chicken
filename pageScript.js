@@ -56,6 +56,16 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "extensionDisabled") {
+      speedConfig.cbDateNowChecked = false;
+      return;
+    }
+
+    if (e.data.command === "extensionEnabled") {
+      speedConfig.cbDateNowChecked = true;
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
