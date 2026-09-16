@@ -22,15 +22,5 @@ window.addEventListener("message", (e) => {
       command: "setSpeedConfig",
       config: speedConfig,
     });
-    return;
-  }
-
-  if (e.data.command === "extensionDateNowState") {
-    speedConfig.cbDateNowChecked = e.data.enabled === true;
-
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
   }
 });
