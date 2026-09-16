@@ -69,6 +69,7 @@ function pageScript() {
     }
 
     if (e.data.command === "extensionDateNowState") {
+      // Disable: false. Enable: true.
       speedConfig.cbDateNowChecked = e.data.enabled === true;
 
       if (speedConfig.cbDateNowChecked === false) {
