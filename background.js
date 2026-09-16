@@ -28,6 +28,23 @@ async function postExtensionState(command) {
   }
 }
 
+async function restartContentScriptOnExistingTabs() {
+  const tabs = await chrome.tabs.query({});
+
+  for (const tab of tabs) {
+    if (!tab.id || !tab.url || !/^https?:|^file:/.test(tab.url)) continue;
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ["contentScript.js"],
+      });
+    } catch (error) {
+      console.debug("Could not restart Chicken content script in tab", tab.id, error);
+    }
+  }
+}
+
 chrome.management.onDisabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
   postExtensionState("extensionDisabled");
@@ -35,5 +52,5 @@ chrome.management.onDisabled.addListener((info) => {
 
 chrome.management.onEnabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
-  postExtensionState("extensionEnabled");
+  restartContentScriptOnExistingTabs().then(() => postExtensionState("extensionEnabled"));
 });
