@@ -9,6 +9,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
+// Re-enable Date.now when the extension is enabled again from chrome://extensions.
 chrome.management.onEnabled.addListener(async (info) => {
   if (info.id !== chrome.runtime.id) return;
 
@@ -21,10 +22,20 @@ chrome.management.onEnabled.addListener(async (info) => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         world: "MAIN",
-        func: () => window.postMessage({ command: "extensionForceDateNowDisabled" })
+        func: () => {
+          window.postMessage({
+            command: "setExtensionDateNowState",
+            enabled: true,
+          });
+        },
+      });
+
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        files: ["contentScript.js"],
       });
     } catch (error) {
-      console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
+      console.debug("Could not re-enable Chicken in tab", tab.id, error);
     }
   }
 });

@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -55,9 +55,9 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data && e.data.command === "setSpeedConfig") {
+    if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = e.data.config || speedConfig;
+      speedConfig = e.data.config;
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -66,18 +66,8 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
-    }
-
-    if (e.data && e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = false;
-    }
-
-    if (e.data && e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
-    }
-
-    if (e.data && e.data.command === "extensionForceDateNowDisabled") {
-      speedConfig.cbDateNowChecked = false;
+    } else if (e.data.command === "setExtensionDateNowState") {
+      speedConfig.cbDateNowChecked = e.data.enabled === true;
     }
   });
 
@@ -139,6 +129,7 @@ function pageScript() {
     };
   })();
 
+  // Date.now code intentionally left unchanged.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;

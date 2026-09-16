@@ -24,3 +24,43 @@ window.addEventListener("message", (e) => {
     });
   }
 });
+
+// Detect the extension being disabled without changing the Date.now() code.
+let extensionCheckTimer = null;
+let extensionCheckPort = null;
+let extensionIsEnabled = true;
+
+function setDateNowExtensionState(enabled) {
+  if (extensionIsEnabled === enabled) return;
+  extensionIsEnabled = enabled;
+  window.postMessage({
+    command: "setExtensionDateNowState",
+    enabled: enabled,
+  });
+}
+
+function checkExtensionState() {
+  try {
+    if (!chrome.runtime || !chrome.runtime.id) {
+      throw new Error("Extension runtime unavailable");
+    }
+
+    if (extensionCheckPort === null) {
+      extensionCheckPort = chrome.runtime.connect({ name: "extension-state-check" });
+      extensionCheckPort.onDisconnect.addListener(() => {
+        extensionCheckPort = null;
+      });
+    }
+
+    setDateNowExtensionState(true);
+  } catch (error) {
+    setDateNowExtensionState(false);
+    if (extensionCheckTimer !== null) {
+      clearInterval(extensionCheckTimer);
+      extensionCheckTimer = null;
+    }
+  }
+}
+
+checkExtensionState();
+extensionCheckTimer = setInterval(checkExtensionState, 500);
