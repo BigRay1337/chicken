@@ -49,7 +49,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -67,6 +66,8 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
+    } else if (e.data.command === "setExtensionDateNowState") {
+      speedConfig.cbDateNowChecked = e.data.enabled === true;
     }
   });
 
@@ -128,6 +129,7 @@ function pageScript() {
     };
   })();
 
+  // Date.now code intentionally left unchanged.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
