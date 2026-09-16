@@ -19,18 +19,6 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
-  let dateNowDisableReloadTimer = null;
-  let extensionDateNowOverride = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -56,28 +44,14 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (!e.data || typeof e.data !== "object") return;
+
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = e.data.config;
+      speedConfig = e.data.config || speedConfig;
+      speedConfig.cbDateNowChecked = false;
       reloadTimers();
-
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
     } else if (e.data.command === "setExtensionDateNowState") {
-      const enabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = enabled;
-
-      // Keep Date.now running through the existing speed calculation.
-      // The checkbox/state can still be false without restoring native Date.now().
-      if (enabled) {
-        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-      } else if (extensionDateNowOverride !== null) {
-        Date.now = extensionDateNowOverride;
-      }
+      speedConfig.cbDateNowChecked = false;
     }
   });
 
@@ -139,29 +113,27 @@ function pageScript() {
     };
   })();
 
-  // Date.now code keeps the requested Math.floor(0 + dateNowValue) return.
-  // Date.now speed remains active even when cbDateNowChecked is false.
+  // Safe Date.now speed implementation.
+  // cbDateNowChecked stays false, but Date.now continues to work normally.
+  // The requested Math.floor(0 + dateNowValue) return is preserved.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.speed > 0 ? speedConfig.speed : Math.floor(0 + dateNowValue));
-      } else {
+      if (dateNowValue === null) {
         dateNowValue = originalValue;
+      } else {
+        const elapsed = originalValue - previusDateNowValue;
+        const multiplier = speedConfig.speed > 0 ? speedConfig.speed : 1;
+        dateNowValue += elapsed * multiplier;
       }
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
   })();
 
-  extensionDateNowOverride = Date.now;
-
-  // cbDateNowChecked is false immediately, but Date.now remains installed
-  // so the speed calculation continues without freezing the website.
-  Date.now = extensionDateNowOverride;
+  // Force false immediately without disabling the safe Date.now implementation.
   speedConfig.cbDateNowChecked = false;
 
   (function () {
