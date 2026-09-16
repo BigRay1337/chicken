@@ -24,7 +24,10 @@ function pageScript() {
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = null;
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
   let timers = [];
@@ -64,14 +67,6 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
-    } else if (e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = false;
-      if (dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
-    } else if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
     }
   });
 
