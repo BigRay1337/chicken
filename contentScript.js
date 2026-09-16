@@ -3,21 +3,24 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: true,
+  cbDateNowChecked: false,
   cbRequestAnimationFrameChecked: false,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
+    speedConfig.cbDateNowChecked = false;
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
+    speedConfig.cbDateNowChecked = false;
     sendResponse(speedConfig);
   }
 });
 
 window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
+    speedConfig.cbDateNowChecked = false;
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -25,7 +28,8 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Detect the extension being disabled without changing the Date.now() code.
+// Keep cbDateNowChecked false while the extension is running.
+// Date.now() itself continues using speedConfig.speed.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
