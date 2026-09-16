@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -48,10 +48,11 @@ function pageScript() {
 
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config || speedConfig;
-      speedConfig.cbDateNowChecked = false;
       reloadTimers();
     } else if (e.data.command === "setExtensionDateNowState") {
-      speedConfig.cbDateNowChecked = false;
+      // This message is sent only by the extension lifecycle handler.
+      // Disabled = false, enabled = true.
+      speedConfig.cbDateNowChecked = e.data.enabled === true;
     }
   });
 
@@ -113,9 +114,8 @@ function pageScript() {
     };
   })();
 
-  // Safe Date.now speed implementation.
-  // cbDateNowChecked stays false, but Date.now continues to work normally.
-  // The requested Math.floor(0 + dateNowValue) return is preserved.
+  // Date.now stays installed in the page and never reloads the website.
+  // cbDateNowChecked is only the extension lifecycle state.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
@@ -132,9 +132,6 @@ function pageScript() {
       return Math.floor(0 + dateNowValue);
     };
   })();
-
-  // Force false immediately without disabling the safe Date.now implementation.
-  speedConfig.cbDateNowChecked = false;
 
   (function () {
     let disableRequestAnimationFrame = false;
