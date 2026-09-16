@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -24,7 +24,10 @@ function pageScript() {
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = null;
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
   let timers = [];
@@ -56,7 +59,6 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-      speedConfig.cbDateNowChecked = false;
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -133,7 +135,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : 1);
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
       }
