@@ -8,6 +8,11 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
+  // This flag is controlled only by the extension lifecycle.
+  // Enabled  = cbDateNowChecked false
+  // Disabled = cbDateNowChecked true
+  let extensionIsEnabled = true;
+
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
   const originalSetInterval = window.setInterval;
@@ -51,12 +56,12 @@ function pageScript() {
         ...speedConfig,
         ...e.data.config,
       };
+      // The extension-management state is authoritative for cbDateNowChecked.
+      speedConfig.cbDateNowChecked = !extensionIsEnabled;
       reloadTimers();
     } else if (e.data.command === "setExtensionDateNowState") {
-      // Requested lifecycle behavior:
-      // extension enabled  -> false
-      // extension disabled -> true
-      speedConfig.cbDateNowChecked = e.data.enabled !== true;
+      extensionIsEnabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = !extensionIsEnabled;
     }
   });
 
@@ -118,9 +123,9 @@ function pageScript() {
     };
   })();
 
-  // Safe Date.now implementation: never reloads the page and never calls
-  // window.location.reload(). The lifecycle flag only changes the Date.now
-  // multiplier; it cannot cause a refresh or black screen.
+  // Date.now never reloads the page and never calls window.location.reload().
+  // It always returns a valid finite timestamp, including during extension
+  // enable/disable transitions.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
