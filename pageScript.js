@@ -49,7 +49,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -67,6 +66,10 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
+    }
+
+    if (e.data.command === "extensionDateNowState") {
+      speedConfig.cbDateNowChecked = e.data.enabled ? true : NaN;
     }
   });
 
@@ -135,12 +138,14 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+          (speedConfig.cbDateNowChecked === true ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
+      return speedConfig.cbDateNowChecked === true
+        ? Math.floor(0 + dateNowValue)
+        : NaN;
     };
   })();
 
