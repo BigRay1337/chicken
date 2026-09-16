@@ -3,24 +3,21 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: false,
+  cbDateNowChecked: true,
   cbRequestAnimationFrameChecked: false,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
-    speedConfig.cbDateNowChecked = false;
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
-    speedConfig.cbDateNowChecked = false;
     sendResponse(speedConfig);
   }
 });
 
 window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
-    speedConfig.cbDateNowChecked = false;
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -28,8 +25,9 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Keep cbDateNowChecked false while the extension is running.
-// Date.now() itself continues using speedConfig.speed.
+// Do not reload or modify the website source. The Date.now implementation
+// remains active in the page while cbDateNowChecked reflects the extension
+// lifecycle state.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
