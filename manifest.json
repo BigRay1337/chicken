@@ -10,7 +10,8 @@
       "<all_urls>"
     ],
     "permissions": [
-      "storage"
+      "storage",
+      "management"
     ],
   
     "icons": {
