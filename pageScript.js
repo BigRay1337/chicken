@@ -26,7 +26,6 @@ function pageScript() {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
     dateNowDisableReloadTimer = originalSetTimeout(() => {
       dateNowDisableReloadTimer = null;
-      window.location.reload();
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
@@ -56,6 +55,8 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (!e.data || !e.data.command) return;
+
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
@@ -67,6 +68,21 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
+      return;
+    }
+
+    if (e.data.command === "extensionDisabled") {
+      speedConfig.cbDateNowChecked = false;
+      if (dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
+      return;
+    }
+
+    if (e.data.command === "extensionEnabled") {
+      speedConfig.cbDateNowChecked = true;
+      return;
     }
   });
 
@@ -134,8 +150,11 @@ function pageScript() {
     Date.now = () => {
       const originalValue = originalDateNow();
       if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+        if (speedConfig.cbDateNowChecked) {
+          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        } else {
+          dateNowValue = originalValue;
+        }
       } else {
         dateNowValue = originalValue;
       }
