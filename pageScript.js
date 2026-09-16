@@ -56,20 +56,27 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked === true;
       speedConfig = e.data.config;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+      if (previousDateNowEnabled && speedConfig.cbDateNowChecked !== true) {
         scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+      } else if (speedConfig.cbDateNowChecked === true && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
     }
 
     if (e.data.command === "extensionDateNowState") {
-      speedConfig.cbDateNowChecked = e.data.enabled ? true : NaN;
+      speedConfig.cbDateNowChecked = e.data.enabled === true;
+
+      if (speedConfig.cbDateNowChecked === false) {
+        if (dateNowDisableReloadTimer !== null) {
+          originalclearTimeout(dateNowDisableReloadTimer);
+          dateNowDisableReloadTimer = null;
+        }
+      }
     }
   });
 
