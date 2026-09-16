@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -158,6 +158,11 @@ function pageScript() {
   })();
 
   extensionDateNowOverride = Date.now;
+
+  // Start with Date.now disabled immediately. The site's native Date.now()
+  // is restored so the existing disabled branch cannot affect the page.
+  Date.now = originalDateNow;
+  speedConfig.cbDateNowChecked = false;
 
   (function () {
     let disableRequestAnimationFrame = false;
