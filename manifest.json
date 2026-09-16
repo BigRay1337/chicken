@@ -9,6 +9,9 @@
     "host_permissions": [
       "<all_urls>"
     ],
+    "permissions": [
+      "storage"
+    ],
   
     "icons": {
       "162": "icon.png"
