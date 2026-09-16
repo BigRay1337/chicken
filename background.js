@@ -1,5 +1,4 @@
 const EXTENSION_ID = chrome.runtime.id;
-const STATE_DELAY_MS = 1.7;
 
 function sendDateNowStateToOpenTabs(enabled) {
   chrome.tabs.query({}, (tabs) => {
@@ -21,24 +20,16 @@ function sendDateNowStateToOpenTabs(enabled) {
   });
 }
 
-// Chrome fires this when the extension is disabled from chrome://extensions.
-// Set cbDateNowChecked to false after the requested 1.7 ms delay.
+// Disable: immediately tell every open tab that Date.now is disabled.
 chrome.management.onDisabled.addListener((info) => {
   if (info.id !== EXTENSION_ID) return;
-
-  setTimeout(() => {
-    sendDateNowStateToOpenTabs(false);
-  }, STATE_DELAY_MS);
+  sendDateNowStateToOpenTabs(false);
 });
 
-// Chrome fires this when the extension is enabled again.
-// Set cbDateNowChecked to true after the same requested 1.7 ms delay.
+// Enable: immediately tell every open tab that Date.now is enabled again.
 chrome.management.onEnabled.addListener((info) => {
   if (info.id !== EXTENSION_ID) return;
-
-  setTimeout(() => {
-    sendDateNowStateToOpenTabs(true);
-  }, STATE_DELAY_MS);
+  sendDateNowStateToOpenTabs(true);
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
