@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -56,19 +56,17 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = false;
-      return;
-    }
-
-    if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = false;
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
+
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
     }
   });
 
@@ -135,32 +133,13 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-
-      if (!Number.isFinite(dateNowValue) || !Number.isFinite(previusDateNowValue)) {
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      } else {
         dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
-        return Math.floor(0 + dateNowValue);
       }
-
-      const elapsed = originalValue - previusDateNowValue;
-      if (!Number.isFinite(elapsed) || elapsed < 0) {
-        dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
-        return Math.floor(0 + dateNowValue);
-      }
-
-      if (!speedConfig.cbDateNowChecked) {
-        previusDateNowValue = originalValue;
-        return Math.floor(0 + dateNowValue);
-      }
-
-      dateNowValue += elapsed * speedConfig.speed;
       previusDateNowValue = originalValue;
-
-      if (!Number.isFinite(dateNowValue)) {
-        dateNowValue = originalValue;
-      }
-
       return Math.floor(0 + dateNowValue);
     };
   })();
