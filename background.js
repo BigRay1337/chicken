@@ -21,7 +21,7 @@ chrome.management.onEnabled.addListener(async (info) => {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         world: "MAIN",
-        func: () => window.postMessage({ command: "extensionEnabled" })
+        func: () => window.postMessage({ command: "extensionForceDateNowDisabled" })
       });
     } catch (error) {
       console.debug("Could not update Chicken Date.now state in tab", tab.id, error);
