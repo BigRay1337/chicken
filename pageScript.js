@@ -4,14 +4,9 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
-
-  // This flag is controlled only by the extension lifecycle.
-  // Enabled  = cbDateNowChecked false
-  // Disabled = cbDateNowChecked true
-  let extensionIsEnabled = true;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -23,6 +18,17 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
+
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
+  let dateNowDisableReloadTimer = null;
+
+  const scheduleDateNowDisabledReload = () => {
+    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
+  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -43,25 +49,24 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (!e.data || typeof e.data !== "object") return;
-
     if (e.data.command === "setSpeedConfig") {
-      speedConfig = {
-        ...speedConfig,
-        ...e.data.config,
-      };
-      // The extension-management state is authoritative for cbDateNowChecked.
-      speedConfig.cbDateNowChecked = !extensionIsEnabled;
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
+      speedConfig = e.data.config;
       reloadTimers();
-    } else if (e.data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = !extensionIsEnabled;
+
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
     }
   });
 
@@ -112,7 +117,7 @@ function pageScript() {
     let previusPerformanceNowValue = null;
     window.performance.now = () => {
       const originalValue = originalPerformanceNow();
-      if (performanceNowValue !== null) {
+      if (performanceNowValue) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
           (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
       } else {
@@ -123,31 +128,19 @@ function pageScript() {
     };
   })();
 
-  // Date.now never reloads the page and never calls window.location.reload().
-  // It always returns a valid finite timestamp, including during extension
-  // enable/disable transitions.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
-
     Date.now = () => {
       const originalValue = originalDateNow();
-
-      if (dateNowValue === null || previusDateNowValue === null) {
-        dateNowValue = originalValue;
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
-        const elapsed = originalValue - previusDateNowValue;
-        const multiplier = speedConfig.cbDateNowChecked &&
-          Number.isFinite(speedConfig.speed) &&
-          speedConfig.speed > 0
-          ? speedConfig.speed
-          : 1;
-
-        dateNowValue += elapsed * multiplier;
+        dateNowValue = originalValue;
       }
-
       previusDateNowValue = originalValue;
-      return Math.floor(dateNowValue);
+      return Math.floor(0 + dateNowValue);
     };
   })();
 
