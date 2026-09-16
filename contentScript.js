@@ -3,13 +3,14 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: true,
+  cbDateNowChecked: false,
   cbRequestAnimationFrameChecked: false,
 };
 
-// An enabled extension gets cbDateNowChecked=true when its content script starts.
-chrome.storage.local.set({ cbDateNowChecked: true });
-speedConfig.cbDateNowChecked = true;
+// When this extension is enabled, cbDateNowChecked is false.
+// A disabled extension cannot execute code or update storage until it is enabled again.
+chrome.storage.local.set({ cbDateNowChecked: false });
+speedConfig.cbDateNowChecked = false;
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
