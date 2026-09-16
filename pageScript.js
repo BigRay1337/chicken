@@ -30,31 +30,6 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
-  // The content script sends this heartbeat while the extension is enabled.
-  // If Manage Extensions disables the extension, the heartbeat stops and
-  // cbDateNowChecked is set to false. When the extension is enabled again,
-  // the new content script heartbeat restores it to true.
-  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 250;
-  let lastExtensionHeartbeat = originalDateNow();
-  let dateNowWasDisabledByExtension = false;
-
-  const checkExtensionHeartbeat = () => {
-    if (
-      originalDateNow() - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS &&
-      !dateNowWasDisabledByExtension
-    ) {
-      dateNowWasDisabledByExtension = true;
-      speedConfig.cbDateNowChecked = false;
-
-      if (dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
-    }
-  };
-
-  originalSetInterval(checkExtensionHeartbeat, 100);
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -81,21 +56,6 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "extensionHeartbeat") {
-      lastExtensionHeartbeat = originalDateNow();
-
-      // Only restore Date.now when it was specifically disabled because
-      // the extension itself was disabled. A user-controlled checkbox
-      // setting of false is left unchanged.
-      if (dateNowWasDisabledByExtension) {
-        dateNowWasDisabledByExtension = false;
-        speedConfig.cbDateNowChecked = true;
-        reloadTimers();
-      }
-
-      return;
-    }
-
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
