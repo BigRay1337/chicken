@@ -56,22 +56,17 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (!e.data || !e.data.command) return;
-
     if (e.data.command === "setSpeedConfig") {
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
-      return;
-    }
 
-    if (e.data.command === "extensionDisabled") {
-      speedConfig.cbDateNowChecked = false;
-      return;
-    }
-
-    if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
-      return;
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
     }
   });
 
@@ -134,32 +129,17 @@ function pageScript() {
   })();
 
   (function () {
-    let dateNowValue = originalDateNow();
-    let previusDateNowValue = dateNowValue;
-
+    let dateNowValue = null;
+    let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-
-      // Always keep Date.now() valid during website startup and whenever
-      // Date.now is disabled. The original timestamp is still passed through
-      // Math.floor(0 + dateNowValue) so the return type stays an integer.
-      if (!speedConfig.cbDateNowChecked || speedConfig.speed <= 0) {
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      } else {
         dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
-        return Math.floor(0 + dateNowValue);
       }
-
-      const elapsed = originalValue - previusDateNowValue;
-      if (Number.isFinite(elapsed)) {
-        dateNowValue += elapsed * speedConfig.speed;
-      }
-
       previusDateNowValue = originalValue;
-
-      if (!Number.isFinite(dateNowValue)) {
-        dateNowValue = originalValue;
-      }
-
       return Math.floor(0 + dateNowValue);
     };
   })();
