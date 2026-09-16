@@ -1,12 +1,10 @@
 function pageScript() {
-  // Start with Date.now control disabled. contentScript.js sets the exact
-  // lifecycle state when the extension context becomes available.
   let speedConfig = {
     speed: 0,
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -20,6 +18,17 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
+
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
+  let dateNowDisableReloadTimer = null;
+
+  const scheduleDateNowDisabledReload = () => {
+    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
+  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -40,22 +49,24 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (!e.data || e.source !== window) return;
-
     if (e.data.command === "setSpeedConfig") {
-      // Never reload the page when Date.now changes state.
-      speedConfig = {
-        ...speedConfig,
-        ...e.data.config,
-      };
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
+      speedConfig = e.data.config;
       reloadTimers();
-      return;
+
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
     }
   });
 
@@ -120,28 +131,16 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
-
     Date.now = () => {
       const originalValue = originalDateNow();
-
-      // When Date.now control is off, return the browser's real Date.now()
-      // value. This avoids the old frozen/accelerating value and prevents
-      // crashes, refreshes, and black screens during extension lifecycle
-      // changes.
-      if (!speedConfig.cbDateNowChecked || speedConfig.speed <= 0) {
-        dateNowValue = originalValue;
-        previusDateNowValue = originalValue;
-        return originalValue;
-      }
-
-      if (dateNowValue === null || previusDateNowValue === null) {
-        dateNowValue = originalValue;
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
-        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        dateNowValue = originalValue;
       }
-
       previusDateNowValue = originalValue;
-      return Math.floor(dateNowValue);
+      return Math.floor(0 + dateNowValue);
     };
   })();
 
