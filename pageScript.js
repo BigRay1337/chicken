@@ -19,7 +19,7 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 69;
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
