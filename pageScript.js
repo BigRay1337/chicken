@@ -134,23 +134,32 @@ function pageScript() {
   })();
 
   (function () {
-    let dateNowValue = null;
-    let previusDateNowValue = null;
+    let dateNowValue = originalDateNow();
+    let previusDateNowValue = dateNowValue;
+
     Date.now = () => {
       const originalValue = originalDateNow();
 
-      if (!speedConfig.cbDateNowChecked) {
+      // Always keep Date.now() valid during website startup and whenever
+      // Date.now is disabled. The original timestamp is still passed through
+      // Math.floor(0 + dateNowValue) so the return type stays an integer.
+      if (!speedConfig.cbDateNowChecked || speedConfig.speed <= 0) {
         dateNowValue = originalValue;
         previusDateNowValue = originalValue;
         return Math.floor(0 + dateNowValue);
       }
 
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-      } else {
+      const elapsed = originalValue - previusDateNowValue;
+      if (Number.isFinite(elapsed)) {
+        dateNowValue += elapsed * speedConfig.speed;
+      }
+
+      previusDateNowValue = originalValue;
+
+      if (!Number.isFinite(dateNowValue)) {
         dateNowValue = originalValue;
       }
-      previusDateNowValue = originalValue;
+
       return Math.floor(0 + dateNowValue);
     };
   })();
