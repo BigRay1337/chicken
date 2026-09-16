@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -49,16 +49,15 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
+    if (e.data && e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
-      speedConfig = e.data.config;
+      speedConfig = e.data.config || speedConfig;
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -67,6 +66,14 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
+    }
+
+    if (e.data && e.data.command === "extensionDisabled") {
+      speedConfig.cbDateNowChecked = false;
+    }
+
+    if (e.data && e.data.command === "extensionEnabled") {
+      speedConfig.cbDateNowChecked = true;
     }
   });
 
