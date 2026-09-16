@@ -1,5 +1,5 @@
 const EXTENSION_ID = chrome.runtime.id;
-const STATE_DELAY_MS = 0.5;
+const STATE_DELAY_MS = 1.7;
 
 function sendDateNowStateToOpenTabs(enabled) {
   chrome.tabs.query({}, (tabs) => {
