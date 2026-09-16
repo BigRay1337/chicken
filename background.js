@@ -8,3 +8,23 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
+
+const sendExtensionState = async (command) => {
+  try {
+    const tabs = await chrome.tabs.query({});
+    await Promise.all(tabs.map((tab) => {
+      if (!tab.id) return Promise.resolve();
+      return chrome.tabs.sendMessage(tab.id, { command }).catch(() => {});
+    }));
+  } catch (e) {}
+};
+
+chrome.management.onDisabled.addListener((info) => {
+  if (info.id !== chrome.runtime.id) return;
+  sendExtensionState("extensionDisabled");
+});
+
+chrome.management.onEnabled.addListener((info) => {
+  if (info.id !== chrome.runtime.id) return;
+  sendExtensionState("extensionEnabled");
+});
