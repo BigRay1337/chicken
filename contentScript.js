@@ -24,3 +24,9 @@ window.addEventListener("message", (e) => {
     });
   }
 });
+
+// Tell the page to disable Date.now when this extension context disappears.
+const extensionPort = chrome.runtime.connect({ name: "dateNowState" });
+extensionPort.onDisconnect.addListener(() => {
+  window.postMessage({ command: "extensionDisabled" }, "*");
+});
