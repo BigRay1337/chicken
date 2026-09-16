@@ -33,15 +33,16 @@ async function setDateNowExtensionStateInOpenTabs(enabled) {
   }
 }
 
-// Force cbDateNowChecked=false immediately when this extension is disabled.
+// When disabled in Manage Extensions, force cbDateNowChecked=false.
 chrome.management.onDisabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
   setDateNowExtensionStateInOpenTabs(false);
 });
 
-// Restore cbDateNowChecked=true when this extension is enabled again.
+// When enabled again in Manage Extensions, force cbDateNowChecked=false.
+// Date.now stays frozen at its current dateNowValue.
 chrome.management.onEnabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
 
-  setDateNowExtensionStateInOpenTabs(true);
+  setDateNowExtensionStateInOpenTabs(false);
 });
