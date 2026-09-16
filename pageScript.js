@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -49,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -61,10 +62,7 @@ function pageScript() {
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        if (dateNowDisableReloadTimer !== null) {
-          originalclearTimeout(dateNowDisableReloadTimer);
-          dateNowDisableReloadTimer = null;
-        }
+        scheduleDateNowDisabledReload();
       } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
@@ -136,10 +134,6 @@ function pageScript() {
     Date.now = () => {
       const originalValue = originalDateNow();
       if (dateNowValue) {
-        if (!speedConfig.cbDateNowChecked) {
-          previusDateNowValue = originalValue;
-          return Math.floor(0 + dateNowValue);
-        }
         dateNowValue += (originalValue - previusDateNowValue) *
           (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
