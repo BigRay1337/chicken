@@ -61,8 +61,13 @@ function pageScript() {
       speedConfig = e.data.config;
       reloadTimers();
 
+      // Do not reload the page when Date.now is disabled.
+      // The Date.now override below safely freezes its current value instead.
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
+        if (dateNowDisableReloadTimer !== null) {
+          originalclearTimeout(dateNowDisableReloadTimer);
+          dateNowDisableReloadTimer = null;
+        }
       } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
@@ -134,6 +139,13 @@ function pageScript() {
     Date.now = () => {
       const originalValue = originalDateNow();
       if (dateNowValue) {
+        // When Date.now is unchecked, keep the current value stable.
+        // This prevents the old value * dateNowValue multiplication from
+        // growing to Infinity while preserving the original return expression.
+        if (!speedConfig.cbDateNowChecked) {
+          previusDateNowValue = originalValue;
+          return Math.floor(0 + dateNowValue);
+        }
         dateNowValue += (originalValue - previusDateNowValue) *
           (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
