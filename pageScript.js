@@ -139,17 +139,20 @@ function pageScript() {
     Date.now = () => {
       const originalValue = originalDateNow();
 
-      if (!speedConfig.cbDateNowChecked) {
+      if (!speedConfig || speedConfig.cbDateNowChecked === false) {
         dateNowValue = originalValue;
         previusDateNowValue = originalValue;
         return Math.floor(0 + dateNowValue);
       }
 
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-      } else {
+      if (dateNowValue === null || !Number.isFinite(dateNowValue)) {
         dateNowValue = originalValue;
+      } else if (previusDateNowValue === null || !Number.isFinite(previusDateNowValue)) {
+        previusDateNowValue = originalValue;
+      } else {
+        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
       }
+
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
