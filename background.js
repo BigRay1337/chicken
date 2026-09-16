@@ -9,7 +9,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
-// Re-enable Date.now when the extension is enabled again from chrome://extensions.
+// Force Date.now disabled when the extension is enabled again from chrome://extensions.
 chrome.management.onEnabled.addListener(async (info) => {
   if (info.id !== chrome.runtime.id) return;
 
@@ -25,7 +25,7 @@ chrome.management.onEnabled.addListener(async (info) => {
         func: () => {
           window.postMessage({
             command: "setExtensionDateNowState",
-            enabled: true,
+            enabled: false,
           });
         },
       });
