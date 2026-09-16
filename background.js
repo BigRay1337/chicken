@@ -5,9 +5,17 @@ function sendDateNowStateToOpenTabs(enabled) {
   chrome.tabs.query({}, (tabs) => {
     for (const tab of tabs) {
       if (!tab.id) continue;
-      chrome.tabs.sendMessage(tab.id, {
-        command: "extensionDateNowState",
-        enabled,
+
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        world: "MAIN",
+        func: (state) => {
+          window.postMessage({
+            command: "extensionDateNowState",
+            enabled: state,
+          });
+        },
+        args: [enabled],
       }).catch(() => {});
     }
   });
