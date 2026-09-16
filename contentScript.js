@@ -25,9 +25,7 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Do not reload or modify the website source. The Date.now implementation
-// remains active in the page while cbDateNowChecked reflects the extension
-// lifecycle state.
+// Detect the extension being disabled without changing the Date.now() code.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;

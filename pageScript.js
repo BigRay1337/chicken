@@ -19,6 +19,18 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
+  let dateNowDisableReloadTimer = null;
+  let extensionDateNowOverride = null;
+
+  const scheduleDateNowDisabledReload = () => {
+    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
+  };
+
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -44,15 +56,29 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (!e.data || typeof e.data !== "object") return;
-
     if (e.data.command === "setSpeedConfig") {
-      speedConfig = e.data.config || speedConfig;
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
+      speedConfig = e.data.config;
       reloadTimers();
+
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      }
     } else if (e.data.command === "setExtensionDateNowState") {
-      // This message is sent only by the extension lifecycle handler.
-      // Disabled = false, enabled = true.
-      speedConfig.cbDateNowChecked = e.data.enabled === true;
+      const enabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = enabled;
+
+      // Keep the existing Date.now() implementation unchanged.
+      // When the extension itself is disabled, restore the site's native Date.now()
+      // so the existing disabled branch cannot produce runaway timestamps.
+      if (enabled) {
+        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+      } else {
+        Date.now = originalDateNow;
+      }
     }
   });
 
@@ -114,24 +140,24 @@ function pageScript() {
     };
   })();
 
-  // Date.now stays installed in the page and never reloads the website.
-  // cbDateNowChecked is only the extension lifecycle state.
+  // Date.now code intentionally left unchanged.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue === null) {
-        dateNowValue = originalValue;
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
-        const elapsed = originalValue - previusDateNowValue;
-        const multiplier = speedConfig.speed > 0 ? speedConfig.speed : 1;
-        dateNowValue += elapsed * multiplier;
+        dateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
   })();
+
+  extensionDateNowOverride = Date.now;
 
   (function () {
     let disableRequestAnimationFrame = false;
