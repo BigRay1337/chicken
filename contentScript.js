@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 // Detect the extension being disabled without changing the Date.now() code.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
-let extensionIsEnabled = false;
+let extensionIsEnabled = true;
 
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
@@ -52,8 +52,7 @@ function checkExtensionState() {
       });
     }
 
-    // Keep cbDateNowChecked forced false while the extension is enabled.
-    setDateNowExtensionState(false);
+    setDateNowExtensionState(true);
   } catch (error) {
     setDateNowExtensionState(false);
     if (extensionCheckTimer !== null) {
@@ -62,12 +61,6 @@ function checkExtensionState() {
     }
   }
 }
-
-// Force the page-side Date.now state to false immediately on injection.
-window.postMessage({
-  command: "setExtensionDateNowState",
-  enabled: false,
-});
 
 checkExtensionState();
 extensionCheckTimer = setInterval(checkExtensionState, 500);
