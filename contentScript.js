@@ -7,11 +7,6 @@ let speedConfig = {
   cbRequestAnimationFrameChecked: false,
 };
 
-// When this extension is enabled, cbDateNowChecked is true.
-// A disabled extension cannot execute code or update storage until it is enabled again.
-chrome.storage.local.set({ cbDateNowChecked: true });
-speedConfig.cbDateNowChecked = true;
-
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
