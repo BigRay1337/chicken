@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -135,7 +135,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : 1);
       } else {
         dateNowValue = originalValue;
       }
