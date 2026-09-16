@@ -62,7 +62,7 @@ function pageScript() {
     }
 
     if (e.data.command === "extensionEnabled") {
-      speedConfig.cbDateNowChecked = true;
+      speedConfig.cbDateNowChecked = false;
       return;
     }
 
