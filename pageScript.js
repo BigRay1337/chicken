@@ -133,7 +133,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : 0);
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : 1);
       } else {
         dateNowValue = originalValue;
       }
