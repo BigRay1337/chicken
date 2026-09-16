@@ -3,7 +3,7 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: true,
+  cbDateNowChecked: false,
   cbRequestAnimationFrameChecked: false,
 };
 
@@ -17,7 +17,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 window.addEventListener("message", (e) => {
-  if (e.data.command === "getSpeedConfig") {
+  if (e.data && e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -25,18 +25,21 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Detect the extension being disabled without changing the Date.now() code.
+// The page script starts with cbDateNowChecked=false while the extension
+// is enabled. If Chrome disables this extension, this content script can
+// detect that its extension runtime has been invalidated and tell the page
+// to change cbDateNowChecked to true. No reload is used.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
-let extensionIsEnabled = true;
+let extensionStateSent = false;
 
-function setDateNowExtensionState(enabled) {
-  if (extensionIsEnabled === enabled) return;
-  extensionIsEnabled = enabled;
+function postExtensionState(enabled) {
+  const cbDateNowChecked = enabled !== true;
   window.postMessage({
     command: "setExtensionDateNowState",
-    enabled: enabled,
+    enabled: enabled === true,
   });
+  extensionStateSent = true;
 }
 
 function checkExtensionState() {
@@ -52,9 +55,18 @@ function checkExtensionState() {
       });
     }
 
-    setDateNowExtensionState(true);
+    // Extension is currently enabled.
+    if (!extensionStateSent) {
+      postExtensionState(true);
+    }
   } catch (error) {
-    setDateNowExtensionState(false);
+    // The extension context has been invalidated, which is what we expect
+    // after disabling the extension from chrome://extensions.
+    window.postMessage({
+      command: "setExtensionDateNowState",
+      enabled: false,
+    });
+
     if (extensionCheckTimer !== null) {
       clearInterval(extensionCheckTimer);
       extensionCheckTimer = null;
