@@ -8,10 +8,14 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 
-  chrome.storage.local.set({ cbDateNowChecked: true });
-});
-
-// Best-effort state change when Chrome unloads the extension.
-chrome.runtime.onSuspend.addListener(() => {
   chrome.storage.local.set({ cbDateNowChecked: false });
 });
+
+// When the extension is enabled/reloaded by Chrome, mark Date.now as enabled.
+chrome.runtime.onStartup.addListener(() => {
+  chrome.storage.local.set({ cbDateNowChecked: false });
+});
+
+// Chrome does not provide an event to an extension when that same extension
+// is disabled from chrome://extensions. Code stops running when disabled, so
+// cbDateNowChecked cannot reliably be changed at that exact moment.
