@@ -19,13 +19,12 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_REENABLE_DELAY_SECONDS = 0.0123456789;
+  const DATE_NOW_REENABLE_DELAY_MS = 690;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
   let extensionDisabledDateNowTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
-    // Date.now being disabled must never reload the page.
     return;
   };
 
@@ -40,7 +39,7 @@ function pageScript() {
       extensionDisabledDateNowTimer = null;
       speedConfig.cbDateNowChecked = true;
       if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-    }, DATE_NOW_REENABLE_DELAY_SECONDS * 1000);
+    }, DATE_NOW_REENABLE_DELAY_MS);
   };
 
   let timers = [];
@@ -86,7 +85,7 @@ function pageScript() {
 
       if (!enabled) {
         // Extension disabled: cbDateNowChecked becomes false immediately,
-        // then returns to true after 0.0123456789 seconds.
+        // then returns to true exactly 690 ms later.
         disableDateNowBriefly();
       } else {
         speedConfig.cbDateNowChecked = true;
