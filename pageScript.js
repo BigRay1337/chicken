@@ -152,15 +152,16 @@ function pageScript() {
     };
   })();
 
-  // Date.now code intentionally left unchanged.
+  // Keep Date.now on a normal monotonic path while disabled so the page
+  // cannot receive exponentially large time values and turn black/crash.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      if (dateNowValue !== null) {
+        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
+        dateNowValue += (originalValue - previusDateNowValue) * multiplier;
       } else {
         dateNowValue = originalValue;
       }
