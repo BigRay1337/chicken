@@ -22,13 +22,12 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
+  let extensionDisabledDateNowTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
+    // Date.now being disabled must never reload the page.
+    // A reload here caused black screens and interrupted the site.
+    return;
   };
 
   let timers = [];
@@ -59,6 +58,12 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
+      if (speedConfig.cbDateNowChecked) {
+        if (extensionDisabledDateNowTimer !== null) {
+          originalclearTimeout(extensionDisabledDateNowTimer);
+          extensionDisabledDateNowTimer = null;
+        }
+      }
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -69,15 +74,22 @@ function pageScript() {
       }
     } else if (e.data.command === "setExtensionDateNowState") {
       const enabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = enabled;
 
-      // Keep the existing Date.now() implementation unchanged.
-      // When the extension itself is disabled, restore the site's native Date.now()
-      // so the existing disabled branch cannot produce runaway timestamps.
+      if (extensionDisabledDateNowTimer !== null) {
+        originalclearTimeout(extensionDisabledDateNowTimer);
+        extensionDisabledDateNowTimer = null;
+      }
+
       if (enabled) {
+        speedConfig.cbDateNowChecked = true;
         if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
       } else {
-        Date.now = originalDateNow;
+        speedConfig.cbDateNowChecked = true;
+        extensionDisabledDateNowTimer = originalSetTimeout(() => {
+          extensionDisabledDateNowTimer = null;
+          speedConfig.cbDateNowChecked = false;
+          Date.now = originalDateNow;
+        }, 3000);
       }
     }
   });
