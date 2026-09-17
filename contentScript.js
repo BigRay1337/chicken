@@ -25,7 +25,7 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Detect the extension being disabled without changing the Date.now() code.
+// Detect the extension being disabled without changing the Date.now() implementation.
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
@@ -33,10 +33,19 @@ let extensionIsEnabled = true;
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
   extensionIsEnabled = enabled;
+
   window.postMessage({
     command: "setExtensionDateNowState",
     enabled: enabled,
   });
+
+  // When the extension is enabled again, restore the user's normal speed config.
+  if (enabled) {
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+  }
 }
 
 function checkExtensionState() {
