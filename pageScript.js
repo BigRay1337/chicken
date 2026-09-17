@@ -21,6 +21,7 @@ function pageScript() {
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
+  let extensionDateNowOverride = null;
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
@@ -58,7 +59,6 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-      speedConfig.cbDateNowChecked = false;
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -68,9 +68,17 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
-      // Manage Extensions lifecycle state is separate from the popup checkbox.
-      // Enabling/disabling the extension forces Date.now control OFF.
-      speedConfig.cbDateNowChecked = false;
+      const enabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = enabled;
+
+      // Keep the existing Date.now() implementation unchanged.
+      // When the extension itself is disabled, restore the site's native Date.now()
+      // so the existing disabled branch cannot produce runaway timestamps.
+      if (enabled) {
+        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+      } else {
+        Date.now = originalDateNow;
+      }
     }
   });
 
@@ -132,24 +140,24 @@ function pageScript() {
     };
   })();
 
-  // Date.now keeps the existing dateNowValue when cbDateNowChecked is false.
-  // This freezes Date.now instead of restoring native time or multiplying the value.
+  // Date.now code intentionally left unchanged.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-
-      if (dateNowValue === null) {
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      } else {
         dateNowValue = originalValue;
-      } else if (speedConfig.cbDateNowChecked) {
-        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
       }
-
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
   })();
+
+  extensionDateNowOverride = Date.now;
 
   (function () {
     let disableRequestAnimationFrame = false;
@@ -191,3 +199,4 @@ function pageScript() {
 }
 
 pageScript();
+;
