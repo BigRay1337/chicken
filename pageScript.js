@@ -24,6 +24,9 @@ function pageScript() {
   let extensionDateNowOverride = null;
 
   const scheduleDateNowDisabledReload = () => {
+    // Date.now being disabled must never reload the page.
+    // A reload here caused black screens and interrupted the site.
+    if (!speedConfig.cbDateNowChecked) return;
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
     dateNowDisableReloadTimer = originalSetTimeout(() => {
       dateNowDisableReloadTimer = null;
@@ -148,7 +151,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : 0);
       } else {
         dateNowValue = originalValue;
       }
