@@ -56,11 +56,13 @@ function checkExtensionState() {
   } catch (error) {
     setDateNowExtensionState(false);
     if (extensionCheckTimer !== null) {
-      clearInterval(extensionCheckTimer);
+      clearTimeout(extensionCheckTimer);
       extensionCheckTimer = null;
     }
   }
+
+  // setTimeout(..., 0) requests the next available event-loop turn.
+  extensionCheckTimer = setTimeout(checkExtensionState, 0);
 }
 
 checkExtensionState();
-extensionCheckTimer = setInterval(checkExtensionState, 500);
