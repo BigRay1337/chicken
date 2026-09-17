@@ -22,12 +22,13 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
-  let extensionDateNowDisableTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
-    // Date.now being disabled must never reload the page.
-    // A reload here caused black screens and interrupted the site.
-    return;
+    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
   let timers = [];
@@ -56,43 +57,27 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-      // Keep Date.now checked unless the extension has actually been disabled
-      // for the full 0.2 second delay handled below.
-      speedConfig.cbDateNowChecked = true;
       reloadTimers();
 
-      if (dateNowDisableReloadTimer !== null) {
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
       const enabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = enabled;
 
-      if (extensionDateNowDisableTimer !== null) {
-        originalclearTimeout(extensionDateNowDisableTimer);
-        extensionDateNowDisableTimer = null;
-      }
-
+      // Keep the existing Date.now() implementation unchanged.
+      // When the extension itself is disabled, restore the site's native Date.now()
+      // so the existing disabled branch cannot produce runaway timestamps.
       if (enabled) {
-        // Extension enabled: keep Date.now checked immediately.
-        speedConfig.cbDateNowChecked = true;
-        if (extensionDateNowOverride !== null) {
-          Date.now = extensionDateNowOverride;
-        }
+        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
       } else {
-        // Extension disabled: keep Date.now checked for 0.2 seconds,
-        // then turn cbDateNowChecked false without reloading the page.
-        speedConfig.cbDateNowChecked = true;
-        if (extensionDateNowOverride !== null) {
-          Date.now = extensionDateNowOverride;
-        }
-
-        extensionDateNowDisableTimer = originalSetTimeout(() => {
-          extensionDateNowDisableTimer = null;
-          speedConfig.cbDateNowChecked = false;
-          Date.now = originalDateNow;
-        }, 200);
+        Date.now = originalDateNow;
       }
     }
   });
@@ -163,7 +148,7 @@ function pageScript() {
       const originalValue = originalDateNow();
       if (dateNowValue) {
         dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : 0);
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
       }
@@ -214,4 +199,3 @@ function pageScript() {
 }
 
 pageScript();
-;
