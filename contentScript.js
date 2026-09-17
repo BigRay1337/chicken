@@ -25,42 +25,11 @@ window.addEventListener("message", (e) => {
   }
 });
 
-// Detect the extension being disabled without changing the Date.now() code.
-let extensionCheckTimer = null;
-let extensionCheckPort = null;
-let extensionIsEnabled = true;
+// Keep a heartbeat in the page. If this extension is disabled or removed
+// from chrome://extensions, the heartbeat stops and pageScript.js can
+// detect that the extension is no longer running.
+setInterval(() => {
+  window.postMessage({ command: "extensionHeartbeat" });
+}, 250);
 
-function setDateNowExtensionState(enabled) {
-  if (extensionIsEnabled === enabled) return;
-  extensionIsEnabled = enabled;
-  window.postMessage({
-    command: "setExtensionDateNowState",
-    enabled: enabled,
-  });
-}
-
-function checkExtensionState() {
-  try {
-    if (!chrome.runtime || !chrome.runtime.id) {
-      throw new Error("Extension runtime unavailable");
-    }
-
-    if (extensionCheckPort === null) {
-      extensionCheckPort = chrome.runtime.connect({ name: "extension-state-check" });
-      extensionCheckPort.onDisconnect.addListener(() => {
-        extensionCheckPort = null;
-      });
-    }
-
-    setDateNowExtensionState(true);
-  } catch (error) {
-    setDateNowExtensionState(false);
-    if (extensionCheckTimer !== null) {
-      clearInterval(extensionCheckTimer);
-      extensionCheckTimer = null;
-    }
-  }
-}
-
-checkExtensionState();
-extensionCheckTimer = setInterval(checkExtensionState, 500);
+window.postMessage({ command: "extensionHeartbeat" });
