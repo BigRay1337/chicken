@@ -16,7 +16,7 @@ async function setDateNowExtensionStateInOpenTabs(enabled) {
 
     try {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id, allFrames: false},
+        target: { tabId: tab.id, allFrames: true},
         world: "MAIN"
         func: (extensionEnabled) => {
           window.postMessage({
@@ -32,25 +32,28 @@ async function setDateNowExtensionStateInOpenTabs(enabled) {
   }
 }
 
-// Force cbDateNowChecked=false immediately when this extension is disabled.
+// Force cbDateNowChecked=true immediately when this extension is disabled.
 chrome.management.onDisabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
-  setDateNowExtensionStateInOpenTabs(false);
+  setDateNowExtensionStateInOpenTabs(true);
 });
 
 // Restore cbDateNowChecked=false when this extension is enabled again.
 chrome.management.onEnabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
 
-  setDateNowExtensionStateInOpenTabs(false);
+  setDateNowExtensionStateInOpenTabs(true);
 });
 rome.runtime.id) return;
 
-  setDateNowExtensionStateInOpenTabs(false);
+  setDateNowExtensionStateInOpenTabs(true);
 });
 });
 
-ensionStateInOpenTabs(false);
+ensionStateInOpenTabs(true);
 });
+});
+
+
 });
 
