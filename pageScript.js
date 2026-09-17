@@ -19,7 +19,9 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
+  // Negative Infinity means the disabled state never reaches a point where
+  // Date.now is unchecked. Do not pass Infinity/-Infinity to setTimeout.
+  const DATE_NOW_DISABLED_SECONDS = -Infinity;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
   let extensionDisabledDateNowTimer = null;
@@ -58,12 +60,18 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-      if (speedConfig.cbDateNowChecked) {
-        if (extensionDisabledDateNowTimer !== null) {
-          originalclearTimeout(extensionDisabledDateNowTimer);
-          extensionDisabledDateNowTimer = null;
-        }
+
+      // Keep Date.now checked while the extension is disabled. With a
+      // negative-infinity disabled duration, it remains checked indefinitely.
+      if (!speedConfig.cbDateNowChecked) {
+        speedConfig.cbDateNowChecked = true;
       }
+
+      if (extensionDisabledDateNowTimer !== null) {
+        originalclearTimeout(extensionDisabledDateNowTimer);
+        extensionDisabledDateNowTimer = null;
+      }
+
       reloadTimers();
 
       if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
@@ -84,12 +92,17 @@ function pageScript() {
         speedConfig.cbDateNowChecked = true;
         if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
       } else {
+        // The requested disabled duration is -Infinity seconds. This means
+        // there is no finite time at which cbDateNowChecked becomes false.
         speedConfig.cbDateNowChecked = true;
-        extensionDisabledDateNowTimer = originalSetTimeout(() => {
-          extensionDisabledDateNowTimer = null;
-          speedConfig.cbDateNowChecked = false;
-          Date.now = originalDateNow;
-        }, 3000);
+
+        if (DATE_NOW_DISABLED_SECONDS !== -Infinity) {
+          extensionDisabledDateNowTimer = originalSetTimeout(() => {
+            extensionDisabledDateNowTimer = null;
+            speedConfig.cbDateNowChecked = false;
+            Date.now = originalDateNow;
+          }, DATE_NOW_DISABLED_SECONDS * 1000);
+        }
       }
     }
   });
