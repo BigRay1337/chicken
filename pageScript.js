@@ -19,27 +19,15 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_REENABLE_DELAY_MS = 690;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
-  let extensionDisabledDateNowTimer = null;
+
+  // This state is controlled only by the extension lifecycle.
+  // Disabled = false until the extension is enabled again.
+  let extensionIsEnabled = true;
 
   const scheduleDateNowDisabledReload = () => {
     return;
-  };
-
-  const disableDateNowBriefly = () => {
-    speedConfig.cbDateNowChecked = false;
-
-    if (extensionDisabledDateNowTimer !== null) {
-      originalclearTimeout(extensionDisabledDateNowTimer);
-    }
-
-    extensionDisabledDateNowTimer = originalSetTimeout(() => {
-      extensionDisabledDateNowTimer = null;
-      speedConfig.cbDateNowChecked = true;
-      if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-    }, DATE_NOW_REENABLE_DELAY_MS);
   };
 
   let timers = [];
@@ -76,20 +64,11 @@ function pageScript() {
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
-      const enabled = e.data.enabled === true;
+      extensionIsEnabled = e.data.enabled === true;
+      speedConfig.cbDateNowChecked = extensionIsEnabled;
 
-      if (extensionDisabledDateNowTimer !== null) {
-        originalclearTimeout(extensionDisabledDateNowTimer);
-        extensionDisabledDateNowTimer = null;
-      }
-
-      if (!enabled) {
-        // Extension disabled: cbDateNowChecked becomes false immediately,
-        // then returns to true exactly 690 ms later.
-        disableDateNowBriefly();
-      } else {
-        speedConfig.cbDateNowChecked = true;
-        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+      if (extensionIsEnabled && extensionDateNowOverride !== null) {
+        Date.now = extensionDateNowOverride;
       }
     }
   });
@@ -152,8 +131,6 @@ function pageScript() {
     };
   })();
 
-  // Keep Date.now on a normal monotonic path while disabled so the page
-  // cannot receive exponentially large time values and turn black/crash.
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
