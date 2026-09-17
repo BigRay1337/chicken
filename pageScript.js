@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -22,16 +22,12 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
+  let extensionDateNowDisableTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
     // Date.now being disabled must never reload the page.
     // A reload here caused black screens and interrupted the site.
-    if (!speedConfig.cbDateNowChecked) return;
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
+    return;
   };
 
   let timers = [];
@@ -60,27 +56,43 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
+      // Keep Date.now checked unless the extension has actually been disabled
+      // for the full 0.2 second delay handled below.
+      speedConfig.cbDateNowChecked = true;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+      if (dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
       const enabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = enabled;
 
-      // Keep the existing Date.now() implementation unchanged.
-      // When the extension itself is disabled, restore the site's native Date.now()
-      // so the existing disabled branch cannot produce runaway timestamps.
+      if (extensionDateNowDisableTimer !== null) {
+        originalclearTimeout(extensionDateNowDisableTimer);
+        extensionDateNowDisableTimer = null;
+      }
+
       if (enabled) {
-        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+        // Extension enabled: keep Date.now checked immediately.
+        speedConfig.cbDateNowChecked = true;
+        if (extensionDateNowOverride !== null) {
+          Date.now = extensionDateNowOverride;
+        }
       } else {
-        Date.now = originalDateNow;
+        // Extension disabled: keep Date.now checked for 0.2 seconds,
+        // then turn cbDateNowChecked false without reloading the page.
+        speedConfig.cbDateNowChecked = true;
+        if (extensionDateNowOverride !== null) {
+          Date.now = extensionDateNowOverride;
+        }
+
+        extensionDateNowDisableTimer = originalSetTimeout(() => {
+          extensionDateNowDisableTimer = null;
+          speedConfig.cbDateNowChecked = false;
+          Date.now = originalDateNow;
+        }, 200);
       }
     }
   });
