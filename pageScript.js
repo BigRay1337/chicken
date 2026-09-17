@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -26,12 +26,7 @@ function pageScript() {
   const scheduleDateNowDisabledReload = () => {
     // Date.now being disabled must never reload the page.
     // A reload here caused black screens and interrupted the site.
-    if (!speedConfig.cbDateNowChecked) return;
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
+    return;
   };
 
   let timers = [];
@@ -62,25 +57,20 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
+      // Date.now must remain enabled even when the extension is disabled.
+      speedConfig.cbDateNowChecked = true;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+      if (dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
     } else if (e.data.command === "setExtensionDateNowState") {
-      const enabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = enabled;
+      // Always keep cbDateNowChecked true, regardless of extension state.
+      speedConfig.cbDateNowChecked = true;
 
-      // Keep the existing Date.now() implementation unchanged.
-      // When the extension itself is disabled, restore the site's native Date.now()
-      // so the existing disabled branch cannot produce runaway timestamps.
-      if (enabled) {
-        if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-      } else {
-        Date.now = originalDateNow;
+      if (extensionDateNowOverride !== null) {
+        Date.now = extensionDateNowOverride;
       }
     }
   });
