@@ -17,6 +17,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
+  const DATE_NOW_DISABLE_DELAY_MS = 1000;
   let pageInitializing = true;
 
   let dateNowDisableReloadTimer = null;
@@ -66,10 +67,23 @@ function pageScript() {
       extensionIsEnabled = e.data.enabled === true;
 
       if (!extensionIsEnabled) {
-        // Keep Date.now enabled at normal 1x speed while the extension is disabled.
+        // Keep Date.now spoofing enabled for 1 second after the extension is disabled.
         speedConfig.cbDateNowChecked = true;
         speedConfig.speed = 1;
+
+        if (dateNowDisableReloadTimer !== null) {
+          originalclearTimeout(dateNowDisableReloadTimer);
+        }
+
+        dateNowDisableReloadTimer = originalSetTimeout(() => {
+          dateNowDisableReloadTimer = null;
+          speedConfig.cbDateNowChecked = false;
+        }, DATE_NOW_DISABLE_DELAY_MS);
       } else {
+        if (dateNowDisableReloadTimer !== null) {
+          originalclearTimeout(dateNowDisableReloadTimer);
+          dateNowDisableReloadTimer = null;
+        }
         speedConfig.cbDateNowChecked = true;
       }
 
