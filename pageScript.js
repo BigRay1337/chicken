@@ -24,6 +24,14 @@ function pageScript() {
   let extensionDateNowOverride = null;
   let extensionDisabledDateNowTimer = null;
 
+  // The isolated content script sends this heartbeat while the extension is
+  // installed and running. If it is disabled or removed from the Extensions
+  // management page, the heartbeat stops. The page script then disables the
+  // Date.now override instead of leaving it active on the existing page.
+  const EXTENSION_HEARTBEAT_TIMEOUT_MS = 1000;
+  let lastExtensionHeartbeat = originalPerformanceNow();
+  let extensionWasLost = false;
+
   const scheduleDateNowDisabledReload = () => {
     return;
   };
@@ -40,6 +48,15 @@ function pageScript() {
       speedConfig.cbDateNowChecked = true;
       if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
     }, DATE_NOW_REENABLE_DELAY_MS);
+  };
+
+  const disableDateNowAfterExtensionRemoval = () => {
+    extensionWasLost = true;
+    if (extensionDisabledDateNowTimer !== null) {
+      originalclearTimeout(extensionDisabledDateNowTimer);
+      extensionDisabledDateNowTimer = null;
+    }
+    speedConfig.cbDateNowChecked = false;
   };
 
   let timers = [];
@@ -66,7 +83,26 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
+  // Watch for the extension heartbeat. This timer runs entirely in the page
+  // context, so it continues running after the extension is removed.
+  originalSetInterval(() => {
+    if (originalPerformanceNow() - lastExtensionHeartbeat > EXTENSION_HEARTBEAT_TIMEOUT_MS) {
+      if (!extensionWasLost) {
+        disableDateNowAfterExtensionRemoval();
+      }
+    }
+  }, 250);
+
   window.addEventListener("message", (e) => {
+    if (e.data.command === "extensionHeartbeat") {
+      lastExtensionHeartbeat = originalPerformanceNow();
+      extensionWasLost = false;
+      if (speedConfig.cbDateNowChecked === false && extensionDisabledDateNowTimer === null) {
+        speedConfig.cbDateNowChecked = true;
+      }
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
@@ -88,6 +124,7 @@ function pageScript() {
         // then returns to true exactly 690 ms later.
         disableDateNowBriefly();
       } else {
+        extensionWasLost = false;
         speedConfig.cbDateNowChecked = true;
         if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
       }
