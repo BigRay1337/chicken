@@ -19,17 +19,28 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  // Negative Infinity means the disabled state never reaches a point where
-  // Date.now is unchecked. Do not pass Infinity/-Infinity to setTimeout.
-  const DATE_NOW_DISABLED_SECONDS = -Infinity;
+  const DATE_NOW_REENABLE_DELAY_SECONDS = 0.0123456789;
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
   let extensionDisabledDateNowTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
     // Date.now being disabled must never reload the page.
-    // A reload here caused black screens and interrupted the site.
     return;
+  };
+
+  const disableDateNowBriefly = () => {
+    speedConfig.cbDateNowChecked = false;
+
+    if (extensionDisabledDateNowTimer !== null) {
+      originalclearTimeout(extensionDisabledDateNowTimer);
+    }
+
+    extensionDisabledDateNowTimer = originalSetTimeout(() => {
+      extensionDisabledDateNowTimer = null;
+      speedConfig.cbDateNowChecked = true;
+      if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
+    }, DATE_NOW_REENABLE_DELAY_SECONDS * 1000);
   };
 
   let timers = [];
@@ -58,25 +69,10 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-
-      // Keep Date.now checked while the extension is disabled. With a
-      // negative-infinity disabled duration, it remains checked indefinitely.
-      if (!speedConfig.cbDateNowChecked) {
-        speedConfig.cbDateNowChecked = true;
-      }
-
-      if (extensionDisabledDateNowTimer !== null) {
-        originalclearTimeout(extensionDisabledDateNowTimer);
-        extensionDisabledDateNowTimer = null;
-      }
-
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+      if (dateNowDisableReloadTimer !== null) {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
@@ -88,21 +84,13 @@ function pageScript() {
         extensionDisabledDateNowTimer = null;
       }
 
-      if (enabled) {
+      if (!enabled) {
+        // Extension disabled: cbDateNowChecked becomes false immediately,
+        // then returns to true after 0.0123456789 seconds.
+        disableDateNowBriefly();
+      } else {
         speedConfig.cbDateNowChecked = true;
         if (extensionDateNowOverride !== null) Date.now = extensionDateNowOverride;
-      } else {
-        // The requested disabled duration is -Infinity seconds. This means
-        // there is no finite time at which cbDateNowChecked becomes false.
-        speedConfig.cbDateNowChecked = true;
-
-        if (DATE_NOW_DISABLED_SECONDS !== -Infinity) {
-          extensionDisabledDateNowTimer = originalSetTimeout(() => {
-            extensionDisabledDateNowTimer = null;
-            speedConfig.cbDateNowChecked = false;
-            Date.now = originalDateNow;
-          }, DATE_NOW_DISABLED_SECONDS * 1000);
-        }
       }
     }
   });
