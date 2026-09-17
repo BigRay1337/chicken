@@ -23,7 +23,6 @@ function pageScript() {
   let extensionDateNowOverride = null;
 
   // This state is controlled only by the extension lifecycle.
-  // Disabled = false until the extension is enabled again.
   let extensionIsEnabled = true;
 
   const scheduleDateNowDisabledReload = () => {
@@ -65,7 +64,14 @@ function pageScript() {
       }
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = extensionIsEnabled;
+
+      if (!extensionIsEnabled) {
+        // Keep Date.now enabled at normal 1x speed while the extension is disabled.
+        speedConfig.cbDateNowChecked = true;
+        speedConfig.speed = 1;
+      } else {
+        speedConfig.cbDateNowChecked = true;
+      }
 
       if (extensionIsEnabled && extensionDateNowOverride !== null) {
         Date.now = extensionDateNowOverride;
