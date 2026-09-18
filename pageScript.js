@@ -53,8 +53,7 @@ function pageScript() {
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      if (extensionIsEnabled) {
-      } else {
+      if (!extensionIsEnabled) {
         // Date.now control is false immediately when the extension is disabled.
         speedConfig = {
           ...speedConfig,
@@ -62,12 +61,8 @@ function pageScript() {
         };
         reloadTimers();
 
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: speedConfig,
-        });
-
-        // dateNowRefresh.js receives the same state message and restarts only the game.\n      }
+        // dateNowRefresh.js receives the same state message and restarts only the game.
+      }
     }
   });
 
