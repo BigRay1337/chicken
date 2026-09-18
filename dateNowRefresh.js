@@ -1,17 +1,15 @@
 // Independent Date.now controller.
 // Date.now runs directly through this source file.
-// cbDateNowChecked must remain false for 999 seconds before the
-// Date.now state is explicitly kept false.
+// When Date.now control is turned off, restart the game container
+// as if the browser game app was reopened, without reloading the website.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
-  const DATE_NOW_FALSE_DELAY_MS = 999000;
-
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
-  let dateNowFalseTimer = null;
+  let refreshScheduled = false;
 
   Date.now = function () {
     const originalValue = originalDateNow();
@@ -25,54 +23,67 @@
     return Math.floor(0 + dateNowValue);
   };
 
-  function startDateNowFalseTimer() {
-    if (dateNowFalseTimer !== null) {
-      return;
+  function restartGameLikeReopen() {
+    const applet = document.querySelector(
+      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
+      'object[classid*="java" i], embed[src*="java" i]'
+    );
+
+    if (applet && applet.parentNode) {
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
+      return true;
     }
 
-    dateNowFalseTimer = originalSetTimeout(function () {
-      dateNowFalseTimer = null;
+    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
+      const value = (
+        (frame.src || "") + " " +
+        (frame.id || "") + " " +
+        (typeof frame.className === "string" ? frame.className : "") + " " +
+        (frame.title || "")
+      ).toLowerCase();
 
-      // Keep Date.now disabled after cbDateNowChecked has remained false
-      // for the full 999 seconds.
-      window.postMessage({
-        command: "setDateNowState",
-        enabled: false,
-      });
-    }, DATE_NOW_FALSE_DELAY_MS);
-  }
+      return (
+        value.includes("game") ||
+        value.includes("java") ||
+        value.includes("applet") ||
+        value.includes("play")
+      );
+    });
 
-  function cancelDateNowFalseTimer() {
-    if (dateNowFalseTimer !== null) {
-      window.clearTimeout(dateNowFalseTimer);
-      dateNowFalseTimer = null;
+    if (gameFrame) {
+      const source = gameFrame.src || gameFrame.getAttribute("src");
+
+      if (source) {
+        gameFrame.src = source;
+      } else if (gameFrame.parentNode) {
+        const replacement = gameFrame.cloneNode(true);
+        gameFrame.parentNode.replaceChild(replacement, gameFrame);
+      }
+
+      return true;
     }
+
+    return false;
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data) return;
+    if (!data || data.command !== "setExtensionDateNowState") return;
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      if (data.config.cbDateNowChecked === false) {
-        startDateNowFalseTimer();
-      } else {
-        cancelDateNowFalseTimer();
-      }
-      return;
-    }
-
-    if (data.command !== "setExtensionDateNowState") return;
-
+    const wasEnabled = extensionIsEnabled;
     extensionIsEnabled = data.enabled === true;
 
-    if (!extensionIsEnabled) {
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-    } else {
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-      cancelDateNowFalseTimer();
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
+
+    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
+      refreshScheduled = true;
+
+      originalSetTimeout(function () {
+        restartGameLikeReopen();
+        refreshScheduled = false;
+      }, 60);
     }
   });
 })();
