@@ -85,8 +85,19 @@ function pageScript() {
           dateNowDisableTimer = null;
         }
       } else {
-        // Keep dateNowRefresh.js active immediately after extension disable.
-        // Only change cbDateNowChecked to false after 999 seconds.
+        // Date.now control is false immediately when the extension is disabled.
+        speedConfig = {
+          ...speedConfig,
+          cbDateNowChecked: false,
+        };
+        reloadTimers();
+
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: speedConfig,
+        });
+
+        // Keep dateNowRefresh.js active so it can restart only the game.
         scheduleDateNowDisable();
       }
     }
