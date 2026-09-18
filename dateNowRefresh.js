@@ -1,5 +1,6 @@
 // Independent Date.now controller.
-// Date.now runs separately and remains active when cbDateNowChecked is false.
+// Runs in the page's MAIN world without replacing the website's timers,
+// animation frames, or other JavaScript APIs.
 (function () {
   const originalDateNow = Date.now;
 
@@ -11,18 +12,17 @@
   Date.now = function () {
     const originalValue = originalDateNow();
 
-    // dateNowRefresh owns Date.now when cbDateNowChecked is false.
-    if (!cbDateNowChecked) {
-      if (!extensionIsEnabled) {
-        dateNowValue = originalValue;
-      }
-    } else {
-      // Preserve the same source implementation while the checkbox is true.
+    // When cbDateNowChecked is false, leave the website's Date.now timing
+    // running normally. This prevents sites from freezing or failing.
+    if (!cbDateNowChecked || !extensionIsEnabled) {
+      return originalValue;
+    }
+
+    if (dateNowValue === null) {
       dateNowValue = originalValue;
     }
 
     previusDateNowValue = originalValue;
-
     return Math.floor(0 + dateNowValue);
   };
 
@@ -30,26 +30,33 @@
     const data = event && event.data;
     if (!data) return;
 
-    // Explicitly accept the checkbox state from the extension app.
     if (data.command === "setSpeedConfig" && data.config) {
       cbDateNowChecked = data.config.cbDateNowChecked === true;
 
-      // Keep a fresh Date.now value whenever the checkbox changes.
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
+      if (!cbDateNowChecked) {
+        // Restore real browser Date.now immediately.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      } else {
+        // Start Date.now control from the current browser time.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
       return;
     }
 
-    if (data.command !== "setExtensionDateNowState") return;
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
 
-    extensionIsEnabled = data.enabled === true;
-
-    // Reset to a fresh value when the extension state changes.
-    dateNowValue = originalDateNow();
-    previusDateNowValue = dateNowValue;
+      // Do not leave the website with a stale Date.now value when the
+      // extension is disabled.
+      if (!extensionIsEnabled) {
+        cbDateNowChecked = false;
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
+    }
   });
 
-  // Request the current extension configuration so this file can run
-  // correctly even though it is separate from pageScript.js.
   window.postMessage({ command: "getSpeedConfig" });
 })();
