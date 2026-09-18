@@ -1,12 +1,10 @@
 // Independent Date.now controller.
-// Date.now runs directly through this source file.
-// When Date.now control is turned off, restart the game container
-// like reopening the browser app, without reloading the surrounding website.
+// cbDateNowChecked is the only setting that enables or disables Date.now control.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
-  let extensionIsEnabled = true;
+  let cbDateNowChecked = false;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
@@ -14,7 +12,9 @@
   Date.now = function () {
     const originalValue = originalDateNow();
 
-    if (!extensionIsEnabled) {
+    // Checkbox ON: use the controlled Date.now value.
+    // Checkbox OFF: use the browser's current Date.now value.
+    if (!cbDateNowChecked) {
       dateNowValue = originalValue;
     }
 
@@ -24,19 +24,16 @@
   };
 
   function restartGameLikeReopen() {
-    // Restart a Java/app game container without reloading the parent website.
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
     );
 
     if (applet && applet.parentNode) {
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
+      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
       return true;
     }
 
-    // Restart a dedicated game iframe as if that game app were reopened.
     const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
@@ -45,22 +42,17 @@
         (frame.title || "")
       ).toLowerCase();
 
-      return (
-        value.includes("java") ||
-        value.includes("applet") ||
-        value.includes("game")
-      );
+      return value.includes("java") || value.includes("applet") || value.includes("game");
     });
 
     if (gameFrame && gameFrame.parentNode) {
-      const replacement = gameFrame.cloneNode(true);
-      gameFrame.parentNode.replaceChild(replacement, gameFrame);
+      gameFrame.parentNode.replaceChild(gameFrame.cloneNode(true), gameFrame);
       return true;
     }
 
     window.dispatchEvent(new CustomEvent("dateNowGameReopen", {
       detail: {
-        reason: "dateNow-disabled",
+        reason: "cbDateNowChecked-disabled",
         dateNow: originalDateNow()
       }
     }));
@@ -70,21 +62,39 @@
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data || data.command !== "setExtensionDateNowState") return;
+    if (!data) return;
 
-    const wasEnabled = extensionIsEnabled;
-    extensionIsEnabled = data.enabled === true;
+    // cbDateNowChecked directly controls Date.now.
+    if (data.command === "setSpeedConfig" && data.config) {
+      const newChecked = data.config.cbDateNowChecked === true;
+      const wasChecked = cbDateNowChecked;
 
-    dateNowValue = originalDateNow();
-    previusDateNowValue = dateNowValue;
+      cbDateNowChecked = newChecked;
 
-    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
-      refreshScheduled = true;
+      if (cbDateNowChecked) {
+        // Start a fresh controlled value when enabled.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      } else {
+        // Return Date.now to the browser's current time when disabled.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
 
-      originalSetTimeout(function () {
-        restartGameLikeReopen();
-        refreshScheduled = false;
-      }, 60);
+      // When the checkbox is turned OFF, restart only the game container.
+      if (wasChecked && !cbDateNowChecked && !refreshScheduled) {
+        refreshScheduled = true;
+
+        originalSetTimeout(function () {
+          restartGameLikeReopen();
+          refreshScheduled = false;
+        }, 60);
+      }
+
+      return;
     }
+
+    // Keep compatibility with extension lifecycle messages without allowing
+    // them to override cbDateNowChecked.
   });
 })();
