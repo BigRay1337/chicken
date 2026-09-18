@@ -13,13 +13,10 @@ function pageScript() {
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
-  const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-  let extensionDateNowOverride = null;
-  let extensionIsEnabled = true;
 
   let timers = [];
   const reloadTimers = () => {
@@ -50,22 +47,8 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      speedConfig = {
-        ...e.data.config,
-        cbDateNowChecked: !extensionIsEnabled,
-      };
+      speedConfig = e.data.config;
       reloadTimers();
-    } else if (e.data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = e.data.enabled === true;
-
-      // Date.now stays false while the extension is enabled.
-      // It becomes true only after the extension is disabled.
-      speedConfig.cbDateNowChecked = !extensionIsEnabled;
-      reloadTimers();
-
-      if (extensionIsEnabled && extensionDateNowOverride !== null) {
-        Date.now = extensionDateNowOverride;
-      }
     }
   });
 
