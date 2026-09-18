@@ -1,21 +1,23 @@
 // Independent Date.now controller.
-// Date.now runs directly through this source file.
-// When Date.now control is turned off, restart only the game container
-// so the game behaves more like its browser app being reopened.
-// The surrounding website is not reloaded.
+// Date.now runs separately and remains active when cbDateNowChecked is false.
 (function () {
   const originalDateNow = Date.now;
-  const originalSetTimeout = window.setTimeout;
 
   let extensionIsEnabled = true;
+  let cbDateNowChecked = false;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
-  let refreshScheduled = false;
 
   Date.now = function () {
     const originalValue = originalDateNow();
 
-    if (!extensionIsEnabled) {
+    // dateNowRefresh owns Date.now when cbDateNowChecked is false.
+    if (!cbDateNowChecked) {
+      if (!extensionIsEnabled) {
+        dateNowValue = originalValue;
+      }
+    } else {
+      // Preserve the same source implementation while the checkbox is true.
       dateNowValue = originalValue;
     }
 
@@ -24,64 +26,30 @@
     return Math.floor(0 + dateNowValue);
   };
 
-  function restartGameLikeReopen() {
-    // Restart an old-style Java game/app container without reloading
-    // the surrounding website.
-    const applet = document.querySelector(
-      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
-      'object[classid*="java" i], embed[src*="java" i]'
-    );
-
-    if (applet && applet.parentNode) {
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
-      return true;
-    }
-
-    // If the game is isolated in an iframe, restart only that iframe.
-    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
-      const value = (
-        (frame.src || "") + " " +
-        (frame.id || "") + " " +
-        (typeof frame.className === "string" ? frame.className : "") + " " +
-        (frame.title || "")
-      ).toLowerCase();
-
-      return (
-        value.includes("java") ||
-        value.includes("applet") ||
-        value.includes("game")
-      );
-    });
-
-    if (gameFrame && gameFrame.parentNode) {
-      const replacement = gameFrame.cloneNode(true);
-      gameFrame.parentNode.replaceChild(replacement, gameFrame);
-      return true;
-    }
-
-    return false;
-  }
-
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data || data.command !== "setExtensionDateNowState") return;
+    if (!data) return;
 
-    const wasEnabled = extensionIsEnabled;
+    // Explicitly accept the checkbox state from the extension app.
+    if (data.command === "setSpeedConfig" && data.config) {
+      cbDateNowChecked = data.config.cbDateNowChecked === true;
+
+      // Keep a fresh Date.now value whenever the checkbox changes.
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+      return;
+    }
+
+    if (data.command !== "setExtensionDateNowState") return;
+
     extensionIsEnabled = data.enabled === true;
 
-    // Reset Date.now to a fresh value, similar to starting the game again.
+    // Reset to a fresh value when the extension state changes.
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
-
-    // When control is turned off, restart only the game.
-    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
-      refreshScheduled = true;
-
-      originalSetTimeout(function () {
-        restartGameLikeReopen();
-        refreshScheduled = false;
-      }, 60);
-    }
   });
+
+  // Request the current extension configuration so this file can run
+  // correctly even though it is separate from pageScript.js.
+  window.postMessage({ command: "getSpeedConfig" });
 })();
