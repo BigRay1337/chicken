@@ -27,21 +27,13 @@ window.addEventListener("message", (e) => {
 });
 
 const EXTENSION_STATE_CHECK_MS = 250;
-const DATE_NOW_DISABLE_DELAY_MS = 999000;
-
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
-let dateNowDisableTimer = null;
 
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
   extensionIsEnabled = enabled;
-
-  if (dateNowDisableTimer !== null) {
-    clearTimeout(dateNowDisableTimer);
-    dateNowDisableTimer = null;
-  }
 
   if (!enabled) {
     // Date.now control is disabled immediately, while dateNowRefresh.js
@@ -65,25 +57,6 @@ function setDateNowExtensionState(enabled) {
       command: "setDateNowState",
       enabled: false,
     });
-
-    dateNowDisableTimer = setTimeout(() => {
-      dateNowDisableTimer = null;
-
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-
-      window.postMessage({
-        command: "setDateNowState",
-        enabled: false,
-      });
-    }, DATE_NOW_DISABLE_DELAY_MS);
 
     return;
   }
