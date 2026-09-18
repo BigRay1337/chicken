@@ -13,6 +13,7 @@ function pageScript() {
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
+  const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
@@ -53,6 +54,30 @@ function pageScript() {
   });
 
   window.postMessage({ command: "getSpeedConfig" });
+
+  // Date.now runs through pageScript and is controlled directly by cbDateNowChecked.
+  (function () {
+    let dateNowValue = originalDateNow();
+    let previusDateNowValue = dateNowValue;
+
+    Date.now = () => {
+      const originalValue = originalDateNow();
+
+      if (speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
+        if (dateNowValue !== null) {
+          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        } else {
+          dateNowValue = originalValue;
+        }
+      } else {
+        dateNowValue = originalValue;
+      }
+
+      previusDateNowValue = originalValue;
+
+      return Math.floor(0 + dateNowValue);
+    };
+  })();
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
@@ -122,8 +147,6 @@ function pageScript() {
       return Math.floor(performanceNowValue);
     };
   })();
-
-
 
   (function () {
     let disableRequestAnimationFrame = false;
