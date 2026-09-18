@@ -16,7 +16,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_DISABLE_DELAY_MS = 10000;
+  const DATE_NOW_DISABLE_DELAY_MS = 999000;
   let pageInitializing = true;
   let dateNowDisableTimer = null;
   let extensionIsEnabled = true;
@@ -49,13 +49,26 @@ function pageScript() {
   }, 0);
 
   function scheduleDateNowDisable() {
-    if (dateNowDisableTimer !== null) originalclearTimeout(dateNowDisableTimer);
+    if (dateNowDisableTimer !== null) {
+      originalclearTimeout(dateNowDisableTimer);
+    }
 
     dateNowDisableTimer = originalSetTimeout(() => {
       dateNowDisableTimer = null;
-      speedConfig = { ...speedConfig, cbDateNowChecked: false };
+
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+
       reloadTimers();
-      window.postMessage({ command: "setSpeedConfig", config: speedConfig });
+
+      // Update the page-side state only. dateNowRefresh.js remains
+      // independently injected and continues running while disabled.
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
     }, DATE_NOW_DISABLE_DELAY_MS);
   }
 
@@ -72,6 +85,8 @@ function pageScript() {
           dateNowDisableTimer = null;
         }
       } else {
+        // Keep dateNowRefresh.js active immediately after extension disable.
+        // Only change cbDateNowChecked to false after 999 seconds.
         scheduleDateNowDisable();
       }
     }
