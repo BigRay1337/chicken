@@ -1,3 +1,7 @@
+if (window.top !== window) {
+  // Do not run the lifecycle polling in iframes.
+} else {
+
 let speedConfig = {
   speed: 0,
   cbSetIntervalChecked: true,
