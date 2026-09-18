@@ -16,10 +16,10 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_FALSE_DELAY_MS = 999000;
+  const DATE_NOW_DISABLE_DELAY_MS = 10000;
   let pageInitializing = true;
+  let dateNowDisableTimer = null;
   let extensionIsEnabled = true;
-  let dateNowFalseTimer = null;
 
   let timers = [];
   const reloadTimers = () => {
@@ -48,51 +48,31 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
-  function startDateNowFalseTimer() {
-    if (dateNowFalseTimer !== null) {
-      originalclearTimeout(dateNowFalseTimer);
-    }
+  function scheduleDateNowDisable() {
+    if (dateNowDisableTimer !== null) originalclearTimeout(dateNowDisableTimer);
 
-    dateNowFalseTimer = originalSetTimeout(() => {
-      dateNowFalseTimer = null;
-
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
+    dateNowDisableTimer = originalSetTimeout(() => {
+      dateNowDisableTimer = null;
+      speedConfig = { ...speedConfig, cbDateNowChecked: false };
       reloadTimers();
-
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-    }, DATE_NOW_FALSE_DELAY_MS);
+      window.postMessage({ command: "setSpeedConfig", config: speedConfig });
+    }, DATE_NOW_DISABLE_DELAY_MS);
   }
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
-
-      if (speedConfig.cbDateNowChecked === false) {
-        startDateNowFalseTimer();
-      } else if (dateNowFalseTimer !== null) {
-        originalclearTimeout(dateNowFalseTimer);
-        dateNowFalseTimer = null;
-      }
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      if (!extensionIsEnabled) {
-        // Keep the current checkbox state and begin the 999-second countdown
-        // only if cbDateNowChecked is already false.
-        if (speedConfig.cbDateNowChecked === false) {
-          startDateNowFalseTimer();
+      if (extensionIsEnabled) {
+        if (dateNowDisableTimer !== null) {
+          originalclearTimeout(dateNowDisableTimer);
+          dateNowDisableTimer = null;
         }
-      } else if (dateNowFalseTimer !== null) {
-        originalclearTimeout(dateNowFalseTimer);
-        dateNowFalseTimer = null;
+      } else {
+        scheduleDateNowDisable();
       }
     }
   });
@@ -121,7 +101,6 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
       : !speedConfig.cbDateNowChecked
@@ -137,13 +116,11 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-
     const delay = !speedConfig.cbDateNowChecked
       ? timeout
       : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
-
     return originalSetTimeout(handler, delay, ...args);
   };
 
