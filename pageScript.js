@@ -47,21 +47,32 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
-      speedConfig = e.data.config;
-      reloadTimers();
-    } else if (e.data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = e.data.enabled === true;
+    const data = e && e.data;
+    if (!data || typeof data.command !== "string") return;
+
+    if (data.command === "setSpeedConfig") {
+      if (data.config && typeof data.config === "object") {
+        speedConfig = {
+          ...speedConfig,
+          ...data.config,
+          cbDateNowChecked: data.config.cbDateNowChecked === true,
+        };
+        reloadTimers();
+      }
+      return;
+    }
+
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
 
       if (!extensionIsEnabled) {
-        // Date.now control is false immediately when the extension is disabled.
         speedConfig = {
           ...speedConfig,
           cbDateNowChecked: false,
         };
         reloadTimers();
 
-        // dateNowRefresh.js receives the same state message and restarts only the game.
+        // dateNowRefresh.js receives this same state message independently.
       }
     }
   });
