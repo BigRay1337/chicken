@@ -4,16 +4,30 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
+  const originalDateNow = Date.now;
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
+
+  let dateNowValue = originalDateNow();
+  let previusDateNowValue = dateNowValue;
+
+  // Keep the website's Date.now value frozen while Date.now control is enabled.
+  // The requested return expression is intentionally preserved.
+  Date.now = function () {
+    if (!speedConfig.cbDateNowChecked) {
+      return originalDateNow();
+    }
+
+    return Math.floor(0 + dateNowValue);
+  };
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
@@ -48,6 +62,13 @@ function pageScript() {
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
+
+      // Capture the current real time only when Date.now control is enabled.
+      if (speedConfig.cbDateNowChecked) {
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
+
       reloadTimers();
     }
   });
@@ -122,8 +143,6 @@ function pageScript() {
       return Math.floor(performanceNowValue);
     };
   })();
-
-
 
   (function () {
     let disableRequestAnimationFrame = false;
