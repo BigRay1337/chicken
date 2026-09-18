@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -30,9 +30,11 @@ function pageScript() {
       if (!timer.finished) {
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
-          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-            ? timer.timeout / speedConfig.speed
-            : timer.timeout;
+          : !speedConfig.cbDateNowChecked
+            ? timer.timeout
+            : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+              ? timer.timeout / speedConfig.speed
+              : timer.timeout;
 
         timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
         newtimers.push(timer);
@@ -50,14 +52,12 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = {
         ...e.data.config,
-        cbDateNowChecked: true,
+        cbDateNowChecked: false,
       };
       reloadTimers();
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
-
-      // Keep Date.now enabled so the website receives current timestamps.
-      speedConfig.cbDateNowChecked = true;
+      speedConfig.cbDateNowChecked = false;
 
       if (extensionIsEnabled && extensionDateNowOverride !== null) {
         Date.now = extensionDateNowOverride;
@@ -92,9 +92,11 @@ function pageScript() {
 
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
-      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
+      : !speedConfig.cbDateNowChecked
+        ? timeout
+        : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+          ? timeout / speedConfig.speed
+          : timeout;
 
     const id = originalSetInterval(handler, interval, ...args);
     timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
@@ -104,9 +106,11 @@ function pageScript() {
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
 
-    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-      ? timeout / speedConfig.speed
-      : timeout;
+    const delay = !speedConfig.cbDateNowChecked
+      ? timeout
+      : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
+        ? timeout / speedConfig.speed
+        : timeout;
 
     return originalSetTimeout(handler, delay, ...args);
   };
@@ -120,7 +124,9 @@ function pageScript() {
 
       if (performanceNowValue !== null) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
-          (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
+          (speedConfig.cbPerformanceNowChecked && speedConfig.cbDateNowChecked
+            ? speedConfig.speed
+            : 1);
       } else {
         performanceNowValue = originalValue;
       }
@@ -138,10 +144,8 @@ function pageScript() {
       const originalValue = originalDateNow();
 
       if (dateNowValue !== null) {
-        if (speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
+        if (speedConfig.cbDateNowChecked) {
           dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-        } else if (speedConfig.cbDateNowChecked) {
-          dateNowValue = originalValue;
         }
       } else {
         dateNowValue = originalValue;
@@ -172,7 +176,7 @@ function pageScript() {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(frameTime);
-        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.speed > 0) {
+        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
           tickFrame = callbackTick[index] + speedConfig.speed;
 
           if (tickFrame >= 1) {
@@ -201,7 +205,6 @@ function pageScript() {
 
           callbackTick[index] = tickFrame;
         } else {
-          // Always schedule the next real browser frame.
           callback(frameTime);
         }
       });
