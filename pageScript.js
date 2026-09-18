@@ -16,9 +16,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_DISABLE_DELAY_MS = 999000;
   let pageInitializing = true;
-  let dateNowDisableTimer = null;
   let extensionIsEnabled = true;
 
   let timers = [];
@@ -48,30 +46,6 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
-  function scheduleDateNowDisable() {
-    if (dateNowDisableTimer !== null) {
-      originalclearTimeout(dateNowDisableTimer);
-    }
-
-    dateNowDisableTimer = originalSetTimeout(() => {
-      dateNowDisableTimer = null;
-
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
-      reloadTimers();
-
-      // Update the page-side state only. dateNowRefresh.js remains
-      // independently injected and continues running while disabled.
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-    }, DATE_NOW_DISABLE_DELAY_MS);
-  }
-
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
@@ -80,10 +54,6 @@ function pageScript() {
       extensionIsEnabled = e.data.enabled === true;
 
       if (extensionIsEnabled) {
-        if (dateNowDisableTimer !== null) {
-          originalclearTimeout(dateNowDisableTimer);
-          dateNowDisableTimer = null;
-        }
       } else {
         // Date.now control is false immediately when the extension is disabled.
         speedConfig = {
@@ -97,9 +67,7 @@ function pageScript() {
           config: speedConfig,
         });
 
-        // Keep dateNowRefresh.js active so it can restart only the game.
-        scheduleDateNowDisable();
-      }
+        // dateNowRefresh.js receives the same state message and restarts only the game.\n      }
     }
   });
 
