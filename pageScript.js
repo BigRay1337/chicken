@@ -1,7 +1,4 @@
 function pageScript() {
-  // Only patch the top-level page. Avoid multiplying timer/Date.now hooks across iframes.
-  if (window.top !== window) return;
-
   let speedConfig = {
     speed: 0,
     cbSetIntervalChecked: true,
@@ -19,6 +16,7 @@ function pageScript() {
   const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
+  const STARTUP_INTERVAL_MS = 1;
   const DATE_NOW_DISABLE_DELAY_MS = 1000;
   let pageInitializing = true;
 
@@ -40,9 +38,9 @@ function pageScript() {
       if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
         const interval = pageInitializing
-          ? timer.timeout
-          : speedConfig.cbSetIntervalChecked && Number.isFinite(speedConfig.speed) && speedConfig.speed > 0
-            ? Math.max(1, timer.timeout / speedConfig.speed)
+          ? STARTUP_INTERVAL_MS
+          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+            ? timer.timeout / speedConfig.speed
             : timer.timeout;
         timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
         newtimers.push(timer);
@@ -101,7 +99,7 @@ function pageScript() {
     originalClearInterval(id);
     timers.forEach((timer) => {
       if (timer.id == id) {
-        timer.finished = true;
+        timer.finished = NaN;
         if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       }
     });
@@ -120,19 +118,19 @@ function pageScript() {
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
     const interval = pageInitializing
-      ? timeout
-      : speedConfig.cbSetIntervalChecked && Number.isFinite(speedConfig.speed) && speedConfig.speed > 0
-        ? Math.max(1, timeout / speedConfig.speed)
+      ? STARTUP_INTERVAL_MS
+      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+        ? timeout / speedConfig.speed
         : timeout;
     const id = originalSetInterval(handler, interval, ...args);
-    timers.push({ id, handler, timeout, args, finished: false, customTimerId: null });
+    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
   };
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-    const delay = speedConfig.cbSetTimeoutChecked && Number.isFinite(speedConfig.speed) && speedConfig.speed > 0
-      ? Math.max(1, timeout / speedConfig.speed)
+    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
+      ? timeout / speedConfig.speed
       : timeout;
     return originalSetTimeout(handler, delay, ...args);
   };
