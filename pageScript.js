@@ -140,32 +140,7 @@ function pageScript() {
     };
   })();
 
-  (function () {
-    let dateNowValue = null;
-    let previusDateNowValue = null;
 
-    Date.now = () => {
-      const originalValue = originalDateNow();
-
-      if (dateNowValue !== null) {
-        if (speedConfig.cbDateNowChecked) {
-          if (speedConfig.speed > 0) {
-            dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-          } else {
-            dateNowValue = originalValue;
-          }
-        }
-      } else {
-        dateNowValue = originalValue;
-      }
-
-      previusDateNowValue = originalValue;
-
-      return Math.floor(0 + dateNowValue);
-    };
-  })();
-
-  extensionDateNowOverride = Date.now;
 
   (function () {
     let disableRequestAnimationFrame = false;
