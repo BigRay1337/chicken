@@ -23,7 +23,6 @@ function pageScript() {
   let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
 
-  // This state is controlled only by the extension lifecycle.
   let extensionIsEnabled = true;
 
   const scheduleDateNowDisabledReload = () => {
@@ -67,7 +66,6 @@ function pageScript() {
       extensionIsEnabled = e.data.enabled === true;
 
       if (!extensionIsEnabled) {
-        // Keep Date.now spoofing enabled for 1 second after the extension is disabled.
         speedConfig.cbDateNowChecked = true;
         speedConfig.speed = 1;
 
@@ -159,9 +157,6 @@ function pageScript() {
       if (dateNowValue !== null) {
         if (speedConfig.cbDateNowChecked) {
           dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-        } else {
-          // Keep Date.now frozen while allowing the page's event loop to run normally.
-          dateNowValue = dateNowValue;
         }
       } else {
         dateNowValue = originalValue;
@@ -177,21 +172,38 @@ function pageScript() {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
+
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
+
       return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
+
+        // Use the real frame clock when Date.now is frozen so animation,
+        // input handling, and frame-driven page actions keep moving normally.
+        const frameTime = speedConfig.cbDateNowChecked
+          ? performance.now()
+          : originalPerformanceNow();
+
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
-          callback(performance.now());
+          callback(frameTime);
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index] + speedConfig.speed;
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
-              try { callback(performance.now()); } catch (e) { console.error(e); }
+              try {
+                callback(
+                  speedConfig.cbDateNowChecked
+                    ? performance.now()
+                    : originalPerformanceNow()
+                );
+              } catch (e) {
+                console.error(e);
+              }
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
               if (originalPerformanceNow() - startTime > 15) {
@@ -205,7 +217,7 @@ function pageScript() {
           }
           callbackTick[index] = tickFrame;
         } else {
-          callback(performance.now());
+          callback(frameTime);
         }
       });
     };
