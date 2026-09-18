@@ -157,8 +157,10 @@ function pageScript() {
     Date.now = () => {
       const originalValue = originalDateNow();
       if (dateNowValue !== null) {
-        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
-        dateNowValue += (originalValue - previusDateNowValue) * multiplier;
+        if (speedConfig.cbDateNowChecked) {
+          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        }
+        // When cbDateNowChecked is false, keep dateNowValue frozen.
       } else {
         dateNowValue = originalValue;
       }
