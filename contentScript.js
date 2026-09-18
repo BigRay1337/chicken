@@ -11,6 +11,8 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
     window.postMessage(request);
+
+    // Date.now is controlled independently by dateNowRefresh.js.
     window.postMessage({
       command: "setDateNowState",
       enabled: request.config.cbDateNowChecked === true,
@@ -22,10 +24,16 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
-    window.postMessage({ command: "setSpeedConfig", config: speedConfig });
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
   }
 });
 
+// Detect extension lifecycle changes without a tight 0ms polling loop.
+// A 0ms recursive timer can monopolize the page's event loop and cause
+// freezing/crashes, especially while the extension is being disabled.
 const EXTENSION_STATE_CHECK_MS = 250;
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
@@ -35,41 +43,18 @@ function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
   extensionIsEnabled = enabled;
 
-  if (!enabled) {
-    // Date.now control is disabled immediately, while dateNowRefresh.js
-    // continues to restart only the game container.
-    speedConfig = {
-      ...speedConfig,
-      cbDateNowChecked: false,
-    };
+  window.postMessage({
+    command: "setExtensionDateNowState",
+    enabled: enabled,
+  });
 
-    window.postMessage({
-      command: "setExtensionDateNowState",
-      enabled: false,
-    });
-
+  // When the extension is enabled again, restore the user's normal speed config.
+  if (enabled) {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
-
-    window.postMessage({
-      command: "setDateNowState",
-      enabled: false,
-    });
-
-    return;
   }
-
-  window.postMessage({
-    command: "setExtensionDateNowState",
-    enabled: true,
-  });
-
-  window.postMessage({
-    command: "setSpeedConfig",
-    config: speedConfig,
-  });
 }
 
 function scheduleExtensionStateCheck() {
@@ -96,19 +81,14 @@ function checkExtensionState() {
 
       extensionCheckPort.onDisconnect.addListener(() => {
         extensionCheckPort = null;
-
-        // The extension was disabled/reloaded. Tell the MAIN-world scripts
-        // immediately instead of waiting for the next polling cycle.
-        setDateNowExtensionState(false);
       });
     }
 
     setDateNowExtensionState(true);
     scheduleExtensionStateCheck();
   } catch (error) {
-    // The extension has been disabled or disconnected.
-    // Disable Date.now control immediately while dateNowRefresh.js remains
-    // independent and can restart only the game.
+    // The extension is no longer available. Tell pageScript to return Date.now()
+    // to normal 1x behavior, then stop polling so the page event loop is free.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {

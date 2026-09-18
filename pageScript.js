@@ -17,7 +17,6 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-  let extensionIsEnabled = true;
 
   let timers = [];
   const reloadTimers = () => {
@@ -47,33 +46,9 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    const data = e && e.data;
-    if (!data || typeof data.command !== "string") return;
-
-    if (data.command === "setSpeedConfig") {
-      if (data.config && typeof data.config === "object") {
-        speedConfig = {
-          ...speedConfig,
-          ...data.config,
-          cbDateNowChecked: data.config.cbDateNowChecked === true,
-        };
-        reloadTimers();
-      }
-      return;
-    }
-
-    if (data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = data.enabled === true;
-
-      if (!extensionIsEnabled) {
-        speedConfig = {
-          ...speedConfig,
-          cbDateNowChecked: false,
-        };
-        reloadTimers();
-
-        // dateNowRefresh.js receives this same state message independently.
-      }
+    if (e.data.command === "setSpeedConfig") {
+      speedConfig = e.data.config;
+      reloadTimers();
     }
   });
 
@@ -101,6 +76,7 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
       : !speedConfig.cbDateNowChecked
@@ -116,11 +92,13 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
     const delay = !speedConfig.cbDateNowChecked
       ? timeout
       : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
+
     return originalSetTimeout(handler, delay, ...args);
   };
 
@@ -144,6 +122,8 @@ function pageScript() {
       return Math.floor(performanceNowValue);
     };
   })();
+
+
 
   (function () {
     let disableRequestAnimationFrame = false;
