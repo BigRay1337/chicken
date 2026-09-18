@@ -27,30 +27,46 @@ window.addEventListener("message", (e) => {
 });
 
 const EXTENSION_STATE_CHECK_MS = 250;
+const DATE_NOW_DISABLE_DELAY_MS = 999000;
 
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
+let dateNowDisableTimer = null;
 
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
   extensionIsEnabled = enabled;
 
-  // The extension's disabled state is authoritative.
-  // Set cbDateNowChecked false immediately when the extension is disabled.
+  if (dateNowDisableTimer !== null) {
+    clearTimeout(dateNowDisableTimer);
+    dateNowDisableTimer = null;
+  }
+
   if (!enabled) {
-    speedConfig = {
-      ...speedConfig,
-      cbDateNowChecked: false,
-    };
+    // Keep the current Date.now checkbox state for 999 seconds after
+    // the extension is disabled, then set cbDateNowChecked to false.
+    dateNowDisableTimer = setTimeout(() => {
+      dateNowDisableTimer = null;
+
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+
+      window.postMessage({
+        command: "setDateNowState",
+        enabled: false,
+      });
+    }, DATE_NOW_DISABLE_DELAY_MS);
 
     window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-
-    window.postMessage({
-      command: "setDateNowState",
+      command: "setExtensionDateNowState",
       enabled: false,
     });
 
@@ -98,8 +114,8 @@ function checkExtensionState() {
     setDateNowExtensionState(true);
     scheduleExtensionStateCheck();
   } catch (error) {
-    // The extension app/window has been disabled or disconnected.
-    // Immediately make Date.now unchecked/normal instead of waiting 10 seconds.
+    // The extension has been disabled or disconnected.
+    // cbDateNowChecked changes to false after 999 seconds.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {
