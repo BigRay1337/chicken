@@ -52,12 +52,16 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = {
         ...e.data.config,
-        cbDateNowChecked: false,
+        cbDateNowChecked: !extensionIsEnabled,
       };
       reloadTimers();
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
-      speedConfig.cbDateNowChecked = false;
+
+      // Date.now stays false while the extension is enabled.
+      // It becomes true only after the extension is disabled.
+      speedConfig.cbDateNowChecked = !extensionIsEnabled;
+      reloadTimers();
 
       if (extensionIsEnabled && extensionDateNowOverride !== null) {
         Date.now = extensionDateNowOverride;
@@ -145,7 +149,11 @@ function pageScript() {
 
       if (dateNowValue !== null) {
         if (speedConfig.cbDateNowChecked) {
-          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+          if (speedConfig.speed > 0) {
+            dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+          } else {
+            dateNowValue = originalValue;
+          }
         }
       } else {
         dateNowValue = originalValue;
