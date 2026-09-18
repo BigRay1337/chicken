@@ -16,7 +16,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_DISABLE_DELAY_MS = 2500;
+  const DATE_NOW_DISABLE_DELAY_MS = 10000;
   let pageInitializing = true;
   let dateNowDisableTimer = null;
   let extensionIsEnabled = true;
@@ -55,18 +55,9 @@ function pageScript() {
 
     dateNowDisableTimer = originalSetTimeout(() => {
       dateNowDisableTimer = null;
-
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
+      speedConfig = { ...speedConfig, cbDateNowChecked: false };
       reloadTimers();
-
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
+      window.postMessage({ command: "setSpeedConfig", config: speedConfig });
     }, DATE_NOW_DISABLE_DELAY_MS);
   }
 
@@ -83,8 +74,6 @@ function pageScript() {
           dateNowDisableTimer = null;
         }
       } else {
-        // Keep cbDateNowChecked unchanged for 2.5 seconds after disable,
-        // then set it false inside pageScript as well.
         scheduleDateNowDisable();
       }
     }
@@ -114,7 +103,6 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
       : !speedConfig.cbDateNowChecked
@@ -130,13 +118,11 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-
     const delay = !speedConfig.cbDateNowChecked
       ? timeout
       : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
-
     return originalSetTimeout(handler, delay, ...args);
   };
 
