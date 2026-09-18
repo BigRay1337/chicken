@@ -159,8 +159,10 @@ function pageScript() {
       if (dateNowValue !== null) {
         if (speedConfig.cbDateNowChecked) {
           dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        } else {
+          // Keep Date.now frozen while allowing the page's event loop to run normally.
+          dateNowValue = dateNowValue;
         }
-        // When cbDateNowChecked is false, keep dateNowValue frozen.
       } else {
         dateNowValue = originalValue;
       }
