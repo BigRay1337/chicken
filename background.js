@@ -1,8 +1,6 @@
 // background.js
 chrome.runtime.onInstalled.addListener((details) => {
-  // Verifica se é uma instalação ou atualização
   if (details.reason === "install" || details.reason === "update") {
-    // Abre o link do PayPal em uma nova aba
     chrome.tabs.create({
       url: "https://www.paypal.com/donate/?hosted_button_id=WBGKBJ73EDAW2"
     });
@@ -24,6 +22,19 @@ async function setDateNowExtensionStateInOpenTabs(enabled) {
             command: "setExtensionDateNowState",
             enabled: extensionEnabled,
           });
+
+          // Keep Date.now checked/active when the extension is enabled.
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: {
+              speed: 0,
+              cbSetIntervalChecked: true,
+              cbSetTimeoutChecked: false,
+              cbPerformanceNowChecked: false,
+              cbDateNowChecked: extensionEnabled === true,
+              cbRequestAnimationFrameChecked: false,
+            },
+          });
         },
         args: [enabled],
       });
@@ -33,15 +44,16 @@ async function setDateNowExtensionStateInOpenTabs(enabled) {
   }
 }
 
-// Force cbDateNowChecked=false immediately when this extension is disabled.
 chrome.management.onDisabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
+
+  // Disable Date.now control cleanly before the extension is stopped.
   setDateNowExtensionStateInOpenTabs(false);
 });
 
-// Restore cbDateNowChecked=true when this extension is enabled again.
 chrome.management.onEnabled.addListener((info) => {
   if (info.id !== chrome.runtime.id) return;
 
+  // Restore Date.now as checked when the extension is enabled again.
   setDateNowExtensionStateInOpenTabs(true);
 });
