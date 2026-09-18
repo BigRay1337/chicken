@@ -1,45 +1,87 @@
 // Independent Date.now controller.
-// Date.now control runs independently of cbDateNowChecked.
-// The checkbox can remain disabled while this controller continues
-// providing the frozen Date.now value.
+// Date.now runs directly through this source file.
+// When Date.now control is turned off, restart only the game container
+// so the game behaves more like its browser app being reopened.
+// The surrounding website is not reloaded.
 (function () {
   const originalDateNow = Date.now;
+  const originalSetTimeout = window.setTimeout;
 
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
+  let refreshScheduled = false;
 
   Date.now = function () {
+    const originalValue = originalDateNow();
+
     if (!extensionIsEnabled) {
-      return originalDateNow();
+      dateNowValue = originalValue;
     }
+
+    previusDateNowValue = originalValue;
 
     return Math.floor(0 + dateNowValue);
   };
 
+  function restartGameLikeReopen() {
+    // Restart an old-style Java game/app container without reloading
+    // the surrounding website.
+    const applet = document.querySelector(
+      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
+      'object[classid*="java" i], embed[src*="java" i]'
+    );
+
+    if (applet && applet.parentNode) {
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
+      return true;
+    }
+
+    // If the game is isolated in an iframe, restart only that iframe.
+    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
+      const value = (
+        (frame.src || "") + " " +
+        (frame.id || "") + " " +
+        (typeof frame.className === "string" ? frame.className : "") + " " +
+        (frame.title || "")
+      ).toLowerCase();
+
+      return (
+        value.includes("java") ||
+        value.includes("applet") ||
+        value.includes("game")
+      );
+    });
+
+    if (gameFrame && gameFrame.parentNode) {
+      const replacement = gameFrame.cloneNode(true);
+      gameFrame.parentNode.replaceChild(replacement, gameFrame);
+      return true;
+    }
+
+    return false;
+  }
+
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data) return;
+    if (!data || data.command !== "setExtensionDateNowState") return;
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      // Intentionally ignore data.config.cbDateNowChecked.
-      // dateNowRefresh remains active even when the checkbox is disabled.
-      return;
-    }
+    const wasEnabled = extensionIsEnabled;
+    extensionIsEnabled = data.enabled === true;
 
-    if (data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = data.enabled === true;
+    // Reset Date.now to a fresh value, similar to starting the game again.
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
 
-      if (extensionIsEnabled) {
-        // Re-anchor the frozen value when the extension becomes active.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      } else {
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      }
+    // When control is turned off, restart only the game.
+    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
+      refreshScheduled = true;
+
+      originalSetTimeout(function () {
+        restartGameLikeReopen();
+        refreshScheduled = false;
+      }, 60);
     }
   });
-
-  window.postMessage({ command: "getSpeedConfig" });
 })();
