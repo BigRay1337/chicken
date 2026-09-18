@@ -16,9 +16,7 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_DISABLE_DELAY_MS = 10000;
   let pageInitializing = true;
-  let dateNowDisableTimer = null;
   let extensionIsEnabled = true;
 
   let timers = [];
@@ -48,19 +46,6 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
-  function scheduleDateNowDisable() {
-    if (dateNowDisableTimer !== null) {
-      originalclearTimeout(dateNowDisableTimer);
-    }
-
-    dateNowDisableTimer = originalSetTimeout(() => {
-      dateNowDisableTimer = null;
-      speedConfig = { ...speedConfig, cbDateNowChecked: false };
-      reloadTimers();
-      window.postMessage({ command: "setSpeedConfig", config: speedConfig });
-    }, DATE_NOW_DISABLE_DELAY_MS);
-  }
-
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
@@ -68,13 +53,19 @@ function pageScript() {
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      if (extensionIsEnabled) {
-        if (dateNowDisableTimer !== null) {
-          originalclearTimeout(dateNowDisableTimer);
-          dateNowDisableTimer = null;
-        }
-      } else {
-        scheduleDateNowDisable();
+      // If the extension is disabled, cbDateNowChecked becomes false immediately.
+      if (!extensionIsEnabled) {
+        speedConfig = {
+          ...speedConfig,
+          cbDateNowChecked: false,
+        };
+
+        reloadTimers();
+
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: speedConfig,
+        });
       }
     }
   });
@@ -103,6 +94,7 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
       : !speedConfig.cbDateNowChecked
@@ -118,11 +110,13 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
     const delay = !speedConfig.cbDateNowChecked
       ? timeout
       : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
+
     return originalSetTimeout(handler, delay, ...args);
   };
 
