@@ -11,8 +11,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
     window.postMessage(request);
-
-    // Date.now is controlled independently by dateNowRefresh.js.
     window.postMessage({
       command: "setDateNowState",
       enabled: request.config.cbDateNowChecked === true,
@@ -24,16 +22,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 window.addEventListener("message", (e) => {
   if (e.data.command === "getSpeedConfig") {
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
+    window.postMessage({ command: "setSpeedConfig", config: speedConfig });
   }
 });
 
-// Detect extension lifecycle changes without a tight 0ms polling loop.
 const EXTENSION_STATE_CHECK_MS = 250;
-const DATE_NOW_DISABLE_DELAY_MS = 2500;
+const DATE_NOW_DISABLE_DELAY_MS = 10000;
 
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
@@ -50,7 +44,6 @@ function setDateNowExtensionState(enabled) {
   });
 
   if (enabled) {
-    // Cancel the pending 2.5 second disable if the extension becomes available again.
     if (dateNowDisableTimer !== null) {
       clearTimeout(dateNowDisableTimer);
       dateNowDisableTimer = null;
@@ -61,8 +54,6 @@ function setDateNowExtensionState(enabled) {
       config: speedConfig,
     });
   } else {
-    // Keep cbDateNowChecked active for 2.5 seconds after the extension is disabled.
-    // Then explicitly set it false.
     if (dateNowDisableTimer !== null) {
       clearTimeout(dateNowDisableTimer);
     }
