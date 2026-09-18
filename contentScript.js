@@ -79,3 +79,5 @@ function checkExtensionState() {
 }
 
 checkExtensionState();
+
+} // top-level frame only
