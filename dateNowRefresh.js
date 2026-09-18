@@ -5,9 +5,47 @@
   let previousEnabled = null;
   let refreshScheduled = false;
 
+  const originalDateNow = Date.now;
+  const originalClearTimeout = window.clearTimeout;
+  const originalSetTimeout = window.setTimeout;
+
+  let extensionIsEnabled = true;
+  let dateNowValue = null;
+  let previusDateNowValue = null;
+
+  Date.now = () => {
+    const originalValue = originalDateNow();
+
+    if (dateNowValue !== null) {
+      if (!extensionIsEnabled) {
+        dateNowValue = originalValue;
+      }
+    } else {
+      dateNowValue = originalValue;
+    }
+
+    previusDateNowValue = originalValue;
+
+    return Math.floor(0 + dateNowValue);
+  };
+
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data || data.command !== "setSpeedConfig" || !data.config) {
+    if (!data) return;
+
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
+
+      // Date.now stays frozen while the extension is enabled.
+      // It runs normally only after the extension is disabled.
+      if (!extensionIsEnabled) {
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
+      return;
+    }
+
+    if (data.command !== "setSpeedConfig" || !data.config) {
       return;
     }
 
@@ -22,7 +60,7 @@
     // Only refresh on the transition: Date.now enabled -> disabled.
     if (previousEnabled === true && enabled === false && !refreshScheduled) {
       refreshScheduled = true;
-      window.setTimeout(function () {
+      originalSetTimeout(function () {
         window.location.reload();
       }, 60);
     }
