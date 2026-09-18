@@ -44,8 +44,13 @@ function setDateNowExtensionState(enabled) {
   }
 
   if (!enabled) {
-    // Keep the current Date.now checkbox state for 999 seconds after
-    // the extension is disabled, then set cbDateNowChecked to false.
+    // Keep Date.nowRefresh active immediately after the extension is disabled.
+    // Only set cbDateNowChecked to false after 999 seconds.
+    window.postMessage({
+      command: "setExtensionDateNowState",
+      enabled: false,
+    });
+
     dateNowDisableTimer = setTimeout(() => {
       dateNowDisableTimer = null;
 
@@ -64,11 +69,6 @@ function setDateNowExtensionState(enabled) {
         enabled: false,
       });
     }, DATE_NOW_DISABLE_DELAY_MS);
-
-    window.postMessage({
-      command: "setExtensionDateNowState",
-      enabled: false,
-    });
 
     return;
   }
@@ -115,7 +115,8 @@ function checkExtensionState() {
     scheduleExtensionStateCheck();
   } catch (error) {
     // The extension has been disabled or disconnected.
-    // cbDateNowChecked changes to false after 999 seconds.
+    // Date.now remains independently active; cbDateNowChecked is changed
+    // to false after 999 seconds.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {
