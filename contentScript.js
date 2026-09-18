@@ -32,12 +32,13 @@ window.addEventListener("message", (e) => {
 });
 
 // Detect extension lifecycle changes without a tight 0ms polling loop.
-// A 0ms recursive timer can monopolize the page's event loop and cause
-// freezing/crashes, especially while the extension is being disabled.
 const EXTENSION_STATE_CHECK_MS = 250;
+const DATE_NOW_DISABLE_DELAY_MS = 2500;
+
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
+let dateNowDisableTimer = null;
 
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
@@ -48,12 +49,42 @@ function setDateNowExtensionState(enabled) {
     enabled: enabled,
   });
 
-  // When the extension is enabled again, restore the user's normal speed config.
   if (enabled) {
+    // Cancel the pending 2.5 second disable if the extension becomes available again.
+    if (dateNowDisableTimer !== null) {
+      clearTimeout(dateNowDisableTimer);
+      dateNowDisableTimer = null;
+    }
+
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
+  } else {
+    // Keep cbDateNowChecked active for 2.5 seconds after the extension is disabled.
+    // Then explicitly set it false.
+    if (dateNowDisableTimer !== null) {
+      clearTimeout(dateNowDisableTimer);
+    }
+
+    dateNowDisableTimer = setTimeout(() => {
+      dateNowDisableTimer = null;
+
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+
+      window.postMessage({
+        command: "setDateNowState",
+        enabled: false,
+      });
+    }, DATE_NOW_DISABLE_DELAY_MS);
   }
 }
 
@@ -87,8 +118,6 @@ function checkExtensionState() {
     setDateNowExtensionState(true);
     scheduleExtensionStateCheck();
   } catch (error) {
-    // The extension is no longer available. Tell pageScript to return Date.now()
-    // to normal 1x behavior, then stop polling so the page event loop is free.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {
