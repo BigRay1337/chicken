@@ -16,8 +16,10 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
+  const DATE_NOW_FALSE_DELAY_MS = 999000;
   let pageInitializing = true;
   let extensionIsEnabled = true;
+  let dateNowFalseTimer = null;
 
   let timers = [];
   const reloadTimers = () => {
@@ -46,26 +48,51 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
+  function startDateNowFalseTimer() {
+    if (dateNowFalseTimer !== null) {
+      originalclearTimeout(dateNowFalseTimer);
+    }
+
+    dateNowFalseTimer = originalSetTimeout(() => {
+      dateNowFalseTimer = null;
+
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+
+      reloadTimers();
+
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+    }, DATE_NOW_FALSE_DELAY_MS);
+  }
+
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
+
+      if (speedConfig.cbDateNowChecked === false) {
+        startDateNowFalseTimer();
+      } else if (dateNowFalseTimer !== null) {
+        originalclearTimeout(dateNowFalseTimer);
+        dateNowFalseTimer = null;
+      }
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      // If the extension is disabled, cbDateNowChecked becomes false immediately.
       if (!extensionIsEnabled) {
-        speedConfig = {
-          ...speedConfig,
-          cbDateNowChecked: false,
-        };
-
-        reloadTimers();
-
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: speedConfig,
-        });
+        // Keep the current checkbox state and begin the 999-second countdown
+        // only if cbDateNowChecked is already false.
+        if (speedConfig.cbDateNowChecked === false) {
+          startDateNowFalseTimer();
+        }
+      } else if (dateNowFalseTimer !== null) {
+        originalclearTimeout(dateNowFalseTimer);
+        dateNowFalseTimer = null;
       }
     }
   });
