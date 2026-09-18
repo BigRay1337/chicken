@@ -96,6 +96,10 @@ function checkExtensionState() {
 
       extensionCheckPort.onDisconnect.addListener(() => {
         extensionCheckPort = null;
+
+        // The extension was disabled/reloaded. Tell the MAIN-world scripts
+        // immediately instead of waiting for the next polling cycle.
+        setDateNowExtensionState(false);
       });
     }
 
@@ -103,8 +107,8 @@ function checkExtensionState() {
     scheduleExtensionStateCheck();
   } catch (error) {
     // The extension has been disabled or disconnected.
-    // Date.now remains independently active; cbDateNowChecked is changed
-    // to false after 999 seconds.
+    // Disable Date.now control immediately while dateNowRefresh.js remains
+    // independent and can restart only the game.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {
