@@ -1,5 +1,10 @@
-// Date.now is implemented in pageScript.js.
-// This file is intentionally kept separate and does not override Date.now.
+// Date.now refresh controller.
+// Starts with cbDateNowChecked=false when the extension loads.
+// It does not override Date.now; pageScript.js remains responsible for Date.now.
+
 (function () {
-  // Kept as a separate script for compatibility with the manifest.
+  window.postMessage({
+    command: "setDateNowChecked",
+    enabled: false,
+  });
 })();
