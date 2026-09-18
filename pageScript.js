@@ -60,6 +60,23 @@ function pageScript() {
   let chickenDateNowFrozenValue = null;
 
   window.addEventListener("message", (e) => {
+    if (e.data && e.data.command === "setDateNowChecked") {
+      const checked = e.data.enabled === true;
+      chickenDateNowDisabled = !checked;
+
+      if (chickenDateNowDisabled) {
+        chickenDateNowFrozenValue = originalDateNow();
+      } else {
+        chickenDateNowFrozenValue = null;
+      }
+
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: checked,
+      };
+      return;
+    }
+
     if (
       e.data &&
       e.data.command === "setSpeedConfig" &&
