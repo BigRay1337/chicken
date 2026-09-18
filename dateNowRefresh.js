@@ -1,28 +1,19 @@
 // Independent Date.now controller.
-// Runs in the page's MAIN world without replacing the website's timers,
-// animation frames, or other JavaScript APIs.
+// Date.now control runs independently of cbDateNowChecked.
+// The checkbox can remain disabled while this controller continues
+// providing the frozen Date.now value.
 (function () {
   const originalDateNow = Date.now;
 
   let extensionIsEnabled = true;
-  let cbDateNowChecked = false;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
 
   Date.now = function () {
-    const originalValue = originalDateNow();
-
-    // When cbDateNowChecked is false, leave the website's Date.now timing
-    // running normally. This prevents sites from freezing or failing.
-    if (!cbDateNowChecked || !extensionIsEnabled) {
-      return originalValue;
+    if (!extensionIsEnabled) {
+      return originalDateNow();
     }
 
-    if (dateNowValue === null) {
-      dateNowValue = originalValue;
-    }
-
-    previusDateNowValue = originalValue;
     return Math.floor(0 + dateNowValue);
   };
 
@@ -31,27 +22,19 @@
     if (!data) return;
 
     if (data.command === "setSpeedConfig" && data.config) {
-      cbDateNowChecked = data.config.cbDateNowChecked === true;
-
-      if (!cbDateNowChecked) {
-        // Restore real browser Date.now immediately.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      } else {
-        // Start Date.now control from the current browser time.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      }
+      // Intentionally ignore data.config.cbDateNowChecked.
+      // dateNowRefresh remains active even when the checkbox is disabled.
       return;
     }
 
     if (data.command === "setExtensionDateNowState") {
       extensionIsEnabled = data.enabled === true;
 
-      // Do not leave the website with a stale Date.now value when the
-      // extension is disabled.
-      if (!extensionIsEnabled) {
-        cbDateNowChecked = false;
+      if (extensionIsEnabled) {
+        // Re-anchor the frozen value when the extension becomes active.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      } else {
         dateNowValue = originalDateNow();
         previusDateNowValue = dateNowValue;
       }
