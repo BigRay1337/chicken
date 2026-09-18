@@ -17,17 +17,11 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_DISABLE_DELAY_MS = 1000;
   let pageInitializing = true;
 
-  let dateNowDisableReloadTimer = null;
   let extensionDateNowOverride = null;
 
   let extensionIsEnabled = true;
-
-  const scheduleDateNowDisabledReload = () => {
-    return;
-  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -57,32 +51,16 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
-
-      if (dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
+      // Keep the Date.now spoof active even after the extension is disabled
+      // from the browser's Management tab. The injected page script remains
+      // alive in the page, so the spoof can continue independently.
+      speedConfig.cbDateNowChecked = true;
+
       if (!extensionIsEnabled) {
-        speedConfig.cbDateNowChecked = true;
         speedConfig.speed = 1;
-
-        if (dateNowDisableReloadTimer !== null) {
-          originalclearTimeout(dateNowDisableReloadTimer);
-        }
-
-        dateNowDisableReloadTimer = originalSetTimeout(() => {
-          dateNowDisableReloadTimer = null;
-          speedConfig.cbDateNowChecked = false;
-        }, DATE_NOW_DISABLE_DELAY_MS);
-      } else {
-        if (dateNowDisableReloadTimer !== null) {
-          originalclearTimeout(dateNowDisableReloadTimer);
-          dateNowDisableReloadTimer = null;
-        }
-        speedConfig.cbDateNowChecked = true;
       }
 
       if (extensionIsEnabled && extensionDateNowOverride !== null) {
@@ -154,6 +132,7 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
+
       if (dateNowValue !== null) {
         if (speedConfig.cbDateNowChecked) {
           dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
@@ -161,6 +140,7 @@ function pageScript() {
       } else {
         dateNowValue = originalValue;
       }
+
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
@@ -180,8 +160,6 @@ function pageScript() {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
 
-        // Use the real frame clock when Date.now is frozen so animation,
-        // input handling, and frame-driven page actions keep moving normally.
         const frameTime = speedConfig.cbDateNowChecked
           ? performance.now()
           : originalPerformanceNow();
