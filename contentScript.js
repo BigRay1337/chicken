@@ -44,10 +44,25 @@ function setDateNowExtensionState(enabled) {
   }
 
   if (!enabled) {
-    // Keep Date.nowRefresh active immediately after the extension is disabled.
-    // Only set cbDateNowChecked to false after 999 seconds.
+    // Date.now control is disabled immediately, while dateNowRefresh.js
+    // continues to restart only the game container.
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: false,
+    };
+
     window.postMessage({
       command: "setExtensionDateNowState",
+      enabled: false,
+    });
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+
+    window.postMessage({
+      command: "setDateNowState",
       enabled: false,
     });
 
