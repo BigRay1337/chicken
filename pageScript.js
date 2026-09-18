@@ -28,11 +28,16 @@ function pageScript() {
       originalClearInterval(timer.id);
       if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
+        // Date.now can be frozen without changing the page's real timer clock.
+        // This keeps clicks, input, polling, and other page actions responsive.
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
-          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-            ? timer.timeout / speedConfig.speed
-            : timer.timeout;
+          : !speedConfig.cbDateNowChecked
+            ? timer.timeout
+            : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+              ? timer.timeout / speedConfig.speed
+              : timer.timeout;
+
         timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
         newtimers.push(timer);
       }
@@ -52,8 +57,7 @@ function pageScript() {
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      // Management-tab disable must leave Date.now frozen.
-      // Do not force Date.now back to real time and do not force speed to 1.
+      // Keep Date.now frozen when disabled.
       if (!extensionIsEnabled) {
         speedConfig.cbDateNowChecked = false;
       }
@@ -88,11 +92,16 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
+    // When Date.now is frozen, never alter the real interval clock.
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
-      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
+      : !speedConfig.cbDateNowChecked
+        ? timeout
+        : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+          ? timeout / speedConfig.speed
+          : timeout;
+
     const id = originalSetInterval(handler, interval, ...args);
     timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
@@ -100,23 +109,34 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-      ? timeout / speedConfig.speed
-      : timeout;
+
+    // Keep normal timeout behavior while Date.now is frozen.
+    const delay = !speedConfig.cbDateNowChecked
+      ? timeout
+      : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
+        ? timeout / speedConfig.speed
+        : timeout;
+
     return originalSetTimeout(handler, delay, ...args);
   };
 
   (function () {
     let performanceNowValue = null;
     let previusPerformanceNowValue = null;
+
     window.performance.now = () => {
+      // Keep the frame/action clock real when Date.now is frozen.
       const originalValue = originalPerformanceNow();
-      if (performanceNowValue) {
+
+      if (performanceNowValue !== null) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
-          (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
+          (speedConfig.cbPerformanceNowChecked && speedConfig.cbDateNowChecked
+            ? speedConfig.speed
+            : 1);
       } else {
         performanceNowValue = originalValue;
       }
+
       previusPerformanceNowValue = originalValue;
       return Math.floor(performanceNowValue);
     };
@@ -125,6 +145,7 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
+
     Date.now = () => {
       const originalValue = originalDateNow();
 
@@ -137,6 +158,8 @@ function pageScript() {
       }
 
       previusDateNowValue = originalValue;
+
+      // Intentionally frozen when cbDateNowChecked is false.
       return Math.floor(0 + dateNowValue);
     };
   })();
@@ -155,39 +178,40 @@ function pageScript() {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
 
-        const frameTime = speedConfig.cbDateNowChecked
-          ? performance.now()
-          : originalPerformanceNow();
+        // Always give frame callbacks a real frame timestamp when Date.now is frozen.
+        const frameTime = originalPerformanceNow();
 
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(frameTime);
-        } else if (speedConfig.cbRequestAnimationFrameChecked) {
+        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked) {
           tickFrame = callbackTick[index] + speedConfig.speed;
+
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
+
             while (tickFrame >= 1) {
               try {
-                callback(
-                  speedConfig.cbDateNowChecked
-                    ? performance.now()
-                    : originalPerformanceNow()
-                );
+                callback(originalPerformanceNow());
               } catch (e) {
                 console.error(e);
               }
+
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
+
               if (originalPerformanceNow() - startTime > 15) {
                 tickFrame = 0;
                 break;
               }
             }
+
             disableRequestAnimationFrame = false;
           } else {
             window.requestAnimationFrame(callback);
           }
+
           callbackTick[index] = tickFrame;
         } else {
           callback(frameTime);
