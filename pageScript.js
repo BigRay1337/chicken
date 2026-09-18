@@ -46,29 +46,26 @@ function pageScript() {
     reloadTimers();
   }, 0);
 
-  window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
-      speedConfig = e.data.config;
-      reloadTimers();
-    }
-  });
-
-  window.postMessage({ command: "getSpeedConfig" });
-
-  // Date.now runs through pageScript and is controlled directly by cbDateNowChecked.
+  // Date.now is controlled directly by cbDateNowChecked.
+  // The value is reset immediately whenever the checkbox changes.
   (function () {
     let dateNowValue = originalDateNow();
     let previusDateNowValue = dateNowValue;
+    let previousDateNowChecked = speedConfig.cbDateNowChecked;
 
     Date.now = () => {
       const originalValue = originalDateNow();
+      const checked = speedConfig.cbDateNowChecked === true;
 
-      if (speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
-        if (dateNowValue !== null) {
-          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
-        } else {
-          dateNowValue = originalValue;
-        }
+      // React immediately to cbDateNowChecked changing either direction.
+      if (checked !== previousDateNowChecked) {
+        dateNowValue = originalValue;
+        previusDateNowValue = originalValue;
+        previousDateNowChecked = checked;
+      }
+
+      if (checked && speedConfig.speed > 0) {
+        dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
       } else {
         dateNowValue = originalValue;
       }
@@ -78,6 +75,20 @@ function pageScript() {
       return Math.floor(0 + dateNowValue);
     };
   })();
+
+  window.addEventListener("message", (e) => {
+    if (e.data.command === "setSpeedConfig" && e.data.config) {
+      speedConfig = {
+        ...speedConfig,
+        ...e.data.config,
+        cbDateNowChecked: e.data.config.cbDateNowChecked === true,
+      };
+
+      reloadTimers();
+    }
+  });
+
+  window.postMessage({ command: "getSpeedConfig" });
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
@@ -94,7 +105,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
+        if (timer.customTimerId) originalClearTimeout(timer.customTimerId);
       }
     });
   };
