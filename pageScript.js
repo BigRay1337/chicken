@@ -18,9 +18,7 @@ function pageScript() {
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-
   let extensionDateNowOverride = null;
-
   let extensionIsEnabled = true;
 
   let timers = [];
@@ -54,13 +52,10 @@ function pageScript() {
     } else if (e.data.command === "setExtensionDateNowState") {
       extensionIsEnabled = e.data.enabled === true;
 
-      // Keep the Date.now spoof active even after the extension is disabled
-      // from the browser's Management tab. The injected page script remains
-      // alive in the page, so the spoof can continue independently.
-      speedConfig.cbDateNowChecked = true;
-
+      // Management-tab disable must leave Date.now frozen.
+      // Do not force Date.now back to real time and do not force speed to 1.
       if (!extensionIsEnabled) {
-        speedConfig.speed = 1;
+        speedConfig.cbDateNowChecked = false;
       }
 
       if (extensionIsEnabled && extensionDateNowOverride !== null) {
