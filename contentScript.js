@@ -27,56 +27,45 @@ window.addEventListener("message", (e) => {
 });
 
 const EXTENSION_STATE_CHECK_MS = 250;
-const DATE_NOW_DISABLE_DELAY_MS = 10000;
 
 let extensionCheckTimer = null;
 let extensionCheckPort = null;
 let extensionIsEnabled = true;
-let dateNowDisableTimer = null;
 
 function setDateNowExtensionState(enabled) {
   if (extensionIsEnabled === enabled) return;
   extensionIsEnabled = enabled;
 
-  window.postMessage({
-    command: "setExtensionDateNowState",
-    enabled: enabled,
-  });
-
-  if (enabled) {
-    if (dateNowDisableTimer !== null) {
-      clearTimeout(dateNowDisableTimer);
-      dateNowDisableTimer = null;
-    }
+  // The extension's disabled state is authoritative.
+  // Set cbDateNowChecked false immediately when the extension is disabled.
+  if (!enabled) {
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: false,
+    };
 
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
-  } else {
-    if (dateNowDisableTimer !== null) {
-      clearTimeout(dateNowDisableTimer);
-    }
 
-    dateNowDisableTimer = setTimeout(() => {
-      dateNowDisableTimer = null;
+    window.postMessage({
+      command: "setDateNowState",
+      enabled: false,
+    });
 
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-
-      window.postMessage({
-        command: "setDateNowState",
-        enabled: false,
-      });
-    }, DATE_NOW_DISABLE_DELAY_MS);
+    return;
   }
+
+  window.postMessage({
+    command: "setExtensionDateNowState",
+    enabled: true,
+  });
+
+  window.postMessage({
+    command: "setSpeedConfig",
+    config: speedConfig,
+  });
 }
 
 function scheduleExtensionStateCheck() {
@@ -109,6 +98,8 @@ function checkExtensionState() {
     setDateNowExtensionState(true);
     scheduleExtensionStateCheck();
   } catch (error) {
+    // The extension app/window has been disabled or disconnected.
+    // Immediately make Date.now unchecked/normal instead of waiting 10 seconds.
     setDateNowExtensionState(false);
 
     if (extensionCheckTimer !== null) {
