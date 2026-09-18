@@ -1,24 +1,19 @@
-// Refresh only the Java game/applet, not the surrounding website.
-// This file stays separate from pageScript.js.
+// Independent Date.now controller.
+// This file does not depend on pageScript.js or its speed/timer source code.
 (function () {
-  let previousEnabled = null;
-  let refreshScheduled = false;
-
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
   let extensionIsEnabled = true;
-  let dateNowValue = null;
-  let previusDateNowValue = null;
+  let dateNowValue = originalDateNow();
+  let previusDateNowValue = dateNowValue;
+  let refreshScheduled = false;
 
-  Date.now = () => {
+  // Date.now is controlled entirely by this file.
+  Date.now = function () {
     const originalValue = originalDateNow();
 
-    if (dateNowValue !== null) {
-      if (!extensionIsEnabled) {
-        dateNowValue = originalValue;
-      }
-    } else {
+    if (!extensionIsEnabled) {
       dateNowValue = originalValue;
     }
 
@@ -27,93 +22,56 @@
     return Math.floor(0 + dateNowValue);
   };
 
-  // Refresh the Java game itself without reloading the surrounding website.
-  function refreshJavaGame() {
-    // Old Java applets.
-    const applet = document.querySelector(
-      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
-      'object[classid*="java" i], embed[src*="java" i]'
-    );
-
-    if (applet) {
-      const parent = applet.parentNode;
-      if (!parent) return;
-
-      const replacement = applet.cloneNode(true);
-      parent.replaceChild(replacement, applet);
-      return;
-    }
-
-    // Java games may be hosted inside a dedicated game iframe.
-    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
-      const source = (frame.src || frame.getAttribute("src") || "").toLowerCase();
-      const id = (frame.id || "").toLowerCase();
-      const className = (typeof frame.className === "string" ? frame.className : "").toLowerCase();
-      const title = (frame.title || "").toLowerCase();
-
-      return (
-        source.includes("java") ||
-        source.includes("applet") ||
-        source.includes("jagex") ||
-        id.includes("java") ||
-        id.includes("game") ||
-        className.includes("java") ||
-        className.includes("game") ||
-        title.includes("java") ||
-        title.includes("game")
-      );
-    });
-
-    if (gameFrame && gameFrame.contentWindow) {
-      try {
-        gameFrame.contentWindow.location.reload();
-      } catch (error) {
-        // Cross-origin Java game frames cannot be controlled directly.
-        // Reloading the iframe element itself still refreshes the game only.
-        const parent = gameFrame.parentNode;
-        if (parent) {
-          const replacement = gameFrame.cloneNode(true);
-          parent.replaceChild(replacement, gameFrame);
-        }
-      }
-    }
-  }
-
+  // Only the extension lifecycle controls Date.now state.
+  // No speedConfig or pageScript.js code is required.
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data) return;
+    if (!data || data.command !== "setExtensionDateNowState") return;
 
-    if (data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = data.enabled === true;
+    const wasEnabled = extensionIsEnabled;
+    extensionIsEnabled = data.enabled === true;
 
-      if (!extensionIsEnabled) {
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      }
-      return;
+    if (!extensionIsEnabled) {
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+    } else if (!wasEnabled) {
+      // Start a new independent frozen Date.now value when re-enabled.
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
     }
 
-    if (data.command !== "setSpeedConfig" || !data.config) {
-      return;
-    }
-
-    const enabled = data.config.cbDateNowChecked === true;
-
-    if (previousEnabled === null) {
-      previousEnabled = enabled;
-      return;
-    }
-
-    // Only refresh the Java game when Date.now changes from enabled to disabled.
-    // Never reload the surrounding website.
-    if (previousEnabled === true && enabled === false && !refreshScheduled) {
+    // Keep this refresh separate from the Date.now implementation.
+    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
       refreshScheduled = true;
       originalSetTimeout(function () {
-        refreshJavaGame();
         refreshScheduled = false;
+
+        // Refresh only a Java/game container when one exists.
+        const applet = document.querySelector(
+          'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
+          'object[classid*="java" i], embed[src*="java" i]'
+        );
+
+        if (applet && applet.parentNode) {
+          applet.parentNode.replaceChild(applet.cloneNode(true), applet);
+          return;
+        }
+
+        const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
+          const value = (
+            (frame.src || "") + " " +
+            (frame.id || "") + " " +
+            (typeof frame.className === "string" ? frame.className : "") + " " +
+            (frame.title || "")
+          ).toLowerCase();
+
+          return value.includes("java") || value.includes("applet") || value.includes("game");
+        });
+
+        if (gameFrame && gameFrame.parentNode) {
+          gameFrame.parentNode.replaceChild(gameFrame.cloneNode(true), gameFrame);
+        }
       }, 60);
     }
-
-    previousEnabled = enabled;
   });
 })();
