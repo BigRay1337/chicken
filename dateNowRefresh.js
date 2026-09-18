@@ -1,12 +1,10 @@
-// Reload the page only when Date.now is changed from enabled to disabled.
-// This file is intentionally separate from pageScript.js so the original
-// Date.now implementation and timing code are not modified.
+// Reload only the top-level game page when Date.now changes from enabled to disabled.
+// This file stays separate from pageScript.js.
 (function () {
   let previousEnabled = null;
   let refreshScheduled = false;
 
   const originalDateNow = Date.now;
-  const originalClearTimeout = window.clearTimeout;
   const originalSetTimeout = window.setTimeout;
 
   let extensionIsEnabled = true;
@@ -36,8 +34,6 @@
     if (data.command === "setExtensionDateNowState") {
       extensionIsEnabled = data.enabled === true;
 
-      // Date.now stays frozen while the extension is enabled.
-      // It runs normally only after the extension is disabled.
       if (!extensionIsEnabled) {
         dateNowValue = originalDateNow();
         previusDateNowValue = dateNowValue;
@@ -51,17 +47,27 @@
 
     const enabled = data.config.cbDateNowChecked === true;
 
-    // Do not refresh for the initial configuration received during page load.
+    // Only handle the initial configuration without refreshing.
     if (previousEnabled === null) {
       previousEnabled = enabled;
       return;
     }
 
-    // Only refresh on the transition: Date.now enabled -> disabled.
-    if (previousEnabled === true && enabled === false && !refreshScheduled) {
+    // Only refresh the top-level game page when Date.now changes from
+    // enabled to disabled. Never reload an embedded iframe/frame.
+    if (
+      previousEnabled === true &&
+      enabled === false &&
+      !refreshScheduled &&
+      window.top === window.self
+    ) {
       refreshScheduled = true;
       originalSetTimeout(function () {
-        window.location.reload();
+        try {
+          window.top.location.reload();
+        } catch (error) {
+          console.debug("Could not refresh the game page", error);
+        }
       }, 60);
     }
 
