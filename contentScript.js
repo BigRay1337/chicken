@@ -3,7 +3,7 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: false,
+  cbDateNowChecked: true,
   cbRequestAnimationFrameChecked: false,
 };
 
@@ -11,7 +11,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = {
       ...request.config,
-      cbDateNowChecked: false,
+      cbDateNowChecked: true,
     };
 
     window.postMessage({
@@ -53,7 +53,7 @@ function setDateNowExtensionState(enabled) {
   });
 
   if (enabled) {
-    speedConfig.cbDateNowChecked = false;
+    speedConfig.cbDateNowChecked = true;
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
