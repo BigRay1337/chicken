@@ -1,7 +1,7 @@
 // Independent Date.now controller.
-// Date.now runs directly through this source file.
-// When Date.now control is turned off, restart the game container
-// as if the browser game app was reopened, without reloading the website.
+// Restart only the game container when Date.now control is turned off,
+// similar to closing and reopening the browser game app.
+// The surrounding website is not reloaded.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
@@ -24,6 +24,7 @@
   };
 
   function restartGameLikeReopen() {
+    // Java applet/container.
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
@@ -35,6 +36,7 @@
       return true;
     }
 
+    // Browser game app hosted in its own iframe.
     const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
@@ -51,12 +53,14 @@
       );
     });
 
-    if (gameFrame) {
-      const source = gameFrame.src || gameFrame.getAttribute("src");
+    if (gameFrame && gameFrame.parentNode) {
+      // Assigning the existing source makes the game document start over,
+      // like reopening the game app, while leaving the parent website loaded.
+      const source = gameFrame.getAttribute("src") || gameFrame.src;
 
       if (source) {
         gameFrame.src = source;
-      } else if (gameFrame.parentNode) {
+      } else {
         const replacement = gameFrame.cloneNode(true);
         gameFrame.parentNode.replaceChild(replacement, gameFrame);
       }
@@ -74,9 +78,11 @@
     const wasEnabled = extensionIsEnabled;
     extensionIsEnabled = data.enabled === true;
 
+    // Reset the Date.now base value whenever the state changes.
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
+    // When Date.now control is turned off, restart only the game.
     if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
       refreshScheduled = true;
 
