@@ -58,7 +58,7 @@ function pageScript(){
         cbRequestAnimationFrameChecked:!!next.cbRequestAnimationFrameChecked
       };
       const checked=speedConfig.cbDateNowChecked;
-      if(previousDateNowChecked!==null && previousDateNowChecked===true && checked===false){
+      if(checked===false && previousDateNowChecked!==false){
         dateNowValue=originalDateNow();previusDateNowValue=dateNowValue;refreshAfterDateNowDisable();
       }
       previousDateNowChecked=checked;
