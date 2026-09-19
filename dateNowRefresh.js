@@ -1,8 +1,6 @@
 // Independent Date.now controller.
-// Date.now runs directly through this source file.
-// When Date.now control is turned off, restart only the game container
-// so the game behaves more like its browser app being reopened.
-// The surrounding website is not reloaded.
+// Restart only the game/app container when Date.now control is turned off.
+// The surrounding website is left running.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
@@ -25,8 +23,7 @@
   };
 
   function restartGameLikeReopen() {
-    // Restart an old-style Java game/app container without reloading
-    // the surrounding website.
+    // Restart a Java applet by replacing it with a fresh instance.
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
@@ -38,7 +35,8 @@
       return true;
     }
 
-    // If the game is isolated in an iframe, restart only that iframe.
+    // Restart only a dedicated game iframe, similar to closing and
+    // reopening the browser game app. Do not reload the parent website.
     const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
@@ -55,8 +53,17 @@
     });
 
     if (gameFrame && gameFrame.parentNode) {
-      const replacement = gameFrame.cloneNode(true);
-      gameFrame.parentNode.replaceChild(replacement, gameFrame);
+      const src = gameFrame.getAttribute("src");
+
+      if (src) {
+        // Force a fresh navigation of the game frame.
+        gameFrame.src = "about:blank";
+        gameFrame.src = src;
+      } else {
+        const replacement = gameFrame.cloneNode(true);
+        gameFrame.parentNode.replaceChild(replacement, gameFrame);
+      }
+
       return true;
     }
 
@@ -70,11 +77,11 @@
     const wasEnabled = extensionIsEnabled;
     extensionIsEnabled = data.enabled === true;
 
-    // Reset Date.now to a fresh value, similar to starting the game again.
+    // Start Date.now from a fresh value, like a newly opened game.
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    // When control is turned off, restart only the game.
+    // Only restart the game when Date.now control is turned off.
     if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
       refreshScheduled = true;
 
