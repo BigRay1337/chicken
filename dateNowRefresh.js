@@ -67,37 +67,44 @@
     return true;
   }
 
-  function refreshDateNowLayers() {
-    if (refreshScheduled) return;
+  function refreshJavaGameFirstThenWebsite() {
+    if (refreshScheduled || pageRefreshScheduled) return;
 
     refreshScheduled = true;
-
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    // Refresh the Java game first, then wait 1.9 seconds before
-    // refreshing the entire website.
     originalSetTimeout(function () {
       try {
+        // Refresh the Java/game element first.
         oldRefreshLayer();
-        secondRefreshLayer();
+
+        originalSetTimeout(function () {
+          try {
+            secondRefreshLayer();
+          } catch (error) {
+            console.error("Java game second refresh failed", error);
+          }
+
+          // Wait 18 seconds after the game refresh before reloading the website.
+          pageRefreshScheduled = true;
+          originalSetTimeout(function () {
+            try {
+              window.location.reload();
+            } catch (error) {
+              console.error("Website refresh failed", error);
+            } finally {
+              refreshScheduled = false;
+              pageRefreshScheduled = false;
+            }
+          }, WEBSITE_REFRESH_DELAY_MS);
+        }, STATE_2_DELAY_MS);
       } catch (error) {
+        refreshScheduled = false;
         console.error("Java game refresh failed", error);
       }
-
-      originalSetTimeout(function () {
-        try {
-          window.location.reload();
-        } catch (error) {
-          console.error("Website refresh failed", error);
-        } finally {
-          refreshScheduled = false;
-          pageRefreshScheduled = false;
-        }
-      }, WEBSITE_REFRESH_DELAY_MS);
-    }, 0);
+    }, JAVA_GAME_REFRESH_DELAY_MS);
   }
-
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
@@ -124,7 +131,7 @@
       }
 
       if (previousDateNowChecked === true && checked === false) {
-        refreshDateNowLayers();
+        refreshJavaGameFirstThenWebsite();
 
         // The Java game is refreshed first; the full website reload follows
         // 1.9 seconds later inside refreshDateNowLayers().
