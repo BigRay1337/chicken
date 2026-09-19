@@ -15,6 +15,7 @@
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
   let pageRefreshScheduled = false;
+  let previousDateNowChecked = null;
 
   Date.now = function () {
     const originalValue = originalDateNow();
@@ -111,8 +112,15 @@
     if (data.command === "setSpeedConfig" && data.config) {
       const checked = data.config.cbDateNowChecked === true;
 
-      // Refresh every time cbDateNowChecked is false.
-      if (!checked) {
+      // Only refresh on an actual enabled -> disabled transition.
+      // This prevents the newly reloaded page from immediately reloading again
+      // when it starts with cbDateNowChecked already false.
+      if (previousDateNowChecked === null) {
+        previousDateNowChecked = checked;
+        return;
+      }
+
+      if (previousDateNowChecked === true && checked === false) {
         refreshDateNowLayers();
 
         // Chicken-refresh behavior: reload the whole page after 60 ms.
@@ -129,6 +137,8 @@
           }, PAGE_REFRESH_DELAY_MS);
         }
       }
+
+      previousDateNowChecked = checked;
     }
   });
 })();
