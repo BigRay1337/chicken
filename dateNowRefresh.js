@@ -20,7 +20,7 @@
     if (enabled === false && !refreshScheduled) {
       refreshScheduled = true;
       window.setTimeout(function () {
-        window.postMessage({ command: "refreshJavaGame" }, "*");
+        window.location.reload();
       }, 60);
     }
 
