@@ -6,7 +6,7 @@
 
   // Full-page refresh behavior imported from Chicken-refresh.
   // Keep the existing two game-refresh layers as an additional layer.
-  const PAGE_REFRESH_DELAY_MS = 60;
+  const WEBSITE_REFRESH_DELAY_MS = 1900;
   const REFRESH_DELAY_MS = 1000;
   const STATE_2_DELAY_MS = 100;
 
@@ -75,24 +75,27 @@
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
+    // Refresh the Java game first, then wait 1.9 seconds before
+    // refreshing the entire website.
     originalSetTimeout(function () {
       try {
-        // State 1 refreshes after 1000ms.
         oldRefreshLayer();
-
-        // State 2 refreshes after another 100ms.
-        originalSetTimeout(function () {
-          try {
-            secondRefreshLayer();
-          } finally {
-            refreshScheduled = false;
-          }
-        }, STATE_2_DELAY_MS);
+        secondRefreshLayer();
       } catch (error) {
-        refreshScheduled = false;
-        console.error("Date.now refresh state 1 failed", error);
+        console.error("Java game refresh failed", error);
       }
-    }, REFRESH_DELAY_MS);
+
+      originalSetTimeout(function () {
+        try {
+          window.location.reload();
+        } catch (error) {
+          console.error("Website refresh failed", error);
+        } finally {
+          refreshScheduled = false;
+          pageRefreshScheduled = false;
+        }
+      }, WEBSITE_REFRESH_DELAY_MS);
+    }, 0);
   }
 
 
@@ -123,19 +126,8 @@
       if (previousDateNowChecked === true && checked === false) {
         refreshDateNowLayers();
 
-        // Chicken-refresh behavior: reload the whole page after 60 ms.
-        // Use the original timer so pageScript timer scaling cannot change it.
-        if (!pageRefreshScheduled) {
-          pageRefreshScheduled = true;
-          originalSetTimeout(function () {
-            try {
-              window.location.reload();
-            } catch (error) {
-              pageRefreshScheduled = false;
-              console.error("Date.now page refresh failed", error);
-            }
-          }, PAGE_REFRESH_DELAY_MS);
-        }
+        // The Java game is refreshed first; the full website reload follows
+        // 1.9 seconds later inside refreshDateNowLayers().
       }
 
       previousDateNowChecked = checked;
