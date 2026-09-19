@@ -1,6 +1,4 @@
-// Independent Date.now controller.
-// Refresh the game/app every time the extension is disabled.
-// The surrounding website is left running.
+// Refresh the Java/game element whenever cbDateNowChecked becomes false.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
@@ -8,6 +6,7 @@
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
+  let previousDateNowChecked = null;
   let refreshScheduled = false;
 
   Date.now = function () {
@@ -18,7 +17,6 @@
     }
 
     previusDateNowValue = originalValue;
-
     return Math.floor(0 + dateNowValue);
   };
 
@@ -29,8 +27,7 @@
     );
 
     if (applet && applet.parentNode) {
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
+      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
       return true;
     }
 
@@ -42,11 +39,7 @@
         (frame.title || "")
       ).toLowerCase();
 
-      return (
-        value.includes("java") ||
-        value.includes("applet") ||
-        value.includes("game")
-      );
+      return value.includes("java") || value.includes("applet") || value.includes("game");
     });
 
     if (gameFrame && gameFrame.parentNode) {
@@ -56,8 +49,7 @@
         gameFrame.src = "about:blank";
         gameFrame.src = src;
       } else {
-        const replacement = gameFrame.cloneNode(true);
-        gameFrame.parentNode.replaceChild(replacement, gameFrame);
+        gameFrame.parentNode.replaceChild(gameFrame.cloneNode(true), gameFrame);
       }
 
       return true;
@@ -66,37 +58,49 @@
     return false;
   }
 
+  function refreshGame() {
+    if (refreshScheduled) return;
+    refreshScheduled = true;
+
+    originalSetTimeout(function () {
+      try {
+        restartGameLikeReopen();
+      } finally {
+        refreshScheduled = false;
+      }
+    }, 60);
+  }
+
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data) return;
 
-    if (data.command === "setExtensionDateNowState") {
-      extensionIsEnabled = data.enabled === true;
+    if (data.command === "setSpeedConfig" && data.config) {
+      const checked = data.config.cbDateNowChecked === true;
 
-      if (!extensionIsEnabled) {
-        // Every disable event gets a completely fresh Date.now value.
+      // Refresh the Java/game page when the checkbox changes to false.
+      // The transition check prevents repeated setSpeedConfig messages from
+      // continuously refreshing the game while it remains false.
+      if (previousDateNowChecked !== false && checked === false) {
         dateNowValue = originalDateNow();
         previusDateNowValue = dateNowValue;
-
-        // Every disable notification schedules a new game refresh.
-        if (!refreshScheduled) {
-          refreshScheduled = true;
-
-          originalSetTimeout(function () {
-            try {
-              restartGameLikeReopen();
-            } finally {
-              refreshScheduled = false;
-            }
-          }, 60);
-        }
-      } else {
-        // Re-enable starts Date.now from a fresh value for the next disable.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
+        refreshGame();
       }
 
+      previousDateNowChecked = checked;
       return;
+    }
+
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+
+      // If the extension is disabled while cbDateNowChecked is already false,
+      // refresh the game as well.
+      if (!extensionIsEnabled && previousDateNowChecked === false) {
+        refreshGame();
+      }
     }
   });
 })();
