@@ -75,7 +75,7 @@
         // State 1 refreshes after 1000ms.
         oldRefreshLayer();
 
-        // State 2 refreshes the page/game after another 100ms.
+        // State 2 refreshes after another 100ms.
         originalSetTimeout(function () {
           try {
             secondRefreshLayer();
@@ -95,15 +95,10 @@
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
-      const wasEnabled = extensionIsEnabled;
       extensionIsEnabled = data.enabled === true;
 
       dateNowValue = originalDateNow();
       previusDateNowValue = dateNowValue;
-
-      if (wasEnabled && !extensionIsEnabled) {
-        refreshDateNowLayers();
-      }
 
       return;
     }
@@ -111,7 +106,8 @@
     if (data.command === "setSpeedConfig" && data.config) {
       const checked = data.config.cbDateNowChecked === true;
 
-      if (!checked && !extensionIsEnabled) {
+      // Refresh every time cbDateNowChecked is false.
+      if (!checked) {
         refreshDateNowLayers();
       }
     }
