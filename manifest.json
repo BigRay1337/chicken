@@ -29,7 +29,7 @@
       "world": "MAIN",
       "run_at": "document_start",
       "matches": ["<all_urls>"],
-      "js": ["pageScript.js"]
+      "js": ["pageScript.js", "dateNowRefresh.js"]
     },
     {
       "all_frames": true,

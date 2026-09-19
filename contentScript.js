@@ -11,6 +11,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
     window.postMessage(request);
+
+    // Date.now is controlled independently by dateNowRefresh.js.
+    window.postMessage({
+      command: "setDateNowState",
+      enabled: request.config.cbDateNowChecked === true,
+    });
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
   }
