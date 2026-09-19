@@ -101,7 +101,7 @@ function pageScript() {
       cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
     };
 
-    if (e.data.command === "refreshJavaGame") {\n      refreshJavaGame();\n      return;\n    }\n\n    if (previousDateNowChecked === null) {
+    if (previousDateNowChecked === null) {
       previousDateNowChecked = speedConfig.cbDateNowChecked;
     } else if (speedConfig.cbDateNowChecked === false && previousDateNowChecked !== false) {
       refreshJavaGame();
