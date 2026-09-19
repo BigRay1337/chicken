@@ -13,10 +13,13 @@ function pageScript() {
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
+  const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  const STARTUP_INTERVAL_MS = 0;
+  const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
+  let extensionDateNowOverride = null;
+  let extensionIsEnabled = true;
 
   let timers = [];
   const reloadTimers = () => {
@@ -25,6 +28,8 @@ function pageScript() {
       originalClearInterval(timer.id);
       if (timer.customTimerId) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
+        // Date.now can be frozen without changing the page's real timer clock.
+        // This keeps clicks, input, polling, and other page actions responsive.
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
           : !speedConfig.cbDateNowChecked
@@ -49,6 +54,17 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
+    } else if (e.data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = e.data.enabled === true;
+
+      // Keep Date.now frozen when disabled.
+      if (!extensionIsEnabled) {
+        speedConfig.cbDateNowChecked = false;
+      }
+
+      if (extensionIsEnabled && extensionDateNowOverride !== null) {
+        Date.now = extensionDateNowOverride;
+      }
     }
   });
 
@@ -77,6 +93,7 @@ function pageScript() {
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
 
+    // When Date.now is frozen, never alter the real interval clock.
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
       : !speedConfig.cbDateNowChecked
@@ -93,6 +110,7 @@ function pageScript() {
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
 
+    // Keep normal timeout behavior while Date.now is frozen.
     const delay = !speedConfig.cbDateNowChecked
       ? timeout
       : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
@@ -107,6 +125,7 @@ function pageScript() {
     let previusPerformanceNowValue = null;
 
     window.performance.now = () => {
+      // Keep the frame/action clock real when Date.now is frozen.
       const originalValue = originalPerformanceNow();
 
       if (performanceNowValue !== null) {
@@ -123,7 +142,29 @@ function pageScript() {
     };
   })();
 
+  (function () {
+    let dateNowValue = null;
+    let previusDateNowValue = null;
 
+    Date.now = () => {
+      const originalValue = originalDateNow();
+
+      if (dateNowValue !== null) {
+        if (speedConfig.cbDateNowChecked) {
+          dateNowValue += (originalValue - previusDateNowValue) * speedConfig.speed;
+        }
+      } else {
+        dateNowValue = originalValue;
+      }
+
+      previusDateNowValue = originalValue;
+
+      // Intentionally frozen when cbDateNowChecked is false.
+      return Math.floor(0 + dateNowValue);
+    };
+  })();
+
+  extensionDateNowOverride = Date.now;
 
   (function () {
     let disableRequestAnimationFrame = false;
@@ -136,13 +177,15 @@ function pageScript() {
       return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
+
+        // Always give frame callbacks a real frame timestamp when Date.now is frozen.
         const frameTime = originalPerformanceNow();
 
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(frameTime);
-        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
+        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked) {
           tickFrame = callbackTick[index] + speedConfig.speed;
 
           if (tickFrame >= 1) {
