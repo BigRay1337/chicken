@@ -1,5 +1,6 @@
 // Independent Date.now controller.
-// Freeze Math.floor(0 + dateNowValue) whenever cbDateNowChecked is false.
+// Refresh/reinitialize Date.now every time cbDateNowChecked changes
+// between false and true in the extension app.
 (function () {
   const originalDateNow = Date.now;
 
@@ -7,18 +8,15 @@
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
 
-  // Keep Date.now running directly through this source.
   Date.now = function () {
     const originalValue = originalDateNow();
 
-    // Only advance the stored value when Date.now is enabled.
     if (cbDateNowChecked === true) {
       dateNowValue = originalValue;
     }
 
     previusDateNowValue = originalValue;
 
-    // This exact expression remains the Date.now return value.
     return Math.floor(0 + dateNowValue);
   };
 
@@ -26,28 +24,28 @@
     const data = event && event.data;
     if (!data) return;
 
-    // Follow the actual Date.now checkbox state from speedConfig.
     if (data.command === "setSpeedConfig" && data.config) {
-      cbDateNowChecked = data.config.cbDateNowChecked === true;
+      const newCheckedState = data.config.cbDateNowChecked === true;
 
-      // When disabled, capture one value and then freeze it.
-      if (cbDateNowChecked === false) {
-        dateNowValue = Math.floor(0 + dateNowValue);
-        previusDateNowValue = dateNowValue;
-      } else {
-        // When enabled, resume from the current browser time.
+      // Refresh/reinitialize Date.now every time the checkbox changes.
+      if (newCheckedState !== cbDateNowChecked) {
+        cbDateNowChecked = newCheckedState;
+
+        // Start Date.now from a fresh browser value on both transitions:
+        // false -> true and true -> false.
         dateNowValue = originalDateNow();
         previusDateNowValue = dateNowValue;
+      } else {
+        cbDateNowChecked = newCheckedState;
       }
 
       return;
     }
 
     if (data.command === "setExtensionDateNowState") {
-      // Extension lifecycle is kept separate from the checkbox state.
       if (data.enabled !== true) {
         cbDateNowChecked = false;
-        dateNowValue = Math.floor(0 + dateNowValue);
+        dateNowValue = originalDateNow();
         previusDateNowValue = dateNowValue;
       }
 
