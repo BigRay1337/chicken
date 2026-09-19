@@ -1,5 +1,5 @@
 // Independent Date.now controller.
-// Restart only the game/app container when Date.now control is turned off.
+// Refresh the game whenever cbDateNowChecked is false.
 // The surrounding website is left running.
 (function () {
   const originalDateNow = Date.now;
@@ -8,6 +8,7 @@
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
+  let lastDateNowChecked = null;
   let refreshScheduled = false;
 
   Date.now = function () {
@@ -29,8 +30,7 @@
     );
 
     if (applet && applet.parentNode) {
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
+      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
       return true;
     }
 
@@ -56,8 +56,7 @@
         gameFrame.src = "about:blank";
         gameFrame.src = src;
       } else {
-        const replacement = gameFrame.cloneNode(true);
-        gameFrame.parentNode.replaceChild(replacement, gameFrame);
+        gameFrame.parentNode.replaceChild(gameFrame.cloneNode(true), gameFrame);
       }
 
       return true;
@@ -66,23 +65,39 @@
     return false;
   }
 
-  window.addEventListener("message", function (event) {
-    const data = event && event.data;
-    if (!data || data.command !== "setExtensionDateNowState") return;
+  function refreshWhenDateNowUnchecked(config) {
+    const checked = config && config.cbDateNowChecked === true;
 
-    const wasEnabled = extensionIsEnabled;
-    extensionIsEnabled = data.enabled === true;
-
-    dateNowValue = originalDateNow();
-    previusDateNowValue = dateNowValue;
-
-    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
+    // Every transition to false triggers a fresh game restart.
+    if (!checked && lastDateNowChecked !== false && !refreshScheduled) {
       refreshScheduled = true;
+
+      // Reset Date.now before restarting the game.
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
 
       originalSetTimeout(function () {
         restartGameLikeReopen();
         refreshScheduled = false;
       }, 60);
+    }
+
+    lastDateNowChecked = checked;
+  }
+
+  window.addEventListener("message", function (event) {
+    const data = event && event.data;
+    if (!data) return;
+
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+      return;
+    }
+
+    if (data.command === "setSpeedConfig" && data.config) {
+      refreshWhenDateNowUnchecked(data.config);
     }
   });
 })();
