@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -13,22 +13,10 @@ function pageScript() {
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
-  const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
-  let dateNowDisableReloadTimer = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -39,9 +27,12 @@ function pageScript() {
       if (!timer.finished) {
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
-          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-            ? timer.timeout / speedConfig.speed
-            : timer.timeout;
+          : !speedConfig.cbDateNowChecked
+            ? timer.timeout
+            : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+              ? timer.timeout / speedConfig.speed
+              : timer.timeout;
+
         timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
         newtimers.push(timer);
       }
@@ -49,67 +40,15 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
-  // Added safety layer: keep the original Date.now code unchanged.
-  let chickenDateNowDisabled = false;
-  let chickenDateNowFrozenValue = null;
-
-  window.addEventListener("message", (e) => {
-    if (e.data && e.data.command === "setDateNowChecked") {
-      const checked = e.data.enabled === true;
-      chickenDateNowDisabled = !checked;
-
-      if (chickenDateNowDisabled) {
-        chickenDateNowFrozenValue = originalDateNow();
-      } else {
-        chickenDateNowFrozenValue = null;
-      }
-
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: checked,
-      };
-      return;
-    }
-
-    if (
-      e.data &&
-      e.data.command === "setSpeedConfig" &&
-      e.data.config
-    ) {
-      chickenDateNowDisabled = e.data.config.cbDateNowChecked === false;
-
-      if (chickenDateNowDisabled) {
-        chickenDateNowFrozenValue = originalDateNow();
-
-        // Keep the original Date.now branch from using
-        // Math.floor(0 + dateNowValue) as the multiplier.
-        e.data.config = {
-          ...e.data.config,
-          cbDateNowChecked: true,
-          __chickenDateNowDisabled: true
-        };
-      }
-    }
-  }, true);
-
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
-
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
     }
   });
 
@@ -137,11 +76,15 @@ function pageScript() {
 
   window.setInterval = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
-      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
+      : !speedConfig.cbDateNowChecked
+        ? timeout
+        : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+          ? timeout / speedConfig.speed
+          : timeout;
+
     const id = originalSetInterval(handler, interval, ...args);
     timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
@@ -149,89 +92,86 @@ function pageScript() {
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-      ? timeout / speedConfig.speed
-      : timeout;
+
+    const delay = !speedConfig.cbDateNowChecked
+      ? timeout
+      : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
+        ? timeout / speedConfig.speed
+        : timeout;
+
     return originalSetTimeout(handler, delay, ...args);
   };
 
   (function () {
     let performanceNowValue = null;
     let previusPerformanceNowValue = null;
+
     window.performance.now = () => {
       const originalValue = originalPerformanceNow();
-      if (performanceNowValue) {
+
+      if (performanceNowValue !== null) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
-          (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
+          (speedConfig.cbPerformanceNowChecked && speedConfig.cbDateNowChecked
+            ? speedConfig.speed
+            : 1);
       } else {
         performanceNowValue = originalValue;
       }
+
       previusPerformanceNowValue = originalValue;
       return Math.floor(performanceNowValue);
     };
   })();
 
-  (function () {
-    let dateNowValue = null;
-    let previusDateNowValue = null;
-    Date.now = () => {
-      const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
-      } else {
-        dateNowValue = originalValue;
-      }
-      previusDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
-    };
-  })();
 
-  // Added safe Date.now wrapper.
-  // The original Math.floor(0 + dateNowValue) remains unchanged above.
-  const chickenPatchedDateNow = Date.now;
-
-  Date.now = () => {
-    if (chickenDateNowDisabled && chickenDateNowFrozenValue !== null) {
-      return Math.floor(0 + chickenDateNowFrozenValue);
-    }
-
-    return chickenPatchedDateNow();
-  };
 
   (function () {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
+
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
+
       return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
+        const frameTime = originalPerformanceNow();
+
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
-          callback(performance.now());
-        } else if (speedConfig.cbRequestAnimationFrameChecked) {
+          callback(frameTime);
+        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
           tickFrame = callbackTick[index] + speedConfig.speed;
+
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
+
             while (tickFrame >= 1) {
-              try { callback(performance.now()); } catch (e) { console.error(e); }
+              try {
+                callback(originalPerformanceNow());
+              } catch (e) {
+                console.error(e);
+              }
+
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
+
               if (originalPerformanceNow() - startTime > 15) {
                 tickFrame = 0;
                 break;
               }
             }
+
             disableRequestAnimationFrame = false;
           } else {
             window.requestAnimationFrame(callback);
           }
+
           callbackTick[index] = tickFrame;
         } else {
-          callback(performance.now());
+          callback(frameTime);
         }
       });
     };
