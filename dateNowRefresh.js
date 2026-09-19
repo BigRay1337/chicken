@@ -1,20 +1,36 @@
-// Date.now refresh layer for the Java game only.
-// This file never reloads window.location or the surrounding website.
-// It refreshes only a detected Java applet/object/embed or Java-game iframe.
+// Independent Date.now controller.
+// Keep the existing game refresh layers.
+// When Date.now is disabled, also refresh the surrounding website.
 (function () {
-  let previousEnabled = null;
+  const originalDateNow = Date.now;
+  const originalSetTimeout = window.setTimeout;
+
+  let extensionIsEnabled = true;
+  let dateNowValue = originalDateNow();
+  let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
 
-  function findJavaGame() {
-    const javaElement = document.querySelector(
+  Date.now = function () {
+    const originalValue = originalDateNow();
+
+    if (!extensionIsEnabled) {
+      dateNowValue = originalValue;
+    }
+
+    previusDateNowValue = originalValue;
+
+    return Math.floor(0 + dateNowValue);
+  };
+
+  function findGame() {
+    const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
     );
 
-    if (javaElement) return javaElement;
+    if (applet) return applet;
 
-    const frames = Array.from(document.querySelectorAll("iframe"));
-    return frames.find((frame) => {
+    return Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
         (frame.id || "") + " " +
@@ -24,70 +40,93 @@
 
       return value.includes("java") ||
              value.includes("applet") ||
-             value.includes("java-game") ||
-             value.includes("javagame");
+             value.includes("game");
     });
   }
 
-  function refreshJavaGameOnly() {
-    const game = findJavaGame();
-
-    // No Java game in this document/frame: do nothing.
+  // Existing game refresh layer.
+  function oldRefreshLayer() {
+    const game = findGame();
     if (!game || !game.parentNode) return false;
 
+    game.parentNode.replaceChild(game.cloneNode(true), game);
+    return true;
+  }
+
+  // Existing second game refresh layer.
+  function secondRefreshLayer() {
+    const game = findGame();
+    if (!game || !game.parentNode) return false;
+
+    game.parentNode.replaceChild(game.cloneNode(true), game);
+    return true;
+  }
+
+  // New website refresh layer.
+  function websiteRefreshLayer() {
     try {
-      const replacement = game.cloneNode(true);
-      game.parentNode.replaceChild(replacement, game);
+      window.location.reload();
       return true;
     } catch (error) {
-      console.debug("Java game refresh failed", error);
+      console.debug("Could not refresh website", error);
       return false;
     }
   }
 
-  function scheduleJavaGameRefresh() {
+  function refreshDateNowLayers() {
     if (refreshScheduled) return;
 
     refreshScheduled = true;
 
-    // Keep the refresh local to the Java game element.
-    window.setTimeout(function () {
-      refreshJavaGameOnly();
-      refreshScheduled = false;
-    }, 60);
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
+
+    // Layer 1: keep the old game refresh.
+    oldRefreshLayer();
+
+    // Layer 2: keep the second game refresh.
+    originalSetTimeout(function () {
+      secondRefreshLayer();
+
+      // Layer 3: after the game layers, refresh the actual website.
+      originalSetTimeout(function () {
+        websiteRefreshLayer();
+        refreshScheduled = false;
+      }, 1010101);
+    }, 1010101);
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data) return;
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      const enabled = data.config.cbDateNowChecked === true;
+    if (data.command === "setExtensionDateNowState") {
+      const wasEnabled = extensionIsEnabled;
+      extensionIsEnabled = data.enabled === true;
 
-      // Ignore the first configuration sent during startup.
-      if (previousEnabled === null) {
-        previousEnabled = enabled;
-        return;
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+
+      // When Date.now becomes disabled, run all refresh layers.
+      if (wasEnabled && !extensionIsEnabled) {
+        refreshDateNowLayers();
       }
 
-      // Date.now enabled -> disabled: refresh the Java game only.
-      if (previousEnabled === true && enabled === false) {
-        scheduleJavaGameRefresh();
-      }
-
-      previousEnabled = enabled;
       return;
     }
 
-    if (data.command === "setExtensionDateNowState") {
-      const enabled = data.enabled === true;
+    if (data.command === "setSpeedConfig" && data.config) {
+      const checked = data.config.cbDateNowChecked === true;
 
-      // When the extension is disabled, refresh only the Java game.
-      if (previousEnabled === true && enabled === false) {
-        scheduleJavaGameRefresh();
+      // If cbDateNowChecked is false while the extension is disabled,
+      // run the same game + website refresh sequence.
+      if (!checked && !extensionIsEnabled) {
+        refreshDateNowLayers();
       }
-
-      previousEnabled = enabled;
     }
   });
 })();
+;
+;
+
+;
