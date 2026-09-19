@@ -1,5 +1,5 @@
 // Independent Date.now controller.
-// Restart only the game/app container when Date.now control is turned off.
+// Refresh the game/app every time the extension is disabled.
 // The surrounding website is left running.
 (function () {
   const originalDateNow = Date.now;
@@ -23,7 +23,6 @@
   };
 
   function restartGameLikeReopen() {
-    // Restart a Java applet by replacing it with a fresh instance.
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
@@ -35,8 +34,6 @@
       return true;
     }
 
-    // Restart only a dedicated game iframe, similar to closing and
-    // reopening the browser game app. Do not reload the parent website.
     const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
@@ -56,7 +53,6 @@
       const src = gameFrame.getAttribute("src");
 
       if (src) {
-        // Force a fresh navigation of the game frame.
         gameFrame.src = "about:blank";
         gameFrame.src = src;
       } else {
@@ -72,23 +68,35 @@
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data || data.command !== "setExtensionDateNowState") return;
+    if (!data) return;
 
-    const wasEnabled = extensionIsEnabled;
-    extensionIsEnabled = data.enabled === true;
+    if (data.command === "setExtensionDateNowState") {
+      extensionIsEnabled = data.enabled === true;
 
-    // Start Date.now from a fresh value, like a newly opened game.
-    dateNowValue = originalDateNow();
-    previusDateNowValue = dateNowValue;
+      if (!extensionIsEnabled) {
+        // Every disable event gets a completely fresh Date.now value.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
 
-    // Only restart the game when Date.now control is turned off.
-    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
-      refreshScheduled = true;
+        // Every disable notification schedules a new game refresh.
+        if (!refreshScheduled) {
+          refreshScheduled = true;
 
-      originalSetTimeout(function () {
-        restartGameLikeReopen();
-        refreshScheduled = false;
-      }, 60);
+          originalSetTimeout(function () {
+            try {
+              restartGameLikeReopen();
+            } finally {
+              refreshScheduled = false;
+            }
+          }, 60);
+        }
+      } else {
+        // Re-enable starts Date.now from a fresh value for the next disable.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
+
+      return;
     }
   });
 })();
