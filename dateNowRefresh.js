@@ -1,6 +1,7 @@
 // Independent Date.now controller.
-// Refresh the game/app every time the extension is disabled.
-// The surrounding website is left running.
+// Layer 1 keeps the existing game refresh.
+// Layer 2 performs a second game refresh after the first one.
+// The surrounding website is not reloaded.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
@@ -22,19 +23,15 @@
     return Math.floor(0 + dateNowValue);
   };
 
-  function restartGameLikeReopen() {
+  function findGame() {
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
     );
 
-    if (applet && applet.parentNode) {
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
-      return true;
-    }
+    if (applet) return applet;
 
-    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
+    return Array.from(document.querySelectorAll("iframe")).find((frame) => {
       const value = (
         (frame.src || "") + " " +
         (frame.id || "") + " " +
@@ -42,28 +39,53 @@
         (frame.title || "")
       ).toLowerCase();
 
-      return (
-        value.includes("java") ||
-        value.includes("applet") ||
-        value.includes("game")
-      );
+      return value.includes("java") ||
+             value.includes("applet") ||
+             value.includes("game");
     });
+  }
 
-    if (gameFrame && gameFrame.parentNode) {
-      const src = gameFrame.getAttribute("src");
+  // Existing refresh layer.
+  function oldRefreshLayer() {
+    const game = findGame();
+    if (!game || !game.parentNode) return false;
 
-      if (src) {
-        gameFrame.src = "about:blank";
-        gameFrame.src = src;
-      } else {
-        const replacement = gameFrame.cloneNode(true);
-        gameFrame.parentNode.replaceChild(replacement, gameFrame);
+    const replacement = game.cloneNode(true);
+    game.parentNode.replaceChild(replacement, game);
+    return true;
+  }
+
+  // Second refresh layer. It runs after the original refresh has had
+  // time to recreate the game instance.
+  function secondRefreshLayer() {
+    const game = findGame();
+    if (!game || !game.parentNode) return false;
+
+    const replacement = game.cloneNode(true);
+    game.parentNode.replaceChild(replacement, game);
+    return true;
+  }
+
+  function refreshDateNowLayers() {
+    if (refreshScheduled) return;
+
+    refreshScheduled = true;
+
+    // Give Date.now a fresh starting value.
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
+
+    // Layer 1: preserve the old game refresh.
+    oldRefreshLayer();
+
+    // Layer 2: refresh the newly recreated game again.
+    originalSetTimeout(function () {
+      try {
+        secondRefreshLayer();
+      } finally {
+        refreshScheduled = false;
       }
-
-      return true;
-    }
-
-    return false;
+    }, 60);
   }
 
   window.addEventListener("message", function (event) {
@@ -71,32 +93,27 @@
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
+      const wasEnabled = extensionIsEnabled;
       extensionIsEnabled = data.enabled === true;
 
-      if (!extensionIsEnabled) {
-        // Every disable event gets a completely fresh Date.now value.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
 
-        // Every disable notification schedules a new game refresh.
-        if (!refreshScheduled) {
-          refreshScheduled = true;
-
-          originalSetTimeout(function () {
-            try {
-              restartGameLikeReopen();
-            } finally {
-              refreshScheduled = false;
-            }
-          }, 60);
-        }
-      } else {
-        // Re-enable starts Date.now from a fresh value for the next disable.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
+      // Keep the old refresh behavior and add the second layer.
+      if (wasEnabled && !extensionIsEnabled) {
+        refreshDateNowLayers();
       }
 
       return;
+    }
+
+    // Also respond directly to cbDateNowChecked becoming false.
+    if (data.command === "setSpeedConfig" && data.config) {
+      const checked = data.config.cbDateNowChecked === true;
+
+      if (!checked && !extensionIsEnabled) {
+        refreshDateNowLayers();
+      }
     }
   });
 })();
