@@ -1,7 +1,6 @@
 // Independent Date.now controller.
-// Layer 1 keeps the existing game refresh.
-// Layer 2 performs a second game refresh after the first one.
-// The surrounding website is not reloaded.
+// Keep the existing game refresh layers.
+// When Date.now is disabled, also refresh the surrounding website.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
@@ -45,25 +44,33 @@
     });
   }
 
-  // Existing refresh layer.
+  // Existing game refresh layer.
   function oldRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
 
-    const replacement = game.cloneNode(true);
-    game.parentNode.replaceChild(replacement, game);
+    game.parentNode.replaceChild(game.cloneNode(true), game);
     return true;
   }
 
-  // Second refresh layer. It runs after the original refresh has had
-  // time to recreate the game instance.
+  // Existing second game refresh layer.
   function secondRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
 
-    const replacement = game.cloneNode(true);
-    game.parentNode.replaceChild(replacement, game);
+    game.parentNode.replaceChild(game.cloneNode(true), game);
     return true;
+  }
+
+  // New website refresh layer.
+  function websiteRefreshLayer() {
+    try {
+      window.location.reload();
+      return true;
+    } catch (error) {
+      console.debug("Could not refresh website", error);
+      return false;
+    }
   }
 
   function refreshDateNowLayers() {
@@ -71,20 +78,21 @@
 
     refreshScheduled = true;
 
-    // Give Date.now a fresh starting value.
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    // Layer 1: preserve the old game refresh.
+    // Layer 1: keep the old game refresh.
     oldRefreshLayer();
 
-    // Layer 2: refresh the newly recreated game again.
+    // Layer 2: keep the second game refresh.
     originalSetTimeout(function () {
-      try {
-        secondRefreshLayer();
-      } finally {
+      secondRefreshLayer();
+
+      // Layer 3: after the game layers, refresh the actual website.
+      originalSetTimeout(function () {
+        websiteRefreshLayer();
         refreshScheduled = false;
-      }
+      }, 60);
     }, 60);
   }
 
@@ -99,7 +107,7 @@
       dateNowValue = originalDateNow();
       previusDateNowValue = dateNowValue;
 
-      // Keep the old refresh behavior and add the second layer.
+      // When Date.now becomes disabled, run all refresh layers.
       if (wasEnabled && !extensionIsEnabled) {
         refreshDateNowLayers();
       }
@@ -107,10 +115,11 @@
       return;
     }
 
-    // Also respond directly to cbDateNowChecked becoming false.
     if (data.command === "setSpeedConfig" && data.config) {
       const checked = data.config.cbDateNowChecked === true;
 
+      // If cbDateNowChecked is false while the extension is disabled,
+      // run the same game + website refresh sequence.
       if (!checked && !extensionIsEnabled) {
         refreshDateNowLayers();
       }
