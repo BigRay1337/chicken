@@ -4,12 +4,11 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: false,
   };
 
   const originalClearInterval = window.clearInterval;
-  const originalclearTimeout = window.clearTimeout;
+  const originalClearTimeout = window.clearTimeout;
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
@@ -20,58 +19,73 @@ function pageScript() {
 
   let timers = [];
   const reloadTimers = () => {
-    const newtimers = [];
+    const newTimers = [];
+
     timers.forEach((timer) => {
       originalClearInterval(timer.id);
-      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+
+      if (timer.customTimerId) {
+        originalClearInterval(timer.customTimerId);
+      }
+
       if (!timer.finished) {
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
-          : !speedConfig.cbDateNowChecked
-            ? timer.timeout
-            : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-              ? timer.timeout / speedConfig.speed
-              : timer.timeout;
+          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+            ? timer.timeout / speedConfig.speed
+            : timer.timeout;
 
-        timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
-        newtimers.push(timer);
+        timer.customTimerId = originalSetInterval(
+          timer.handler,
+          interval,
+          ...timer.args
+        );
+
+        newTimers.push(timer);
       }
     });
-    timers = newtimers;
+
+    timers = newTimers;
   };
 
+  // Do not reload or refresh the page when settings change.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
-      speedConfig = e.data.config;
-      reloadTimers();
-    }
+    if (!e.data || e.data.command !== "setSpeedConfig") return;
+
+    speedConfig = {
+      speed: Number(e.data.config?.speed) || 0,
+      cbSetIntervalChecked: !!e.data.config?.cbSetIntervalChecked,
+      cbSetTimeoutChecked: !!e.data.config?.cbSetTimeoutChecked,
+      cbPerformanceNowChecked: !!e.data.config?.cbPerformanceNowChecked,
+      cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
+    };
+
+    reloadTimers();
   });
 
   window.postMessage({ command: "getSpeedConfig" });
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
+
     timers.forEach((timer) => {
       if (timer.id == id) {
-        timer.finished = NaN;
-        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+        timer.finished = true;
+
+        if (timer.customTimerId) {
+          originalClearInterval(timer.customTimerId);
+        }
       }
     });
   };
 
   window.clearTimeout = (id) => {
-    originalclearTimeout(id);
-    timers.forEach((timer) => {
-      if (timer.id == id) {
-        timer.finished = NaN;
-        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
-      }
-    });
+    originalClearTimeout(id);
   };
 
   window.setInterval = (handler, timeout, ...args) => {
@@ -79,52 +93,60 @@ function pageScript() {
 
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
-      : !speedConfig.cbDateNowChecked
-        ? timeout
-        : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-          ? timeout / speedConfig.speed
-          : timeout;
+      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+        ? timeout / speedConfig.speed
+        : timeout;
 
     const id = originalSetInterval(handler, interval, ...args);
-    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
+
+    timers.push({
+      id,
+      handler,
+      timeout,
+      args,
+      finished: false,
+      customTimerId: NaN,
+    });
+
     return id;
   };
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
 
-    const delay = !speedConfig.cbDateNowChecked
-      ? timeout
-      : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
+    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
+      ? timeout / speedConfig.speed
+      : timeout;
 
     return originalSetTimeout(handler, delay, ...args);
   };
 
+  // performance.now
   (function () {
     let performanceNowValue = null;
-    let previusPerformanceNowValue = null;
+    let previousPerformanceNowValue = null;
 
     window.performance.now = () => {
       const originalValue = originalPerformanceNow();
 
       if (performanceNowValue !== null) {
-        performanceNowValue += (originalValue - previusPerformanceNowValue) *
-          (speedConfig.cbPerformanceNowChecked && speedConfig.cbDateNowChecked
-            ? speedConfig.speed
-            : 1);
+        performanceNowValue +=
+          (originalValue - previousPerformanceNowValue) *
+          (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
       } else {
         performanceNowValue = originalValue;
       }
 
-      previusPerformanceNowValue = originalValue;
+      previousPerformanceNowValue = originalValue;
       return Math.floor(performanceNowValue);
     };
   })();
 
+  // Date.now is intentionally NOT overridden.
+  // The extension no longer modifies Date.now and never reloads the page
+  // when Date.now is disabled.
 
-
+  // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
@@ -136,13 +158,15 @@ function pageScript() {
       return originalRequestAnimationFrame(() => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
-        const frameTime = originalPerformanceNow();
 
-        if (index == -1) {
+        if (index === -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
-          callback(frameTime);
-        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
+          callback(performance.now());
+          return;
+        }
+
+        if (speedConfig.cbRequestAnimationFrameChecked) {
           tickFrame = callbackTick[index] + speedConfig.speed;
 
           if (tickFrame >= 1) {
@@ -150,7 +174,7 @@ function pageScript() {
 
             while (tickFrame >= 1) {
               try {
-                callback(originalPerformanceNow());
+                callback(performance.now());
               } catch (e) {
                 console.error(e);
               }
@@ -171,7 +195,7 @@ function pageScript() {
 
           callbackTick[index] = tickFrame;
         } else {
-          callback(frameTime);
+          callback(performance.now());
         }
       });
     };
