@@ -1,16 +1,13 @@
 // Independent Date.now controller.
-// Continuously refresh while cbDateNowChecked is false.
-// State 2 runs 100ms after state 1.
+// Refresh state 1 runs after 1000ms; refresh state 2 runs 100ms later.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
   const REFRESH_DELAY_MS = 1000;
   const STATE_2_DELAY_MS = 100;
-  const FALSE_STATE_CHECK_MS = 100;
 
   let extensionIsEnabled = true;
-  let cbDateNowChecked = false;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
@@ -65,18 +62,8 @@
     return true;
   }
 
-  function websiteRefreshLayer() {
-    try {
-      window.location.reload();
-      return true;
-    } catch (error) {
-      console.debug("Could not refresh website", error);
-      return false;
-    }
-  }
-
   function refreshDateNowLayers() {
-    if (refreshScheduled || cbDateNowChecked !== false) return;
+    if (refreshScheduled) return;
 
     refreshScheduled = true;
 
@@ -84,42 +71,23 @@
     previusDateNowValue = dateNowValue;
 
     originalSetTimeout(function () {
-      if (cbDateNowChecked !== false) {
-        refreshScheduled = false;
-        return;
-      }
+      try {
+        // State 1 refreshes after 1000ms.
+        oldRefreshLayer();
 
-      // State 1.
-      oldRefreshLayer();
-
-      // State 2: exactly 100ms after state 1.
-      originalSetTimeout(function () {
-        if (cbDateNowChecked !== false) {
-          refreshScheduled = false;
-          return;
-        }
-
-        secondRefreshLayer();
-
-        // Website refresh after the two game refresh states.
+        // State 2 refreshes the page/game after another 100ms.
         originalSetTimeout(function () {
-          if (cbDateNowChecked === false) {
-            websiteRefreshLayer();
-          } else {
+          try {
+            secondRefreshLayer();
+          } finally {
             refreshScheduled = false;
           }
-        }, 0);
-      }, STATE_2_DELAY_MS);
+        }, STATE_2_DELAY_MS);
+      } catch (error) {
+        refreshScheduled = false;
+        console.error("Date.now refresh state 1 failed", error);
+      }
     }, REFRESH_DELAY_MS);
-  }
-
-  // Keep checking continuously so false is acted on for as long as it remains false.
-  function monitorDateNowState() {
-    if (cbDateNowChecked === false) {
-      refreshDateNowLayers();
-    }
-
-    originalSetTimeout(monitorDateNowState, FALSE_STATE_CHECK_MS);
   }
 
   window.addEventListener("message", function (event) {
@@ -127,25 +95,25 @@
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
+      const wasEnabled = extensionIsEnabled;
       extensionIsEnabled = data.enabled === true;
 
       dateNowValue = originalDateNow();
       previusDateNowValue = dateNowValue;
 
-      refreshDateNowLayers();
+      if (wasEnabled && !extensionIsEnabled) {
+        refreshDateNowLayers();
+      }
+
       return;
     }
 
     if (data.command === "setSpeedConfig" && data.config) {
-      cbDateNowChecked = data.config.cbDateNowChecked === true;
+      const checked = data.config.cbDateNowChecked === true;
 
-      // Start the refresh sequence immediately whenever it is false.
-      if (cbDateNowChecked === false) {
+      if (!checked && !extensionIsEnabled) {
         refreshDateNowLayers();
       }
     }
   });
-
-  // Start continuous false-state monitoring.
-  monitorDateNowState();
 })();
