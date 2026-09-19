@@ -4,6 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -13,6 +14,40 @@ function pageScript() {
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
+  const originalDateNow = Date.now;
+  let previousDateNowChecked = null;
+  let gameRefreshInProgress = false;
+
+  function refreshJavaGame() {
+    if (gameRefreshInProgress) return;
+    gameRefreshInProgress = true;
+
+    const applet = document.querySelector(
+      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], object[classid*="java" i], embed[src*="java" i]'
+    );
+
+    if (applet && applet.parentNode) {
+      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
+    } else {
+      const frame = Array.from(document.querySelectorAll("iframe")).find((f) => {
+        const value = ((f.src || "") + " " + (f.id || "") + " " +
+          (typeof f.className === "string" ? f.className : "") + " " + (f.title || "")).toLowerCase();
+        return value.includes("java") || value.includes("applet") || value.includes("game");
+      });
+
+      if (frame && frame.parentNode) {
+        const src = frame.getAttribute("src");
+        if (src) {
+          frame.src = "about:blank";
+          frame.src = src;
+        } else {
+          frame.parentNode.replaceChild(frame.cloneNode(true), frame);
+        }
+      }
+    }
+
+    originalSetTimeout(() => { gameRefreshInProgress = false; }, 1000);
+  }
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
@@ -62,8 +97,18 @@ function pageScript() {
       cbSetIntervalChecked: !!e.data.config?.cbSetIntervalChecked,
       cbSetTimeoutChecked: !!e.data.config?.cbSetTimeoutChecked,
       cbPerformanceNowChecked: !!e.data.config?.cbPerformanceNowChecked,
+      cbDateNowChecked: e.data.config?.cbDateNowChecked !== false,
       cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
     };
+
+    if (previousDateNowChecked === null) {
+      previousDateNowChecked = speedConfig.cbDateNowChecked;
+    } else if (speedConfig.cbDateNowChecked === false && previousDateNowChecked !== false) {
+      refreshJavaGame();
+      previousDateNowChecked = false;
+    } else {
+      previousDateNowChecked = speedConfig.cbDateNowChecked;
+    }
 
     reloadTimers();
   });
@@ -142,9 +187,25 @@ function pageScript() {
     };
   })();
 
-  // Date.now is intentionally NOT overridden.
-  // The extension no longer modifies Date.now and never reloads the page
-  // when Date.now is disabled.
+  // Date.now
+  (function () {
+    let dateNowValue = null;
+    let previousDateNowValue = null;
+
+    Date.now = () => {
+      const originalValue = originalDateNow();
+
+      if (dateNowValue !== null) {
+        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
+        dateNowValue += (originalValue - previousDateNowValue) * multiplier;
+      } else {
+        dateNowValue = originalValue;
+      }
+
+      previousDateNowValue = originalValue;
+      return Math.floor(0 + dateNowValue);
+    };
+  })();
 
   // requestAnimationFrame
   (function () {
