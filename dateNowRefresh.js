@@ -1,14 +1,20 @@
-// Independent Date.now controller.
-// Keep the existing game refresh layers.
-// When Date.now is disabled, also refresh the surrounding website.
+// Combined Chicken + Chicken-refresh Date.now controller.
+// Keeps the existing game refresh layers and adds the Chicken-refresh
+// lifecycle behavior: when the extension is disabled, Date.now remains
+// enabled at 1x for 1 second, then the game is refreshed before the
+// surrounding website is refreshed 7 seconds later.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
+
+  const DATE_NOW_DISABLE_DELAY_MS = 1000;
+  const WEBSITE_REFRESH_DELAY_MS = 7000;
 
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
+  let disableTimer = null;
 
   Date.now = function () {
     const originalValue = originalDateNow();
@@ -18,7 +24,6 @@
     }
 
     previusDateNowValue = originalValue;
-
     return Math.floor(0 + dateNowValue);
   };
 
@@ -44,7 +49,6 @@
     });
   }
 
-  // Existing game refresh layer.
   function oldRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -53,7 +57,6 @@
     return true;
   }
 
-  // Existing second game refresh layer.
   function secondRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -62,7 +65,6 @@
     return true;
   }
 
-  // New website refresh layer.
   function websiteRefreshLayer() {
     try {
       window.location.reload();
@@ -75,25 +77,38 @@
 
   function refreshDateNowLayers() {
     if (refreshScheduled) return;
-
     refreshScheduled = true;
 
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    // Layer 1: keep the old game refresh.
+    // Layer 1: refresh the Java/game element first.
     oldRefreshLayer();
 
-    // Layer 2: keep the second game refresh.
+    // Layer 2: preserve the existing second game refresh immediately after it.
     originalSetTimeout(function () {
       secondRefreshLayer();
 
-      // Layer 3: after the game layers, refresh the actual website.
+      // Layer 3: wait 7 seconds after the game refresh before reloading the site.
       originalSetTimeout(function () {
         websiteRefreshLayer();
         refreshScheduled = false;
-      }, 1010101);
-    }, 1010101);
+      }, WEBSITE_REFRESH_DELAY_MS);
+    }, 0);
+  }
+
+  function disableDateNowAfterDelay() {
+    if (disableTimer !== null) {
+      originalSetTimeout(() => {}, 0);
+    }
+
+    disableTimer = originalSetTimeout(function () {
+      disableTimer = null;
+      extensionIsEnabled = false;
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+      refreshDateNowLayers();
+    }, DATE_NOW_DISABLE_DELAY_MS);
   }
 
   window.addEventListener("message", function (event) {
@@ -101,15 +116,20 @@
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
-      const wasEnabled = extensionIsEnabled;
-      extensionIsEnabled = data.enabled === true;
+      const enabled = data.enabled === true;
 
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-
-      // When Date.now becomes disabled, run all refresh layers.
-      if (wasEnabled && !extensionIsEnabled) {
-        refreshDateNowLayers();
+      if (enabled) {
+        extensionIsEnabled = true;
+        if (disableTimer !== null) {
+          clearTimeout(disableTimer);
+          disableTimer = null;
+        }
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      } else if (extensionIsEnabled) {
+        // Keep the spoofing layer alive at normal 1x behavior for 1 second,
+        // then disable Date.now and run the combined refresh sequence.
+        disableDateNowAfterDelay();
       }
 
       return;
@@ -118,15 +138,9 @@
     if (data.command === "setSpeedConfig" && data.config) {
       const checked = data.config.cbDateNowChecked === true;
 
-      // If cbDateNowChecked is false while the extension is disabled,
-      // run the same game + website refresh sequence.
       if (!checked && !extensionIsEnabled) {
         refreshDateNowLayers();
       }
     }
   });
 })();
-;
-;
-
-;
