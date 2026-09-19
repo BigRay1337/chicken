@@ -15,8 +15,6 @@
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
   let pageRefreshScheduled = false;
-  let continuousRefreshEnabled = true;
-  let continuousRefreshTimer = null;
 
   Date.now = function () {
     const originalValue = originalDateNow();
@@ -96,22 +94,6 @@
     }, REFRESH_DELAY_MS);
   }
 
-  function scheduleContinuousRefresh() {
-    if (!continuousRefreshEnabled || continuousRefreshTimer !== null) return;
-
-    continuousRefreshTimer = originalSetTimeout(function () {
-      continuousRefreshTimer = null;
-      if (!continuousRefreshEnabled) return;
-
-      try {
-        window.location.reload();
-      } finally {
-        // The script runs again after reload, so the refresh cycle continues.
-      }
-    }, PAGE_REFRESH_DELAY_MS);
-  }
-
-  scheduleContinuousRefresh();
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
