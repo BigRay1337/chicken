@@ -90,6 +90,10 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data && e.data.command === "refreshJavaGameOnly") {
+      refreshJavaGame();
+      return;
+    }
     if (!e.data || e.data.command !== "setSpeedConfig") return;
 
     speedConfig = {
