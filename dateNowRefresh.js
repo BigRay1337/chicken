@@ -1,15 +1,26 @@
-// Combined Chicken + Chicken-refresh controller.
-// Refresh the detected Java/game element first, then reload the website
-// 7 seconds later. This file does not override Date.now, so pageScript.js
-// remains the single Date.now implementation.
+// Independent Date.now controller.
+// Keep the existing game refresh layers.
+// When Date.now is disabled, also refresh the surrounding website.
 (function () {
-  const GAME_SECOND_REFRESH_DELAY_MS = 100;
-  const WEBSITE_REFRESH_DELAY_MS = 7000;
+  const originalDateNow = Date.now;
+  const originalSetTimeout = window.setTimeout;
 
-  let previousDateNowChecked = null;
-  let refreshInProgress = false;
-  let websiteRefreshTimer = null;
-  let gameSecondRefreshTimer = null;
+  let extensionIsEnabled = true;
+  let dateNowValue = originalDateNow();
+  let previusDateNowValue = dateNowValue;
+  let refreshScheduled = false;
+
+  Date.now = function () {
+    const originalValue = originalDateNow();
+
+    if (!extensionIsEnabled) {
+      dateNowValue = originalValue;
+    }
+
+    previusDateNowValue = originalValue;
+
+    return Math.floor(0 + dateNowValue);
+  };
 
   function findGame() {
     const applet = document.querySelector(
@@ -33,94 +44,89 @@
     });
   }
 
-  function refreshGameLayer() {
+  // Existing game refresh layer.
+  function oldRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
 
-    const replacement = game.cloneNode(true);
-    game.parentNode.replaceChild(replacement, game);
+    game.parentNode.replaceChild(game.cloneNode(true), game);
     return true;
   }
 
-  function cancelScheduledRefreshes() {
-    if (websiteRefreshTimer !== null) {
-      clearTimeout(websiteRefreshTimer);
-      websiteRefreshTimer = null;
-    }
+  // Existing second game refresh layer.
+  function secondRefreshLayer() {
+    const game = findGame();
+    if (!game || !game.parentNode) return false;
 
-    if (gameSecondRefreshTimer !== null) {
-      clearTimeout(gameSecondRefreshTimer);
-      gameSecondRefreshTimer = null;
+    game.parentNode.replaceChild(game.cloneNode(true), game);
+    return true;
+  }
+
+  // New website refresh layer.
+  function websiteRefreshLayer() {
+    try {
+      window.location.reload();
+      return true;
+    } catch (error) {
+      console.debug("Could not refresh website", error);
+      return false;
     }
   }
 
-  function refreshGameThenWebsite() {
-    if (refreshInProgress) return;
+  function refreshDateNowLayers() {
+    if (refreshScheduled) return;
 
-    refreshInProgress = true;
-    cancelScheduledRefreshes();
+    refreshScheduled = true;
 
-    // Step 1: refresh the Java/game element immediately.
-    refreshGameLayer();
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
 
-    // Step 2: give the game a second refresh layer 100 ms later.
-    gameSecondRefreshTimer = setTimeout(function () {
-      gameSecondRefreshTimer = null;
+    // Layer 1: keep the old game refresh.
+    oldRefreshLayer();
 
-      try {
-        refreshGameLayer();
-      } catch (error) {
-        console.error("Java game second refresh failed", error);
-      }
-    }, GAME_SECOND_REFRESH_DELAY_MS);
+    // Layer 2: keep the second game refresh.
+    originalSetTimeout(function () {
+      secondRefreshLayer();
 
-    // Step 3: reload the entire website exactly 7 seconds after
-    // the first game refresh.
-    websiteRefreshTimer = setTimeout(function () {
-      websiteRefreshTimer = null;
-
-      try {
-        window.location.reload();
-      } catch (error) {
-        refreshInProgress = false;
-        console.error("Website refresh failed", error);
-      }
-    }, WEBSITE_REFRESH_DELAY_MS);
+      // Layer 3: after the game layers, refresh the actual website.
+      originalSetTimeout(function () {
+        websiteRefreshLayer();
+        refreshScheduled = false;
+      }, 1010101);
+    }, 1010101);
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data) return;
 
+    if (data.command === "setExtensionDateNowState") {
+      const wasEnabled = extensionIsEnabled;
+      extensionIsEnabled = data.enabled === true;
+
+      dateNowValue = originalDateNow();
+      previusDateNowValue = dateNowValue;
+
+      // When Date.now becomes disabled, run all refresh layers.
+      if (wasEnabled && !extensionIsEnabled) {
+        refreshDateNowLayers();
+      }
+
+      return;
+    }
+
     if (data.command === "setSpeedConfig" && data.config) {
       const checked = data.config.cbDateNowChecked === true;
 
-      // Establish the initial state without refreshing.
-      if (previousDateNowChecked === null) {
-        previousDateNowChecked = checked;
-        return;
+      // If cbDateNowChecked is false while the extension is disabled,
+      // run the same game + website refresh sequence.
+      if (!checked && !extensionIsEnabled) {
+        refreshDateNowLayers();
       }
-
-      // Refresh only once for a true -> false transition.
-      // This prevents continuous website reloads after the page comes back.
-      if (previousDateNowChecked === true && checked === false) {
-        refreshGameThenWebsite();
-      }
-
-      // If Date.now is enabled again before the website reloads,
-      // cancel the pending full-page refresh.
-      if (previousDateNowChecked === false && checked === true) {
-        refreshInProgress = false;
-        cancelScheduledRefreshes();
-      }
-
-      previousDateNowChecked = checked;
-    }
-
-    if (data.command === "setExtensionDateNowState" && data.enabled === false) {
-      // Do not start another refresh merely because the extension lifecycle
-      // changed. The speed-config transition is the refresh trigger.
-      previousDateNowChecked = false;
     }
   });
 })();
+;
+;
+
+;
