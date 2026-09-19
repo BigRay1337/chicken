@@ -1,10 +1,11 @@
 // Independent Date.now controller.
-// Both refresh states run after a 1000ms delay.
+// Refresh state 1 runs after 1000ms; refresh state 2 runs 100ms later.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
   const REFRESH_DELAY_MS = 1000;
+  const STATE_2_DELAY_MS = 100;
 
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
@@ -45,7 +46,6 @@
     });
   }
 
-  // Refresh state 1: existing game refresh.
   function oldRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -54,7 +54,6 @@
     return true;
   }
 
-  // Refresh state 2: second game refresh.
   function secondRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -63,7 +62,6 @@
     return true;
   }
 
-  // Both refresh states now wait exactly 1000ms before running.
   function refreshDateNowLayers() {
     if (refreshScheduled) return;
 
@@ -74,13 +72,20 @@
 
     originalSetTimeout(function () {
       try {
-        // State 1.
+        // State 1 refreshes after 1000ms.
         oldRefreshLayer();
 
-        // State 2.
-        secondRefreshLayer();
-      } finally {
+        // State 2 refreshes the page/game after another 100ms.
+        originalSetTimeout(function () {
+          try {
+            secondRefreshLayer();
+          } finally {
+            refreshScheduled = false;
+          }
+        }, STATE_2_DELAY_MS);
+      } catch (error) {
         refreshScheduled = false;
+        console.error("Date.now refresh state 1 failed", error);
       }
     }, REFRESH_DELAY_MS);
   }
