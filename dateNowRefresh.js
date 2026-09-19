@@ -1,17 +1,19 @@
 // Independent Date.now controller.
-// Refresh/reinitialize Date.now every time cbDateNowChecked changes
-// between false and true in the extension app.
+// Restart only the game/app container when Date.now control is turned off.
+// The surrounding website is left running.
 (function () {
   const originalDateNow = Date.now;
+  const originalSetTimeout = window.setTimeout;
 
-  let cbDateNowChecked = false;
+  let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
+  let refreshScheduled = false;
 
   Date.now = function () {
     const originalValue = originalDateNow();
 
-    if (cbDateNowChecked === true) {
+    if (!extensionIsEnabled) {
       dateNowValue = originalValue;
     }
 
@@ -20,36 +22,67 @@
     return Math.floor(0 + dateNowValue);
   };
 
-  window.addEventListener("message", function (event) {
-    const data = event && event.data;
-    if (!data) return;
+  function restartGameLikeReopen() {
+    const applet = document.querySelector(
+      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
+      'object[classid*="java" i], embed[src*="java" i]'
+    );
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      const newCheckedState = data.config.cbDateNowChecked === true;
-
-      // Refresh/reinitialize Date.now every time the checkbox changes.
-      if (newCheckedState !== cbDateNowChecked) {
-        cbDateNowChecked = newCheckedState;
-
-        // Start Date.now from a fresh browser value on both transitions:
-        // false -> true and true -> false.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      } else {
-        cbDateNowChecked = newCheckedState;
-      }
-
-      return;
+    if (applet && applet.parentNode) {
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
+      return true;
     }
 
-    if (data.command === "setExtensionDateNowState") {
-      if (data.enabled !== true) {
-        cbDateNowChecked = false;
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
+    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((frame) => {
+      const value = (
+        (frame.src || "") + " " +
+        (frame.id || "") + " " +
+        (typeof frame.className === "string" ? frame.className : "") + " " +
+        (frame.title || "")
+      ).toLowerCase();
+
+      return (
+        value.includes("java") ||
+        value.includes("applet") ||
+        value.includes("game")
+      );
+    });
+
+    if (gameFrame && gameFrame.parentNode) {
+      const src = gameFrame.getAttribute("src");
+
+      if (src) {
+        gameFrame.src = "about:blank";
+        gameFrame.src = src;
+      } else {
+        const replacement = gameFrame.cloneNode(true);
+        gameFrame.parentNode.replaceChild(replacement, gameFrame);
       }
 
-      return;
+      return true;
+    }
+
+    return false;
+  }
+
+  window.addEventListener("message", function (event) {
+    const data = event && event.data;
+    if (!data || data.command !== "setExtensionDateNowState") return;
+
+    const wasEnabled = extensionIsEnabled;
+    extensionIsEnabled = data.enabled === true;
+
+    dateNowValue = originalDateNow();
+    previusDateNowValue = dateNowValue;
+
+    if (wasEnabled && !extensionIsEnabled && !refreshScheduled) {
+      refreshScheduled = true;
+
+      originalSetTimeout(function () {
+        restartGameLikeReopen();
+        refreshScheduled = false;
+      }, 60);
     }
   });
 })();
