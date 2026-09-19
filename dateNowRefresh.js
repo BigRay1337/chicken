@@ -6,7 +6,8 @@
 
   // Full-page refresh behavior imported from Chicken-refresh.
   // Keep the existing two game-refresh layers as an additional layer.
-  const WEBSITE_REFRESH_DELAY_MS = 1900;
+  // Refresh the Java game immediately, then reload the website 7 seconds later.
+  const WEBSITE_REFRESH_DELAY_MS = 7000;
   const REFRESH_DELAY_MS = 1000;
   const STATE_2_DELAY_MS = 100;
 
@@ -74,36 +75,36 @@
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    originalSetTimeout(function () {
-      try {
-        // Refresh the Java/game element first.
-        oldRefreshLayer();
+    try {
+      // Refresh the Java/game element first, immediately.
+      oldRefreshLayer();
 
-        originalSetTimeout(function () {
-          try {
-            secondRefreshLayer();
-          } catch (error) {
-            console.error("Java game second refresh failed", error);
-          }
+      // Give the game its second refresh layer immediately after the first.
+      originalSetTimeout(function () {
+        try {
+          secondRefreshLayer();
+        } catch (error) {
+          console.error("Java game second refresh failed", error);
+        }
+      }, STATE_2_DELAY_MS);
 
-          // Wait 18 seconds after the game refresh before reloading the website.
-          pageRefreshScheduled = true;
-          originalSetTimeout(function () {
-            try {
-              window.location.reload();
-            } catch (error) {
-              console.error("Website refresh failed", error);
-            } finally {
-              refreshScheduled = false;
-              pageRefreshScheduled = false;
-            }
-          }, WEBSITE_REFRESH_DELAY_MS);
-        }, STATE_2_DELAY_MS);
-      } catch (error) {
-        refreshScheduled = false;
-        console.error("Java game refresh failed", error);
-      }
-    }, JAVA_GAME_REFRESH_DELAY_MS);
+      // Then wait 7 seconds before reloading the entire website.
+      pageRefreshScheduled = true;
+      originalSetTimeout(function () {
+        try {
+          window.location.reload();
+        } catch (error) {
+          console.error("Website refresh failed", error);
+        } finally {
+          refreshScheduled = false;
+          pageRefreshScheduled = false;
+        }
+      }, WEBSITE_REFRESH_DELAY_MS);
+    } catch (error) {
+      refreshScheduled = false;
+      pageRefreshScheduled = false;
+      console.error("Java game refresh failed", error);
+    }
   }
 
   window.addEventListener("message", function (event) {
