@@ -14,9 +14,12 @@ function pageScript() {
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
+  const originalDateNow = Date.now;
 
   const STARTUP_INTERVAL_MS = 1;
+  const FREEZE_TIMER_MS = 2147483647;
   let pageInitializing = true;
+  let frozenDateNowValue = null;
 
   let timers = [];
   const reloadTimers = () => {
@@ -27,11 +30,9 @@ function pageScript() {
       if (!timer.finished) {
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
-          : !speedConfig.cbDateNowChecked
-            ? timer.timeout
-            : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-              ? timer.timeout / speedConfig.speed
-              : timer.timeout;
+          : speedConfig.cbDateNowChecked
+            ? FREEZE_TIMER_MS
+            : timer.timeout;
 
         timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
         newtimers.push(timer);
@@ -47,12 +48,31 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
+      const oldDateNowChecked = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
+
+      if (speedConfig.cbDateNowChecked && !oldDateNowChecked) {
+        frozenDateNowValue = originalDateNow();
+      } else if (!speedConfig.cbDateNowChecked && oldDateNowChecked) {
+        frozenDateNowValue = null;
+      }
+
       reloadTimers();
     }
   });
 
   window.postMessage({ command: "getSpeedConfig" });
+
+  Date.now = () => {
+    if (speedConfig.cbDateNowChecked) {
+      if (frozenDateNowValue === null) {
+        frozenDateNowValue = originalDateNow();
+      }
+      return frozenDateNowValue;
+    }
+
+    return originalDateNow();
+  };
 
   window.clearInterval = (id) => {
     originalClearInterval(id);
@@ -79,11 +99,9 @@ function pageScript() {
 
     const interval = pageInitializing
       ? STARTUP_INTERVAL_MS
-      : !speedConfig.cbDateNowChecked
-        ? timeout
-        : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-          ? timeout / speedConfig.speed
-          : timeout;
+      : speedConfig.cbDateNowChecked
+        ? FREEZE_TIMER_MS
+        : timeout;
 
     const id = originalSetInterval(handler, interval, ...args);
     timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
@@ -93,11 +111,9 @@ function pageScript() {
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
 
-    const delay = !speedConfig.cbDateNowChecked
-      ? timeout
-      : speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
+    const delay = speedConfig.cbDateNowChecked
+      ? FREEZE_TIMER_MS
+      : timeout;
 
     return originalSetTimeout(handler, delay, ...args);
   };
@@ -112,7 +128,7 @@ function pageScript() {
       if (performanceNowValue !== null) {
         performanceNowValue += (originalValue - previusPerformanceNowValue) *
           (speedConfig.cbPerformanceNowChecked && speedConfig.cbDateNowChecked
-            ? speedConfig.speed
+            ? 0
             : 1);
       } else {
         performanceNowValue = originalValue;
@@ -122,8 +138,6 @@ function pageScript() {
       return Math.floor(performanceNowValue);
     };
   })();
-
-
 
   (function () {
     let disableRequestAnimationFrame = false;
@@ -138,11 +152,19 @@ function pageScript() {
         let tickFrame = null;
         const frameTime = originalPerformanceNow();
 
+        if (speedConfig.cbDateNowChecked) {
+          if (index === -1) {
+            callbackFunctions.push(callback);
+            callbackTick.push(0);
+          }
+          return;
+        }
+
         if (index == -1) {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(frameTime);
-        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.cbDateNowChecked && speedConfig.speed > 0) {
+        } else if (speedConfig.cbRequestAnimationFrameChecked && speedConfig.speed > 0) {
           tickFrame = callbackTick[index] + speedConfig.speed;
 
           if (tickFrame >= 1) {
