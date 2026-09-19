@@ -1,5 +1,5 @@
 // Independent Date.now controller.
-// Refresh the game whenever cbDateNowChecked is false.
+// Refresh the game/app every time the extension is disabled.
 // The surrounding website is left running.
 (function () {
   const originalDateNow = Date.now;
@@ -8,7 +8,6 @@
   let extensionIsEnabled = true;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
-  let lastDateNowChecked = null;
   let refreshScheduled = false;
 
   Date.now = function () {
@@ -30,7 +29,8 @@
     );
 
     if (applet && applet.parentNode) {
-      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
       return true;
     }
 
@@ -56,7 +56,8 @@
         gameFrame.src = "about:blank";
         gameFrame.src = src;
       } else {
-        gameFrame.parentNode.replaceChild(gameFrame.cloneNode(true), gameFrame);
+        const replacement = gameFrame.cloneNode(true);
+        gameFrame.parentNode.replaceChild(replacement, gameFrame);
       }
 
       return true;
@@ -65,39 +66,37 @@
     return false;
   }
 
-  function refreshWhenDateNowUnchecked(config) {
-    const checked = config && config.cbDateNowChecked === true;
-
-    // Every transition to false triggers a fresh game restart.
-    if (!checked && lastDateNowChecked !== false && !refreshScheduled) {
-      refreshScheduled = true;
-
-      // Reset Date.now before restarting the game.
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-
-      originalSetTimeout(function () {
-        restartGameLikeReopen();
-        refreshScheduled = false;
-      }, 60);
-    }
-
-    lastDateNowChecked = checked;
-  }
-
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
       extensionIsEnabled = data.enabled === true;
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-      return;
-    }
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      refreshWhenDateNowUnchecked(data.config);
+      if (!extensionIsEnabled) {
+        // Every disable event gets a completely fresh Date.now value.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+
+        // Every disable notification schedules a new game refresh.
+        if (!refreshScheduled) {
+          refreshScheduled = true;
+
+          originalSetTimeout(function () {
+            try {
+              restartGameLikeReopen();
+            } finally {
+              refreshScheduled = false;
+            }
+          }, 60);
+        }
+      } else {
+        // Re-enable starts Date.now from a fresh value for the next disable.
+        dateNowValue = originalDateNow();
+        previusDateNowValue = dateNowValue;
+      }
+
+      return;
     }
   });
 })();
