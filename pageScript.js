@@ -13,28 +13,10 @@ function pageScript() {
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
-  const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
-
-  // Keep Date.now frozen while cbDateNowChecked is false.
-  // The exact return expression is intentionally preserved.
-  let dateNowValue = originalDateNow();
-  let previusDateNowValue = dateNowValue;
-
-  Date.now = () => {
-    const originalValue = originalDateNow();
-
-    if (speedConfig.cbDateNowChecked) {
-      dateNowValue = originalValue;
-    }
-
-    previusDateNowValue = originalValue;
-
-    return Math.floor(0 + dateNowValue);
-  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -65,15 +47,7 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const wasDateNowChecked = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
-
-      if (!wasDateNowChecked && speedConfig.cbDateNowChecked) {
-        // Unfreeze Date.now from the current browser time.
-        dateNowValue = originalDateNow();
-        previusDateNowValue = dateNowValue;
-      }
-
       reloadTimers();
     }
   });
@@ -148,6 +122,8 @@ function pageScript() {
       return Math.floor(performanceNowValue);
     };
   })();
+
+
 
   (function () {
     let disableRequestAnimationFrame = false;
