@@ -1,11 +1,16 @@
 // Independent Date.now controller.
-// Keep the existing game refresh layers.
-// When Date.now is disabled, also refresh the surrounding website.
+// Continuously refresh while cbDateNowChecked is false.
+// State 2 runs 100ms after state 1.
 (function () {
   const originalDateNow = Date.now;
   const originalSetTimeout = window.setTimeout;
 
+  const REFRESH_DELAY_MS = 1000;
+  const STATE_2_DELAY_MS = 100;
+  const FALSE_STATE_CHECK_MS = 100;
+
   let extensionIsEnabled = true;
+  let cbDateNowChecked = false;
   let dateNowValue = originalDateNow();
   let previusDateNowValue = dateNowValue;
   let refreshScheduled = false;
@@ -44,7 +49,6 @@
     });
   }
 
-  // Existing game refresh layer.
   function oldRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -53,7 +57,6 @@
     return true;
   }
 
-  // Existing second game refresh layer.
   function secondRefreshLayer() {
     const game = findGame();
     if (!game || !game.parentNode) return false;
@@ -62,7 +65,6 @@
     return true;
   }
 
-  // New website refresh layer.
   function websiteRefreshLayer() {
     try {
       window.location.reload();
@@ -74,26 +76,50 @@
   }
 
   function refreshDateNowLayers() {
-    if (refreshScheduled) return;
+    if (refreshScheduled || cbDateNowChecked !== false) return;
 
     refreshScheduled = true;
 
     dateNowValue = originalDateNow();
     previusDateNowValue = dateNowValue;
 
-    // Layer 1: keep the old game refresh.
-    oldRefreshLayer();
-
-    // Layer 2: keep the second game refresh.
     originalSetTimeout(function () {
-      secondRefreshLayer();
-
-      // Layer 3: after the game layers, refresh the actual website.
-      originalSetTimeout(function () {
-        websiteRefreshLayer();
+      if (cbDateNowChecked !== false) {
         refreshScheduled = false;
-      }, 1010101);
-    }, 1010101);
+        return;
+      }
+
+      // State 1.
+      oldRefreshLayer();
+
+      // State 2: exactly 100ms after state 1.
+      originalSetTimeout(function () {
+        if (cbDateNowChecked !== false) {
+          refreshScheduled = false;
+          return;
+        }
+
+        secondRefreshLayer();
+
+        // Website refresh after the two game refresh states.
+        originalSetTimeout(function () {
+          if (cbDateNowChecked === false) {
+            websiteRefreshLayer();
+          } else {
+            refreshScheduled = false;
+          }
+        }, 0);
+      }, STATE_2_DELAY_MS);
+    }, REFRESH_DELAY_MS);
+  }
+
+  // Keep checking continuously so false is acted on for as long as it remains false.
+  function monitorDateNowState() {
+    if (cbDateNowChecked === false) {
+      refreshDateNowLayers();
+    }
+
+    originalSetTimeout(monitorDateNowState, FALSE_STATE_CHECK_MS);
   }
 
   window.addEventListener("message", function (event) {
@@ -101,32 +127,25 @@
     if (!data) return;
 
     if (data.command === "setExtensionDateNowState") {
-      const wasEnabled = extensionIsEnabled;
       extensionIsEnabled = data.enabled === true;
 
       dateNowValue = originalDateNow();
       previusDateNowValue = dateNowValue;
 
-      // When Date.now becomes disabled, run all refresh layers.
-      if (wasEnabled && !extensionIsEnabled) {
-        refreshDateNowLayers();
-      }
-
+      refreshDateNowLayers();
       return;
     }
 
     if (data.command === "setSpeedConfig" && data.config) {
-      const checked = data.config.cbDateNowChecked === true;
+      cbDateNowChecked = data.config.cbDateNowChecked === true;
 
-      // If cbDateNowChecked is false while the extension is disabled,
-      // run the same game + website refresh sequence.
-      if (!checked && !extensionIsEnabled) {
+      // Start the refresh sequence immediately whenever it is false.
+      if (cbDateNowChecked === false) {
         refreshDateNowLayers();
       }
     }
   });
-})();
-;
-;
 
-;
+  // Start continuous false-state monitoring.
+  monitorDateNowState();
+})();
