@@ -3,6 +3,7 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
+  cbDateNowChecked: true,
   cbRequestAnimationFrameChecked: false,
 };
 
@@ -13,6 +14,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       cbSetIntervalChecked: !!request.config?.cbSetIntervalChecked,
       cbSetTimeoutChecked: !!request.config?.cbSetTimeoutChecked,
       cbPerformanceNowChecked: !!request.config?.cbPerformanceNowChecked,
+      cbDateNowChecked: request.config?.cbDateNowChecked !== false,
       cbRequestAnimationFrameChecked: !!request.config?.cbRequestAnimationFrameChecked,
     };
 
