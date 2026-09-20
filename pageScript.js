@@ -22,31 +22,54 @@ function pageScript() {
     if (gameRefreshInProgress) return;
     gameRefreshInProgress = true;
 
+    // Refresh the actual game document/container instead of the whole website.
+    // Replacing an iframe with a fresh clone causes the browser to reload only
+    // that iframe's document, including cross-origin game pages.
+    const gameFrame = Array.from(document.querySelectorAll("iframe")).find((f) => {
+      const value = (
+        (f.src || "") + " " +
+        (f.id || "") + " " +
+        (typeof f.className === "string" ? f.className : "") + " " +
+        (f.title || "") + " " +
+        (f.getAttribute("name") || "") + " " +
+        (f.getAttribute("data-game") || "")
+      ).toLowerCase();
+
+      return (
+        value.includes("game") ||
+        value.includes("java") ||
+        value.includes("applet") ||
+        value.includes("play") ||
+        value.includes("runescape") ||
+        value.includes("client")
+      );
+    });
+
     const applet = document.querySelector(
       'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], object[classid*="java" i], embed[src*="java" i]'
     );
 
-    if (applet && applet.parentNode) {
-      applet.parentNode.replaceChild(applet.cloneNode(true), applet);
-    } else {
-      const frame = Array.from(document.querySelectorAll("iframe")).find((f) => {
-        const value = ((f.src || "") + " " + (f.id || "") + " " +
-          (typeof f.className === "string" ? f.className : "") + " " + (f.title || "")).toLowerCase();
-        return value.includes("java") || value.includes("applet") || value.includes("game");
-      });
+    const target = gameFrame || applet;
 
-      if (frame && frame.parentNode) {
-        const src = frame.getAttribute("src");
-        if (src) {
-          frame.src = "about:blank";
-          frame.src = src;
-        } else {
-          frame.parentNode.replaceChild(frame.cloneNode(true), frame);
-        }
+    if (target && target.parentNode) {
+      const freshTarget = target.cloneNode(true);
+      target.parentNode.replaceChild(freshTarget, target);
+    } else {
+      // Some older games use a dedicated game container instead of an iframe.
+      // Refresh only that container when it can be identified explicitly.
+      const gameContainer = document.querySelector(
+        '[data-game], [data-game-container], #game, #game-container, .game, .game-container, #applet, .applet'
+      );
+
+      if (gameContainer && gameContainer.parentNode) {
+        const freshContainer = gameContainer.cloneNode(true);
+        gameContainer.parentNode.replaceChild(freshContainer, gameContainer);
       }
     }
 
-    originalSetTimeout(() => { gameRefreshInProgress = false; }, 1000);
+    originalSetTimeout(() => {
+      gameRefreshInProgress = false;
+    }, 1000);
   }
 
   const STARTUP_INTERVAL_MS = 1;
