@@ -1,23 +1,30 @@
 // Game-only refresh layer.
-// This file never calls window.location.reload(), so the surrounding website is not reloaded.
+// When cbDateNowChecked is false, refresh the game without reloading the website.
 (function () {
-  let previousEnabled = null;
+  let refreshScheduled = false;
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    const enabled = data.config.cbDateNowChecked === true;
+    const dateNowDisabled = data.config.cbDateNowChecked === false;
 
-    if (previousEnabled === null) {
-      previousEnabled = enabled;
-      return;
+    if (dateNowDisabled && !refreshScheduled) {
+      refreshScheduled = true;
+
+      // Let the setting update finish, then refresh only the game.
+      window.setTimeout(function () {
+        window.postMessage({ command: "refreshJavaGameOnly" }, "*");
+
+        // Allow another false-state refresh after 1 second.
+        window.setTimeout(function () {
+          refreshScheduled = false;
+        }, 1000);
+      }, 0);
     }
 
-    if (enabled === false && previousEnabled !== false) {
-      window.postMessage({ command: "refreshJavaGameOnly" }, "*");
+    if (!dateNowDisabled) {
+      refreshScheduled = false;
     }
-
-    previousEnabled = enabled;
   });
 })();
