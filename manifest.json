@@ -42,10 +42,5 @@
         "contentScript.js"
       ]
     }
-  ],
-  "permissions": [
-    "management",
-    "scripting",
-    "tabs"
   ]
 }

@@ -90,11 +90,6 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    // When Date.now is disabled, refresh only the game element/document.
-    if (e.data && e.data.command === "refreshJavaGameOnly") {
-      refreshJavaGame();
-      return;
-    }
     if (!e.data || e.data.command !== "setSpeedConfig") return;
 
     speedConfig = {
