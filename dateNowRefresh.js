@@ -1,119 +1,72 @@
-// Independent Date.now controller.
-// Refresh state 1 runs after 1000ms; refresh state 2 runs 100ms later.
+// Refresh only the Java/HTML5 game when Date.now is disabled.
+// Does not reload the entire website.
 (function () {
-  const originalDateNow = Date.now;
-  const originalSetTimeout = window.setTimeout;
-
-  const REFRESH_DELAY_MS = 1000;
-  const STATE_2_DELAY_MS = 100;
-
-  let extensionIsEnabled = true;
-  let dateNowValue = originalDateNow();
-  let previusDateNowValue = dateNowValue;
+  let previousEnabled = null;
   let refreshScheduled = false;
 
-  Date.now = function () {
-    const originalValue = originalDateNow();
+  function refreshGameOnly() {
+    if (refreshScheduled) return;
 
-    if (!extensionIsEnabled) {
-      dateNowValue = originalValue;
-    }
-
-    previusDateNowValue = originalValue;
-
-    return Math.floor(0 + dateNowValue);
-  };
-
-  function findGame() {
     const applet = document.querySelector(
-      'applet, object[type="application/x-java-applet"], embed[type="application/x-java-applet"], ' +
+      'applet, object[type="application/x-java-applet"], ' +
+      'embed[type="application/x-java-applet"], ' +
       'object[classid*="java" i], embed[src*="java" i]'
     );
 
-    if (applet) return applet;
-
-    return Array.from(document.querySelectorAll("iframe")).find((frame) => {
-      const value = (
-        (frame.src || "") + " " +
-        (frame.id || "") + " " +
-        (typeof frame.className === "string" ? frame.className : "") + " " +
-        (frame.title || "")
-      ).toLowerCase();
-
-      return value.includes("java") ||
-             value.includes("applet") ||
-             value.includes("game");
-    });
-  }
-
-  function oldRefreshLayer() {
-    const game = findGame();
-    if (!game || !game.parentNode) return false;
-
-    game.parentNode.replaceChild(game.cloneNode(true), game);
-    return true;
-  }
-
-  function secondRefreshLayer() {
-    const game = findGame();
-    if (!game || !game.parentNode) return false;
-
-    game.parentNode.replaceChild(game.cloneNode(true), game);
-    return true;
-  }
-
-  function refreshDateNowLayers() {
-    if (refreshScheduled) return;
-
-    refreshScheduled = true;
-
-    dateNowValue = originalDateNow();
-    previusDateNowValue = dateNowValue;
-
-    originalSetTimeout(function () {
-      try {
-        // State 1 refreshes after 1000ms.
-        oldRefreshLayer();
-
-        // State 2 refreshes the page/game after another 100ms.
-        originalSetTimeout(function () {
-          try {
-            secondRefreshLayer();
-          } finally {
-            refreshScheduled = false;
-          }
-        }, STATE_2_DELAY_MS);
-      } catch (error) {
+    if (applet && applet.parentNode) {
+      refreshScheduled = true;
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
+      window.setTimeout(function () {
         refreshScheduled = false;
-        console.error("Date.now refresh state 1 failed", error);
+      }, 1000);
+      return;
+    }
+
+    const frame = Array.from(document.querySelectorAll("iframe")).find(function (f) {
+      const value = ((f.src || "") + " " + (f.id || "") + " " +
+        (typeof f.className === "string" ? f.className : "") + " " + (f.title || "")).toLowerCase();
+      return value.includes("java") || value.includes("applet") || value.includes("game");
+    });
+
+    if (frame && frame.parentNode) {
+      refreshScheduled = true;
+      const src = frame.getAttribute("src");
+      if (src) {
+        frame.src = "about:blank";
+        window.setTimeout(function () {
+          frame.src = src;
+        }, 0);
+      } else {
+        frame.parentNode.replaceChild(frame.cloneNode(true), frame);
       }
-    }, REFRESH_DELAY_MS);
+      window.setTimeout(function () {
+        refreshScheduled = false;
+      }, 1000);
+    }
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data) return;
+    if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    if (data.command === "setExtensionDateNowState") {
-      const wasEnabled = extensionIsEnabled;
-      extensionIsEnabled = data.enabled === true;
+    const enabled = data.config.cbDateNowChecked === true;
 
-      dateNowValue = originalDateNow();
-      previusDateNowValue = dateNowValue;
-
-      if (wasEnabled && !extensionIsEnabled) {
-        refreshDateNowLayers();
-      }
-
+    if (previousEnabled === null) {
+      previousEnabled = enabled;
       return;
     }
 
-    if (data.command === "setSpeedConfig" && data.config) {
-      const checked = data.config.cbDateNowChecked === true;
-
-      if (!checked && !extensionIsEnabled) {
-        refreshDateNowLayers();
-      }
+    if (enabled === false && previousEnabled === true) {
+      window.setTimeout(function () {
+        refreshGameOnly();
+      }, 60);
     }
+
+    if (enabled === true) {
+      refreshScheduled = false;
+    }
+
+    previousEnabled = enabled;
   });
 })();
