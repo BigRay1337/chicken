@@ -1,30 +1,31 @@
-// Game-only refresh layer.
-// When cbDateNowChecked is false, refresh the game without reloading the website.
+// Refresh the current game page whenever Date.now is disabled.
+// Merged from Chicken-refresh.
 (function () {
+  let previousEnabled = null;
   let refreshScheduled = false;
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    const dateNowDisabled = data.config.cbDateNowChecked === false;
+    const enabled = data.config.cbDateNowChecked === true;
 
-    if (dateNowDisabled && !refreshScheduled) {
+    // Ignore the initial state so loading the extension does not refresh the game.
+    if (previousEnabled === null) {
+      previousEnabled = enabled;
+      return;
+    }
+
+    // Refresh the Java/HTML5 game page whenever Date.now is disabled.
+    if (enabled === false && !refreshScheduled) {
       refreshScheduled = true;
-
-      // Let the setting update finish, then refresh only the game.
       window.setTimeout(function () {
-        window.postMessage({ command: "refreshJavaGameOnly" }, "*");
-
-        // Allow another false-state refresh after 1 second.
-        window.setTimeout(function () {
-          refreshScheduled = false;
-        }, 1000);
-      }, 0);
+        window.location.reload();
+      }, 60);
     }
 
-    if (!dateNowDisabled) {
-      refreshScheduled = false;
-    }
+    // Permit another refresh after Date.now is enabled again.
+    if (enabled === true) refreshScheduled = false;
+    previousEnabled = enabled;
   });
 })();
