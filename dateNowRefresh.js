@@ -58,11 +58,9 @@
     }
 
     if (enabled === false && previousEnabled === true) {
-      // Randomly choose either 0 ms or 1000 ms before refreshing.
-      const refreshDelay = Math.random() < 0.5 ? 0 : 1000;
       window.setTimeout(function () {
         refreshGameOnly();
-      }, refreshDelay);
+      }, 1000);
     }
 
     if (enabled === true) {
