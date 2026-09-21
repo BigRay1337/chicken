@@ -36,7 +36,7 @@
         frame.src = "about:blank";
         window.setTimeout(function () {
           frame.src = src;
-        }, 0);
+        }, 2);
       } else {
         frame.parentNode.replaceChild(frame.cloneNode(true), frame);
       }
@@ -60,7 +60,7 @@
     if (enabled === false && previousEnabled === true) {
       window.setTimeout(function () {
         refreshGameOnly();
-      }, 60);
+      }, 1000);
     }
 
     if (enabled === true) {
@@ -70,3 +70,83 @@
     previousEnabled = enabled;
   });
 })();
+
+;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
