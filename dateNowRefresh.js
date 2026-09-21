@@ -60,7 +60,7 @@
     if (enabled === false && previousEnabled === true) {
       window.setTimeout(function () {
         refreshGameOnly();
-      }, 1000);
+      }, 0);
     }
 
     if (enabled === true) {
@@ -71,7 +71,56 @@
   });
 })();
 
-;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
