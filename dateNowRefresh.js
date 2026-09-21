@@ -3,6 +3,7 @@
 (function () {
   let previousEnabled = null;
   let refreshScheduled = false;
+  let useLongDelay = true;
 
   function refreshGameOnly() {
     if (refreshScheduled) return;
@@ -58,9 +59,13 @@
     }
 
     if (enabled === false && previousEnabled === true) {
+      // Refresh in the sequence: 1000 ms, then 0 ms, then repeat.
+      const refreshDelay = useLongDelay ? 1000 : 0;
+      useLongDelay = !useLongDelay;
+
       window.setTimeout(function () {
         refreshGameOnly();
-      }, 0);
+      }, refreshDelay);
     }
 
     if (enabled === true) {
