@@ -1,206 +1,101 @@
-// Refresh only the Java/HTML5 game when Date.now is disabled.
-// Does not reload the entire website.
+// Advance/glitch game frames when Date.now is disabled.
+// Does not reload the Java/HTML5 game or the website.
+// Keeps the 0 -> 1000 ms long-delay cycle active while cbDateNowChecked is false.
 (function () {
   let previousEnabled = null;
-  let refreshScheduled = false;
+  let glitchRunning = false;
+  let glitchTimer = null;
   let useLongDelay = true;
 
-  function refreshGameOnly() {
-    if (refreshScheduled) return;
+  const frameCallbacks = new Map();
+  const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+  const nativeCancelAnimationFrame = window.cancelAnimationFrame
+    ? window.cancelAnimationFrame.bind(window)
+    : function () {};
 
-    const applet = document.querySelector(
-      'applet, object[type="application/x-java-applet"], ' +
-      'embed[type="application/x-java-applet"], ' +
-      'object[classid*="java" i], embed[src*="java" i]'
-    );
-
-    if (applet && applet.parentNode) {
-      refreshScheduled = true;
-      const replacement = applet.cloneNode(true);
-      applet.parentNode.replaceChild(replacement, applet);
-      window.setTimeout(function () {
-        refreshScheduled = false;
-      }, 1000);
-      return;
-    }
-
-    const frame = Array.from(document.querySelectorAll("iframe")).find(function (f) {
-      const value = ((f.src || "") + " " + (f.id || "") + " " +
-        (typeof f.className === "string" ? f.className : "") + " " + (f.title || "")).toLowerCase();
-      return value.includes("java") || value.includes("applet") || value.includes("game");
+  window.requestAnimationFrame = function (callback) {
+    const id = nativeRequestAnimationFrame(function (timestamp) {
+      frameCallbacks.delete(id);
+      callback(timestamp);
     });
 
-    if (frame && frame.parentNode) {
-      refreshScheduled = true;
-      const src = frame.getAttribute("src");
-      if (src) {
-        frame.src = "about:blank";
-        window.setTimeout(function () {
-          frame.src = src;
-        }, 2);
-      } else {
-        frame.parentNode.replaceChild(frame.cloneNode(true), frame);
+    frameCallbacks.set(id, callback);
+    return id;
+  };
+
+  window.cancelAnimationFrame = function (id) {
+    frameCallbacks.delete(id);
+    nativeCancelAnimationFrame(id);
+  };
+
+  function nextDelay() {
+    const delay = useLongDelay ? 1000 : 0;
+    useLongDelay = !useLongDelay;
+    return delay;
+  }
+
+  function glitchFramesForward() {
+    if (!glitchRunning) return;
+
+    const timestamp = performance.now();
+    const callbacks = Array.from(frameCallbacks.values());
+
+    // Run a snapshot of the game's pending animation callbacks again.
+    // This advances/glitches frames without reloading the game.
+    callbacks.forEach(function (callback) {
+      try {
+        callback(timestamp);
+      } catch (error) {
+        console.error("Chicken frame glitch:", error);
       }
-      window.setTimeout(function () {
-        refreshScheduled = false;
-      }, 1000);
+    });
+
+    glitchTimer = window.setTimeout(glitchFramesForward, nextDelay());
+  }
+
+  function startGlitch() {
+    if (glitchRunning) return;
+
+    glitchRunning = true;
+    glitchFramesForward();
+  }
+
+  function stopGlitch() {
+    glitchRunning = false;
+
+    if (glitchTimer !== null) {
+      window.clearTimeout(glitchTimer);
+      glitchTimer = null;
     }
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
-    if (!data || data.command !== "setSpeedConfig" || !data.config) return;
+
+    if (!data || data.command !== "setSpeedConfig" || !data.config) {
+      return;
+    }
 
     const enabled = data.config.cbDateNowChecked === true;
 
     if (previousEnabled === null) {
       previousEnabled = enabled;
+
+      if (enabled === false) {
+        startGlitch();
+      }
+
       return;
     }
 
-    if (enabled === false && previousEnabled === true) {
-      // Refresh in the sequence: 1000 ms, then 0 ms, then repeat.
-      const refreshDelay = useLongDelay ? 1000 : 0;
-      useLongDelay = !useLongDelay;
-
-      window.setTimeout(function () {
-        refreshGameOnly();
-      }, refreshDelay);
-    }
-
-    if (enabled === true) {
-      refreshScheduled = false;
+    if (enabled === false) {
+      // Date.now disabled: glitch/advance frames instead of refreshing.
+      startGlitch();
+    } else {
+      // Date.now enabled: stop the extra frame advancement.
+      stopGlitch();
     }
 
     previousEnabled = enabled;
   });
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
