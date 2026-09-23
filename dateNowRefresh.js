@@ -9,6 +9,9 @@
   let refreshScheduled = false;
   let useLongDelay = true;
   let tapLock = false;
+  let screenTapCount = 0;
+  let lastTapTime = 0;
+  const DOUBLE_TAP_WINDOW_MS = 500;
 
   function setDateNowEnabled(enabled) {
     window.postMessage({
@@ -94,7 +97,6 @@
       return true;
     }
 
-    // No game element was found, so do not leave Date.now disabled.
     refreshScheduled = false;
     reenableAfterGameRefresh();
     return false;
@@ -103,7 +105,6 @@
   function scheduleGameRefresh() {
     if (refreshScheduled) return;
 
-    // Keep the existing 0/1000 ms refresh sequence.
     const refreshDelay = useLongDelay ? 0 : 1000;
     useLongDelay = !useLongDelay;
 
@@ -112,19 +113,30 @@
     }, refreshDelay);
   }
 
-  // Screen-tap listener:
-  // one tap -> cbDateNowChecked=false -> game refresh -> cbDateNowChecked=true.
+  // Two counted screen taps disable Date.now.
+  // After the game-only refresh completes, Date.now is automatically re-enabled.
   function handleScreenTap(event) {
     if (tapLock || refreshScheduled) return;
     if (previousEnabled === false) return;
 
+    const now = Date.now();
+
+    if (now - lastTapTime <= DOUBLE_TAP_WINDOW_MS) {
+      screenTapCount += 1;
+    } else {
+      screenTapCount = 1;
+    }
+
+    lastTapTime = now;
+
+    if (screenTapCount < 2) return;
+
+    screenTapCount = 0;
     tapLock = true;
     setDateNowEnabled(false);
     scheduleGameRefresh();
   }
 
-  // pointerup covers touchscreen taps and mouse clicks without requiring
-  // separate touchstart/click handlers.
   document.addEventListener("pointerup", handleScreenTap, {
     passive: true,
     capture: true
