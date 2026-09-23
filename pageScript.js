@@ -171,6 +171,65 @@ function pageScript() {
     };
   })();
 
+  // Downward swipe listener.
+  // A downward swipe disables Date.now modification and refreshes the game page.
+  (function () {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const SWIPE_DISTANCE = 80;
+    const SWIPE_MAX_TIME = 1000;
+
+    document.addEventListener(
+      "touchstart",
+      (event) => {
+        if (!event.touches || event.touches.length !== 1) return;
+
+        const touch = event.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = originalPerformanceNow();
+      },
+      { passive: true }
+    );
+
+    document.addEventListener(
+      "touchend",
+      (event) => {
+        if (!event.changedTouches || event.changedTouches.length !== 1) return;
+
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - touchStartX;
+        const deltaY = touch.clientY - touchStartY;
+        const elapsed = originalPerformanceNow() - touchStartTime;
+
+        // Downward only.
+        if (deltaY <= 0) return;
+
+        // Minimum distance and maximum gesture time.
+        if (deltaY < SWIPE_DISTANCE || elapsed > SWIPE_MAX_TIME) return;
+
+        // Must be primarily vertical.
+        if (Math.abs(deltaY) <= Math.abs(deltaX)) return;
+
+        speedConfig.cbDateNowChecked = false;
+
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: speedConfig,
+        });
+
+        // Reload the game page. The fresh page starts with
+        // cbDateNowChecked enabled again.
+        originalSetTimeout(() => {
+          window.location.reload();
+        }, 0);
+      },
+      { passive: true }
+    );
+  })();
+
   // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
