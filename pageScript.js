@@ -14,6 +14,8 @@ function pageScript() {
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
+  const originalDateNow = Date.now;
+  let previousDateNowChecked = null;
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
@@ -65,6 +67,12 @@ function pageScript() {
       cbDateNowChecked: e.data.config?.cbDateNowChecked !== false,
       cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
     };
+
+    if (previousDateNowChecked === null) {
+      previousDateNowChecked = speedConfig.cbDateNowChecked;
+    } else {
+      previousDateNowChecked = speedConfig.cbDateNowChecked;
+    }
 
     reloadTimers();
   });
@@ -143,7 +151,27 @@ function pageScript() {
     };
   })();
 
-  // Date.now override removed. Native Date.now() is preserved.\n\n  // requestAnimationFrame
+  // Date.now
+  (function () {
+    let dateNowValue = null;
+    let previousDateNowValue = null;
+
+    Date.now = () => {
+      const originalValue = originalDateNow();
+
+      if (dateNowValue !== null) {
+        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
+        dateNowValue += (originalValue - previousDateNowValue) * multiplier;
+      } else {
+        dateNowValue = originalValue;
+      }
+
+      previousDateNowValue = originalValue;
+      return Math.floor(0 + dateNowValue);
+    };
+  })();
+
+  // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];

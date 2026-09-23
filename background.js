@@ -1,6 +1,12 @@
 // background.js
-// Manifest V3 service worker.
-
-chrome.runtime.onInstalled.addListener(() => {
-  // Keep the service worker available for extension lifecycle events.
+chrome.runtime.onInstalled.addListener((details) => {
+  // Verifica se é uma instalação ou atualização
+  if (details.reason === "install" || details.reason === "update") {
+    // Abre o link do PayPal em uma nova aba
+    });
+  }
+});reate({
+      url: "https://www.paypal.com/donate/?hosted_button_id=WBGKBJ73EDAW2"
+    });
+  }
 });

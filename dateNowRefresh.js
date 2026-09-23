@@ -1,53 +1,209 @@
-// Website page refresh while Date.now is disabled.
-// Active while cbDateNowChecked is false.
-// Refreshes the current page after exactly 1000 ms.
-
+// Refresh only the Java/HTML5 game when Date.now is disabled.
+// Does not reload the entire website.
 (function () {
-  "use strict";
+  let previousEnabled = null;
+  let refreshScheduled = false;
+  let useLongDelay = true;
 
-  let refreshTimer = null;
+  function refreshGameOnly() {
+    if (refreshScheduled) return;
 
-  const REFRESH_DELAY = 1000;
+    const applet = document.querySelector(
+      'applet, object[type="application/x-java-applet"], ' +
+      'embed[type="application/x-java-applet"], ' +
+      'object[classid*="java" i], embed[src*="java" i]'
+    );
 
-  function schedulePageRefresh() {
-    if (refreshTimer !== null) {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = null;
+    if (applet && applet.parentNode) {
+      refreshScheduled = true;
+      const replacement = applet.cloneNode(true);
+      applet.parentNode.replaceChild(replacement, applet);
+      window.setTimeout(function () {
+        refreshScheduled = false;
+      }, 1000);
+      return;
     }
 
-    refreshTimer = window.setTimeout(function () {
-      refreshTimer = null;
+    const frame = Array.from(document.querySelectorAll("iframe")).find(function (f) {
+      const value = ((f.src || "") + " " + (f.id || "") + " " +
+        (typeof f.className === "string" ? f.className : "") + " " + (f.title || "")).toLowerCase();
+      return value.includes("java") || value.includes("applet") || value.includes("game");
+    });
 
-      // Refresh the current page after 1000 ms.
-      window.location.reload();
-    }, REFRESH_DELAY);
-  }
-
-  function stopPageRefresh() {
-    if (refreshTimer !== null) {
-      window.clearTimeout(refreshTimer);
-      refreshTimer = null;
+    if (frame && frame.parentNode) {
+      refreshScheduled = true;
+      const src = frame.getAttribute("src");
+      if (src) {
+        frame.src = "about:blank";
+        window.setTimeout(function () {
+          frame.src = src;
+        }, 2);
+      } else {
+        frame.parentNode.replaceChild(frame.cloneNode(true), frame);
+      }
+      window.setTimeout(function () {
+        refreshScheduled = false;
+      }, 1000);
     }
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
+    if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    if (
-      !data ||
-      data.command !== "setSpeedConfig" ||
-      !data.config
-    ) {
+    const enabled = data.config.cbDateNowChecked === true;
+
+    if (previousEnabled === null) {
+      previousEnabled = enabled;
       return;
     }
 
-    const cbDateNowChecked = data.config.cbDateNowChecked !== false;
+    if (enabled === false && previousEnabled === true) {
+      // Refresh in the sequence: 1000 ms, then 0 ms, then repeat.
+      const refreshDelay = useLongDelay ? 0 : 1000;
+      useLongDelay = !useLongDelay;
 
-    if (!cbDateNowChecked) {
-      // Date.now is disabled: refresh the page after 1000 ms.
-      schedulePageRefresh();
-    } else {
-      stopPageRefresh();
+      window.setTimeout(function () {
+        refreshGameOnly();
+      }, refreshDelay);
     }
+
+    if (enabled === true) {
+      refreshScheduled = false;
+    }
+
+    previousEnabled = enabled;
   });
 })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
