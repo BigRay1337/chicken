@@ -2,6 +2,7 @@
 // Refreshes a non-game iframe in the page background.
 // Does not refresh the Java/HTML5 game frame.
 // Active while cbDateNowChecked is false.
+// Skips exactly one animation frame between refresh attempts.
 
 (function () {
   "use strict";
@@ -9,6 +10,7 @@
   let previousEnabled = null;
   let refreshTimer = null;
   let longDelay = true;
+  let skipFrame = false;
 
   const MIN_DELAY = 0;
   const MAX_DELAY = 1000;
@@ -68,13 +70,27 @@
       refreshTimer = null;
     }
 
-    // Alternate between the long 1000 ms delay and 0 ms.
+    // Skip one animation frame before each refresh.
+    if (!skipFrame) {
+      skipFrame = true;
+      window.requestAnimationFrame(function () {
+        skipFrame = false;
+        scheduleBackgroundRefresh();
+      });
+      return;
+    }
+
+    // Keep the existing 0 ms / 1000 ms long-delay sequence.
     const delay = longDelay ? MAX_DELAY : MIN_DELAY;
     longDelay = !longDelay;
 
     refreshTimer = window.setTimeout(function () {
       refreshTimer = null;
       refreshBackgroundFrame();
+
+      // The next attempt starts by skipping one frame.
+      skipFrame = false;
+      scheduleBackgroundRefresh();
     }, delay);
   }
 
@@ -97,6 +113,7 @@
     }
 
     if (enabled === false && previousEnabled === true) {
+      skipFrame = false;
       scheduleBackgroundRefresh();
     }
 
