@@ -14,8 +14,6 @@ function pageScript() {
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
-  const originalDateNow = Date.now;
-  let previousDateNowChecked = null;
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
@@ -67,12 +65,6 @@ function pageScript() {
       cbDateNowChecked: e.data.config?.cbDateNowChecked !== false,
       cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
     };
-
-    if (previousDateNowChecked === null) {
-      previousDateNowChecked = speedConfig.cbDateNowChecked;
-    } else {
-      previousDateNowChecked = speedConfig.cbDateNowChecked;
-    }
 
     reloadTimers();
   });
@@ -151,41 +143,7 @@ function pageScript() {
     };
   })();
 
-  // Date.now
-  (function () {
-    let dateNowValue = null;
-    let previousDateNowValue = null;
-    let dateNowDelay = 0;
-
-    const DATE_NOW_MIN_DELAY_MS = 0;
-    const DATE_NOW_MAX_DELAY_MS = 1000;
-
-    Date.now = () => {
-      const originalValue = originalDateNow();
-
-      if (dateNowValue !== null) {
-        const elapsed = Math.max(0, originalValue - previousDateNowValue);
-        dateNowDelay += elapsed;
-
-        // Hold Date.now updates for a delay window between 0 and 1000 ms.
-        // Once the window is reached, apply the configured Date.now speed.
-        if (dateNowDelay >= DATE_NOW_MIN_DELAY_MS) {
-          const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
-          const appliedElapsed = Math.min(dateNowDelay, DATE_NOW_MAX_DELAY_MS);
-
-          dateNowValue += appliedElapsed * multiplier;
-          dateNowDelay = 0;
-        }
-      } else {
-        dateNowValue = originalValue;
-      }
-
-      previousDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
-    };
-  })();
-
-  // requestAnimationFrame
+  // Date.now override removed. Native Date.now() is preserved.\n\n  // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
