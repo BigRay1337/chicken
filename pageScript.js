@@ -155,13 +155,27 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previousDateNowValue = null;
+    let dateNowDelay = 0;
+
+    const DATE_NOW_MIN_DELAY_MS = 0;
+    const DATE_NOW_MAX_DELAY_MS = 1000;
 
     Date.now = () => {
       const originalValue = originalDateNow();
 
       if (dateNowValue !== null) {
-        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
-        dateNowValue += (originalValue - previousDateNowValue) * multiplier;
+        const elapsed = Math.max(0, originalValue - previousDateNowValue);
+        dateNowDelay += elapsed;
+
+        // Hold Date.now updates for a delay window between 0 and 1000 ms.
+        // Once the window is reached, apply the configured Date.now speed.
+        if (dateNowDelay >= DATE_NOW_MIN_DELAY_MS) {
+          const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 1;
+          const appliedElapsed = Math.min(dateNowDelay, DATE_NOW_MAX_DELAY_MS);
+
+          dateNowValue += appliedElapsed * multiplier;
+          dateNowDelay = 0;
+        }
       } else {
         dateNowValue = originalValue;
       }
