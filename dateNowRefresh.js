@@ -1,23 +1,15 @@
-// Website refresh while Date.now is disabled.
+// Website page refresh while Date.now is disabled.
 // Active while cbDateNowChecked is false.
-// Uses a new delay from 0 through 1000 ms before each website reload.
+// Refreshes the current page after exactly 1000 ms.
 
 (function () {
   "use strict";
 
-  let previousEnabled = null;
   let refreshTimer = null;
 
-  const MIN_DELAY = 0;
-  const MAX_DELAY = 1000;
+  const REFRESH_DELAY = 1000;
 
-  function getDelay() {
-    return Math.floor(
-      MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY + 1)
-    );
-  }
-
-  function scheduleWebsiteRefresh() {
+  function schedulePageRefresh() {
     if (refreshTimer !== null) {
       window.clearTimeout(refreshTimer);
       refreshTimer = null;
@@ -26,15 +18,12 @@
     refreshTimer = window.setTimeout(function () {
       refreshTimer = null;
 
-      // Refresh the current website page.
+      // Refresh the current page after 1000 ms.
       window.location.reload();
-
-      // If reload is prevented, keep the refresh loop active.
-      scheduleWebsiteRefresh();
-    }, getDelay());
+    }, REFRESH_DELAY);
   }
 
-  function stopWebsiteRefresh() {
+  function stopPageRefresh() {
     if (refreshTimer !== null) {
       window.clearTimeout(refreshTimer);
       refreshTimer = null;
@@ -52,15 +41,13 @@
       return;
     }
 
-    const enabled = data.config.cbDateNowChecked === true;
+    const cbDateNowChecked = data.config.cbDateNowChecked !== false;
 
-    if (enabled === false) {
-      // Keep website refresh active with a 0-1000 ms delay.
-      scheduleWebsiteRefresh();
+    if (!cbDateNowChecked) {
+      // Date.now is disabled: refresh the page after 1000 ms.
+      schedulePageRefresh();
     } else {
-      stopWebsiteRefresh();
+      stopPageRefresh();
     }
-
-    previousEnabled = enabled;
   });
 })();
