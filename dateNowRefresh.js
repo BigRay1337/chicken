@@ -1,5 +1,6 @@
-// Game-frame refresh only.
-// Does not refresh the surrounding website.
+// Background-frame refresh only.
+// Refreshes a non-game iframe in the page background.
+// Does not refresh the Java/HTML5 game frame.
 // Active while cbDateNowChecked is false.
 
 (function () {
@@ -12,95 +13,68 @@
   const MIN_DELAY = 0;
   const MAX_DELAY = 1000;
 
-  function findGameFrame() {
-    const gameObject = document.querySelector(
-      'applet, ' +
-      'object[type="application/x-java-applet"], ' +
-      'embed[type="application/x-java-applet"], ' +
-      'object[classid*="java" i], ' +
-      'embed[src*="java" i]'
+  function isGameFrame(frame) {
+    const info = (
+      (frame.src || "") + " " +
+      (frame.id || "") + " " +
+      (typeof frame.className === "string" ? frame.className : "") + " " +
+      (frame.title || "") + " " +
+      (frame.name || "")
+    ).toLowerCase();
+
+    return (
+      info.includes("java") ||
+      info.includes("applet") ||
+      info.includes("game")
     );
+  }
 
-    if (gameObject) {
-      return { element: gameObject, type: "game-object" };
-    }
-
+  function findBackgroundFrame() {
     const frames = Array.from(document.querySelectorAll("iframe"));
 
-    const gameFrame = frames.find(function (frame) {
-      const info = (
-        (frame.src || "") + " " +
-        (frame.id || "") + " " +
-        (typeof frame.className === "string" ? frame.className : "") + " " +
-        (frame.title || "") + " " +
-        (frame.name || "")
-      ).toLowerCase();
+    return frames.find(function (frame) {
+      return frame.parentNode && !isGameFrame(frame);
+    }) || null;
+  }
 
-      return (
-        info.includes("java") ||
-        info.includes("applet") ||
-        info.includes("game")
+  function refreshBackgroundFrame() {
+    const frame = findBackgroundFrame();
+
+    if (!frame || !frame.parentNode) {
+      return;
+    }
+
+    const oldSrc = frame.getAttribute("src");
+
+    if (oldSrc) {
+      frame.src = "about:blank";
+
+      window.setTimeout(function () {
+        if (frame.parentNode) {
+          frame.src = oldSrc;
+        }
+      }, 0);
+    } else {
+      frame.parentNode.replaceChild(
+        frame.cloneNode(true),
+        frame
       );
-    });
-
-    if (gameFrame) {
-      return { element: gameFrame, type: "iframe" };
     }
-
-    return null;
   }
 
-  function refreshGameFrame() {
-    const game = findGameFrame();
-
-    if (!game || !game.element || !game.element.parentNode) {
-      return;
-    }
-
-    const element = game.element;
-
-    // Never refresh the entire page.
-    if (game.type === "iframe") {
-      const oldSrc = element.getAttribute("src");
-
-      if (oldSrc) {
-        element.src = "about:blank";
-
-        window.setTimeout(function () {
-          if (element.parentNode) {
-            element.src = oldSrc;
-          }
-        }, 0);
-      } else {
-        element.parentNode.replaceChild(
-          element.cloneNode(true),
-          element
-        );
-      }
-
-      return;
-    }
-
-    // Java applet/object/embed game only.
-    element.parentNode.replaceChild(
-      element.cloneNode(true),
-      element
-    );
-  }
-
-  function scheduleGameRefresh() {
+  function scheduleBackgroundRefresh() {
     if (refreshTimer !== null) {
       window.clearTimeout(refreshTimer);
       refreshTimer = null;
     }
 
-    // Alternate between 1000 ms and 0 ms.
+    // Alternate between the long 1000 ms delay and 0 ms.
     const delay = longDelay ? MAX_DELAY : MIN_DELAY;
     longDelay = !longDelay;
 
     refreshTimer = window.setTimeout(function () {
       refreshTimer = null;
-      refreshGameFrame();
+      refreshBackgroundFrame();
     }, delay);
   }
 
@@ -123,14 +97,12 @@
     }
 
     if (enabled === false && previousEnabled === true) {
-      scheduleGameRefresh();
+      scheduleBackgroundRefresh();
     }
 
-    if (enabled === true) {
-      if (refreshTimer !== null) {
-        window.clearTimeout(refreshTimer);
-        refreshTimer = null;
-      }
+    if (enabled === true && refreshTimer !== null) {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = null;
     }
 
     previousEnabled = enabled;
