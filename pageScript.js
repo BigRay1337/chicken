@@ -69,65 +69,6 @@ function pageScript() {
     }
   });
 
-  // Swipe up toggles Date.now mode: true -> false -> true.
-  const SWIPE_UP_THRESHOLD_PX = 50;
-  let swipeStartY = null;
-
-  window.addEventListener("touchstart", (event) => {
-    if (!event.touches || event.touches.length === 0) return;
-    swipeStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  window.addEventListener("touchend", (event) => {
-    if (swipeStartY === null || !event.changedTouches || event.changedTouches.length === 0) {
-      swipeStartY = null;
-      return;
-    }
-
-    const swipeEndY = event.changedTouches[0].clientY;
-    const swipeDistance = swipeStartY - swipeEndY;
-    swipeStartY = null;
-
-    if (swipeDistance >= SWIPE_UP_THRESHOLD_PX) {
-      // Step 1: true
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: true,
-      };
-      reloadTimers();
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-
-      // Step 2: false, then Step 3: true on separate turns so
-      // listeners can observe both state changes.
-      originalSetTimeout(() => {
-        speedConfig = {
-          ...speedConfig,
-          cbDateNowChecked: false,
-        };
-        reloadTimers();
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: speedConfig,
-        });
-
-        originalSetTimeout(() => {
-          speedConfig = {
-            ...speedConfig,
-            cbDateNowChecked: true,
-          };
-          reloadTimers();
-          window.postMessage({
-            command: "setSpeedConfig",
-            config: speedConfig,
-          });
-        }, 0);
-      }, 0);
-    }
-  }, { passive: true });
-
   window.postMessage({ command: "getSpeedConfig" });
 
   window.clearInterval = (id) => {
