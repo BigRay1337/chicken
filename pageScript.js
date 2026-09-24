@@ -49,7 +49,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -70,7 +69,7 @@ function pageScript() {
     }
   });
 
-  // Swipe up on the screen disables Date.now speed mode immediately.
+  // Swipe up toggles Date.now mode: true -> false -> true.
   const SWIPE_UP_THRESHOLD_PX = 50;
   let swipeStartY = null;
 
@@ -89,18 +88,43 @@ function pageScript() {
     const swipeDistance = swipeStartY - swipeEndY;
     swipeStartY = null;
 
-    if (swipeDistance >= SWIPE_UP_THRESHOLD_PX && speedConfig.cbDateNowChecked) {
+    if (swipeDistance >= SWIPE_UP_THRESHOLD_PX) {
+      // Step 1: true
       speedConfig = {
         ...speedConfig,
-        cbDateNowChecked: false,
+        cbDateNowChecked: true,
       };
-
       reloadTimers();
       window.postMessage({
         command: "setSpeedConfig",
         config: speedConfig,
       });
-      scheduleDateNowDisabledReload();
+
+      // Step 2: false, then Step 3: true on separate turns so
+      // listeners can observe both state changes.
+      originalSetTimeout(() => {
+        speedConfig = {
+          ...speedConfig,
+          cbDateNowChecked: false,
+        };
+        reloadTimers();
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: speedConfig,
+        });
+
+        originalSetTimeout(() => {
+          speedConfig = {
+            ...speedConfig,
+            cbDateNowChecked: true,
+          };
+          reloadTimers();
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: speedConfig,
+          });
+        }, 0);
+      }, 0);
     }
   }, { passive: true });
 
