@@ -17,14 +17,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 window.addEventListener("message", (e) => {
-  if (!e.data) return;
-
   if (e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
-  } else if (e.data.command === "setSpeedConfig" && e.data.config) {
-    speedConfig = e.data.config;
   }
 });
