@@ -72,6 +72,41 @@ function pageScript() {
 
   window.postMessage({ command: "getSpeedConfig" });
 
+  // Swipe up 30px or more: toggle Date.now spoofing false, then true.
+  (() => {
+    const SWIPE_UP_THRESHOLD_PX = 30;
+    let touchStartY = null;
+    let touchStartX = null;
+
+    window.addEventListener("touchstart", (event) => {
+      if (!event.touches || event.touches.length !== 1) return;
+      touchStartX = event.touches[0].clientX;
+      touchStartY = event.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener("touchend", (event) => {
+      if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) return;
+
+      const touch = event.changedTouches[0];
+      const deltaY = touch.clientY - touchStartY;
+      const deltaX = touch.clientX - touchStartX;
+      touchStartY = null;
+      touchStartX = null;
+
+      if (deltaY <= -SWIPE_UP_THRESHOLD_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
+        const falseConfig = { ...speedConfig, cbDateNowChecked: false };
+        speedConfig = falseConfig;
+        window.postMessage({ command: "setSpeedConfig", config: falseConfig });
+
+        originalSetTimeout(() => {
+          const trueConfig = { ...speedConfig, cbDateNowChecked: true };
+          speedConfig = trueConfig;
+          window.postMessage({ command: "setSpeedConfig", config: trueConfig });
+        }, 0);
+      }
+    }, { passive: true });
+  })();
+
   window.clearInterval = (id) => {
     originalClearInterval(id);
     timers.forEach((timer) => {
