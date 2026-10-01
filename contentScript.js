@@ -58,11 +58,15 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Set DateNow off, then re-enable after 1 ms.
+      // Disable DateNow/extension state.
       setDateNowChecked(false);
 
+      // Re-enable after 1 ms, then refresh the game immediately.
       setTimeout(() => {
         setDateNowChecked(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, REENABLE_DELAY_MS);
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
