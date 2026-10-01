@@ -29,7 +29,7 @@ window.addEventListener("message", (e) => {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
   const REENABLE_DELAY_MS = 1;
-  const REFRESH_DELAY_MS = 6;
+  const REFRESH_DELAY_MS = 9;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -66,7 +66,7 @@ window.addEventListener("message", (e) => {
       setTimeout(() => {
         setDateNowChecked(true);
 
-        // Refresh the game 6 ms after re-enabling.
+        // Refresh the game 9 ms after re-enabling.
         setTimeout(() => {
           window.location.reload();
         }, REFRESH_DELAY_MS);
