@@ -61,9 +61,10 @@ window.addEventListener("message", (e) => {
       // Extension/DateNow off.
       setDateNowChecked(false);
 
-      // Re-enable after exactly 1 ms.
+      // Re-enable after 1 ms, then immediately refresh the game/page.
       setTimeout(() => {
         setDateNowChecked(true);
+        window.location.reload();
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
