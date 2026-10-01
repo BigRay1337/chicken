@@ -29,28 +29,6 @@ window.addEventListener("message", (e) => {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
   const REENABLE_DELAY_MS = 1;
-  const NO_MOVEMENT_REFRESH_MS = 567;
-  let movementDetected = false;
-  let noMovementRefreshTimer = null;
-
-  const scheduleNoMovementRefresh = () => {
-    if (noMovementRefreshTimer !== null) {
-      clearTimeout(noMovementRefreshTimer);
-    }
-
-    noMovementRefreshTimer = setTimeout(() => {
-      noMovementRefreshTimer = null;
-      if (movementDetected) {
-        movementDetected = false;
-        window.location.reload();
-      }
-    }, NO_MOVEMENT_REFRESH_MS);
-  };
-
-  const detectGameMovement = () => {
-    movementDetected = true;
-    scheduleNoMovementRefresh();
-  };
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -63,10 +41,6 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   };
-
-  document.addEventListener("touchmove", detectGameMovement, { passive: true });
-  document.addEventListener("keydown", detectGameMovement, { passive: true });
-  document.addEventListener("pointermove", detectGameMovement, { passive: true });
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
