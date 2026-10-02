@@ -28,6 +28,7 @@
       cbRequestAnimationFrameChecked: false,
     });
 
+    // Turn the extension behavior back on and keep requestAnimationFrame enabled.
     setSpeedConfig({
       cbSetIntervalChecked: true,
       cbSetTimeoutChecked: false,
@@ -58,6 +59,8 @@
       event.data.config
     ) {
       speedConfig = { ...speedConfig, ...event.data.config };
+      // Keep requestAnimationFrame enabled whenever this handler is active.
+      speedConfig.cbRequestAnimationFrameChecked = true;
     }
   });
 
