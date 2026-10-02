@@ -28,8 +28,8 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const REENABLE_DELAY_MS = 1;
-  const REFRESH_DELAY_MS = 9;
+  const REENABLE_DELAY_MS = 0.01;
+  const REFRESH_DELAY_MS = 1050;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -73,4 +73,4 @@ window.addEventListener("message", (e) => {
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();
+})();;;
