@@ -19,18 +19,24 @@
   }
 
   function handleSwipeUp() {
-    // On a 30px+ upward swipe:
-    // 1. Date.now checked -> false
-    // 2. Date.now checked -> true
-    // 3. requestAnimationFrame checked -> true
-    // 4. requestAnimationFrame checked -> false
-    // 5. Immediately refresh the game/page.
-    setSpeedConfig({ cbDateNowChecked: false });
-    setSpeedConfig({ cbDateNowChecked: true });
-    setSpeedConfig({ cbRequestAnimationFrameChecked: true });
-    setSpeedConfig({ cbRequestAnimationFrameChecked: false });
-    // Refresh the actual game document. If this script is running inside a
-    // game iframe, reload the top-level page; otherwise reload this page.
+    // Simulate the extension turning off, then immediately back on.
+    setSpeedConfig({
+      cbSetIntervalChecked: false,
+      cbSetTimeoutChecked: false,
+      cbPerformanceNowChecked: false,
+      cbDateNowChecked: false,
+      cbRequestAnimationFrameChecked: false,
+    });
+
+    setSpeedConfig({
+      cbSetIntervalChecked: true,
+      cbSetTimeoutChecked: false,
+      cbPerformanceNowChecked: false,
+      cbDateNowChecked: true,
+      cbRequestAnimationFrameChecked: true,
+    });
+
+    // Immediately refresh the game/page.
     try {
       if (window.top && window.top !== window) {
         window.top.location.reload();
@@ -38,7 +44,6 @@
         window.location.reload();
       }
     } catch (e) {
-      // Cross-origin iframe fallback.
       window.location.reload();
     }
   }
