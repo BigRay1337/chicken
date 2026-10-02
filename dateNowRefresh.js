@@ -1,12 +1,12 @@
-(function () {
-  const DISABLE_DELAY_MS = -Number.MAX_VALUE("9".repeat(308));
+(() => {
+  const DISABLE_DELAY_MS = 264;
+  const REFRESH_DELAY_MS = 264;
   const SWIPE_THRESHOLD_PX = 30;
 
-  let cbDateNowChecked = true;
   let disableTimer = null;
+  let refreshTimer = null;
 
   function setDateNowChecked(enabled) {
-    cbDateNowChecked = enabled;
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: enabled },
@@ -15,20 +15,18 @@
 
   function handleSwipeUp() {
     if (disableTimer !== null) clearTimeout(disableTimer);
+    if (refreshTimer !== null) clearTimeout(refreshTimer);
+
     disableTimer = setTimeout(() => {
       disableTimer = null;
       setDateNowChecked(false);
     }, DISABLE_DELAY_MS);
-  }
 
-  window.addEventListener("message", (event) => {
-    if (
-      event.data?.command === "setSpeedConfig" &&
-      typeof event.data.config?.cbDateNowChecked === "boolean"
-    ) {
-      cbDateNowChecked = event.data.config.cbDateNowChecked;
-    }
-  });
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      window.location.reload();
+    }, REFRESH_DELAY_MS);
+  }
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -54,7 +52,6 @@
     if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
 
     handleSwipeUp();
-    window.location.reload();
   }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
