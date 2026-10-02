@@ -1,10 +1,5 @@
 (() => {
-  const DISABLE_DELAY_MS = 264;
-  const REFRESH_DELAY_MS = 264;
   const SWIPE_THRESHOLD_PX = 30;
-
-  let disableTimer = null;
-  let refreshTimer = null;
 
   function setDateNowChecked(enabled) {
     window.postMessage({
@@ -14,18 +9,10 @@
   }
 
   function handleSwipeUp() {
-    if (disableTimer !== null) clearTimeout(disableTimer);
-    if (refreshTimer !== null) clearTimeout(refreshTimer);
-
-    disableTimer = setTimeout(() => {
-      disableTimer = null;
-      setDateNowChecked(false);
-    }, DISABLE_DELAY_MS);
-
-    refreshTimer = setTimeout(() => {
-      refreshTimer = null;
-      window.location.reload();
-    }, REFRESH_DELAY_MS);
+    // On a 30px+ upward swipe: disable, immediately re-enable, then refresh.
+    setDateNowChecked(false);
+    setDateNowChecked(true);
+    window.location.reload();
   }
 
   let swipeStartX = null;
