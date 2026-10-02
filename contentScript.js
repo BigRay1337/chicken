@@ -3,7 +3,7 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: true,
+  cbDateNowChecked: NaN,
   cbRequestAnimationFrameChecked: false,
 };
 
@@ -73,4 +73,4 @@ window.addEventListener("message", (e) => {
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+})();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

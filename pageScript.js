@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: NaN,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -184,3 +184,5 @@ function pageScript() {
 }
 
 pageScript();
+
+
