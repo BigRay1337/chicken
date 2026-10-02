@@ -53,8 +53,8 @@
 
     if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
 
-    setDateNowChecked(false);
-    setDateNowChecked(true);
+    handleSwipeUp();
+    window.location.reload();
   }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });

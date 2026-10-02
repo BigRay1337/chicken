@@ -24,3 +24,53 @@ window.addEventListener("message", (e) => {
     });
   }
 });
+
+(function () {
+  let touchStartY = null;
+  const SWIPE_UP_PIXELS = 30;
+  const REENABLE_DELAY_MS = -Number.NEGATIVE_INFINITY>+Number.POSTIVE_INFINITY;
+  const REFRESH_DELAY_MS = 0;
+
+  const setDateNowChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: checked,
+    };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+  };
+
+  document.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener("touchend", (event) => {
+    if (touchStartY === null || event.changedTouches.length !== 1) {
+      touchStartY = null;
+      return;
+    }
+
+    const touchEndY = event.changedTouches[0].clientY;
+    const swipeDistance = touchStartY - touchEndY;
+    touchStartY = null;
+
+    if (swipeDistance >= SWIPE_UP_PIXELS) {
+      // Disable DateNow state.
+      setDateNowChecked(false);
+
+      // Re-enable after 1 ms.
+      setTimeout(() => {
+        setDateNowChecked(true);
+
+        // Refresh the game 9 ms after re-enabling.
+        setTimeout(() => {
+          window.location.reload();
+        }, REFRESH_DELAY_MS);
+      }, REENABLE_DELAY_MS);
+    }
+  }, { passive: true });
+})();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
