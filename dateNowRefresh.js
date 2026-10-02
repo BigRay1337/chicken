@@ -54,6 +54,7 @@
     if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
 
     handleSwipeUp();
+    setTimeout(() => window.location.reload(), DISABLE_DELAY_MS);
   }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
