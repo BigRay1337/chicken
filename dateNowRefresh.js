@@ -19,34 +19,10 @@
   }
 
   function handleSwipeUp() {
-    // Simulate the extension turning off, then immediately back on.
-    setSpeedConfig({
-      cbSetIntervalChecked: false,
-      cbSetTimeoutChecked: false,
-      cbPerformanceNowChecked: false,
-      cbDateNowChecked: false,
-      cbRequestAnimationFrameChecked: false,
-    });
-
-    // Turn the extension behavior back on and keep requestAnimationFrame enabled.
-    setSpeedConfig({
-      cbSetIntervalChecked: true,
-      cbSetTimeoutChecked: false,
-      cbPerformanceNowChecked: false,
-      cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: true,
-    });
-
-    // Immediately refresh the game/page.
-    try {
-      if (window.top && window.top !== window) {
-        window.top.location.reload();
-      } else {
-        window.location.reload();
-      }
-    } catch (e) {
-      window.location.reload();
-    }
+    // On an upward swipe, briefly set cbDateNowChecked to false,
+    // then immediately restore it to true.
+    setSpeedConfig({ cbDateNowChecked: false });
+    setSpeedConfig({ cbDateNowChecked: true });
   }
 
   let swipeStartX = null;
@@ -59,8 +35,6 @@
       event.data.config
     ) {
       speedConfig = { ...speedConfig, ...event.data.config };
-      // Keep requestAnimationFrame enabled whenever this handler is active.
-      speedConfig.cbRequestAnimationFrameChecked = true;
     }
   });
 
