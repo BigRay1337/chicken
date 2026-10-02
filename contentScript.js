@@ -3,8 +3,8 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: NaN,
-  cbRequestAnimationFrameChecked: false,
+  cbDateNowChecked: true,
+  cbRequestAnimationFrameChecked: true,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -24,3 +24,4 @@ window.addEventListener("message", (e) => {
     });
   }
 });
+
