@@ -59,7 +59,7 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow/extension state.
+      // Disable DateNow state.
       setDateNowChecked(false);
 
       // Re-enable after 1 ms.
