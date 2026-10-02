@@ -1,5 +1,5 @@
 (function () {
-  const DISABLE_DELAY_MS = -Number.MAX_VALUE("9".repeat(308));
+  const DISABLE_DELAY_MS = 264;
   const SWIPE_THRESHOLD_PX = 30;
 
   let cbDateNowChecked = true;
@@ -54,7 +54,6 @@
     if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
 
     handleSwipeUp();
-    window.location.reload();
   }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
