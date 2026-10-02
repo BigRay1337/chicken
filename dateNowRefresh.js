@@ -29,7 +29,18 @@
     setSpeedConfig({ cbDateNowChecked: true });
     setSpeedConfig({ cbRequestAnimationFrameChecked: true });
     setSpeedConfig({ cbRequestAnimationFrameChecked: false });
-    window.location.reload();
+    // Refresh the actual game document. If this script is running inside a
+    // game iframe, reload the top-level page; otherwise reload this page.
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.reload();
+      } else {
+        window.location.reload();
+      }
+    } catch (e) {
+      // Cross-origin iframe fallback.
+      window.location.reload();
+    }
   }
 
   let swipeStartX = null;
