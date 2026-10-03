@@ -11,6 +11,7 @@ let touchStartX = 0;
 let touchStartY = 0;
 let swipeHandled = false;
 const SWIPE_UP_DISTANCE_PX = 30;
+const SWIPE_DISABLE_DELAY_MS = 264.9;
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
@@ -56,15 +57,13 @@ window.addEventListener("touchmove", (e) => {
   if (deltaY <= -SWIPE_UP_DISTANCE_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
     swipeHandled = true;
 
-    speedConfig.cbDateNowChecked = false;
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-
-    window.postMessage({
-      command: "refreshGameOnly"
-    });
+    window.setTimeout(() => {
+      speedConfig.cbDateNowChecked = false;
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+    }, SWIPE_DISABLE_DELAY_MS);
   }
 }, { passive: true });
 
