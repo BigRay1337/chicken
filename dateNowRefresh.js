@@ -19,10 +19,23 @@
   }
 
   function handleSwipeUp() {
-    // On an upward swipe, briefly set cbDateNowChecked to false,
-    // then immediately restore it to true.
-    setSpeedConfig({ cbDateNowChecked: false });
-    setSpeedConfig({ cbDateNowChecked: true });
+    // On an upward swipe, turn the speed-extension settings off,
+    // then immediately turn them back on.
+    setSpeedConfig({
+      cbSetIntervalChecked: false,
+      cbSetTimeoutChecked: false,
+      cbPerformanceNowChecked: false,
+      cbDateNowChecked: false,
+      cbRequestAnimationFrameChecked: false,
+    });
+
+    setSpeedConfig({
+      cbSetIntervalChecked: true,
+      cbSetTimeoutChecked: false,
+      cbPerformanceNowChecked: false,
+      cbDateNowChecked: true,
+      cbRequestAnimationFrameChecked: true,
+    });
   }
 
   let swipeStartX = null;
