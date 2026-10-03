@@ -58,10 +58,8 @@ window.addEventListener("touchmove", (e) => {
   if (deltaY <= -SWIPE_UP_DISTANCE_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
     swipeHandled = true;
 
-    // Refresh the game immediately without reloading the browser page.
-    window.postMessage({
-      command: "refreshGameOnly"
-    });
+    // Reload the current game page only.
+    window.location.reload();
 
     // After 265 ms, disable Date.now handling and leave it disabled.
     if (dateNowRestoreTimer !== null) {
