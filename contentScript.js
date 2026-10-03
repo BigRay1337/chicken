@@ -27,7 +27,7 @@ window.addEventListener("message", (e) => {
 
 
 // Swipe up 30px: disable Date.now speed handling and immediately refresh the game page.
-if (window.top === window) {
+{
   let swipeStartY = null;
   const SWIPE_UP_THRESHOLD_PX = 30;
 
