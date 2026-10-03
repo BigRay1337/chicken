@@ -72,6 +72,12 @@ function pageScript() {
 
   window.postMessage({ command: "getSpeedConfig" });
 
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.command === "refreshGameOnly") {
+      window.dispatchEvent(new CustomEvent("gameRefresh"));
+    }
+  });
+
   window.clearInterval = (id) => {
     originalClearInterval(id);
     timers.forEach((timer) => {
