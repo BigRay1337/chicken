@@ -58,25 +58,19 @@ window.addEventListener("touchmove", (e) => {
   if (deltaY <= -SWIPE_UP_DISTANCE_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
     swipeHandled = true;
 
-    // Disable Date.now speed handling for exactly 265 ms.
-    speedConfig.cbDateNowChecked = false;
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-
-    // Refresh the game only; do not reload the browser page.
+    // Refresh the game immediately without reloading the browser page.
     window.postMessage({
       command: "refreshGameOnly"
     });
 
+    // After 265 ms, disable Date.now handling and leave it disabled.
     if (dateNowRestoreTimer !== null) {
       clearTimeout(dateNowRestoreTimer);
     }
 
     dateNowRestoreTimer = setTimeout(() => {
       dateNowRestoreTimer = null;
-      speedConfig.cbDateNowChecked = true;
+      speedConfig.cbDateNowChecked = false;
       window.postMessage({
         command: "setSpeedConfig",
         config: speedConfig,
