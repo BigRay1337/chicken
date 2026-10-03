@@ -24,14 +24,3 @@ window.addEventListener("message", (e) => {
     });
   }
 });
-
-
-window.addEventListener("message", (event) => {
-  if (event.source !== window || !event.data) return;
-
-  if (event.data.command === "refreshAllGameLayers") {
-    chrome.runtime.sendMessage({
-      command: "refreshAllGameLayers"
-    });
-  }
-});

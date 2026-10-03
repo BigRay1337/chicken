@@ -8,9 +8,3 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
-
-chrome.runtime.onMessage.addListener((request) => {
-  if (request && request.command === "refreshAllGameLayers") {
-    chrome.tabs.reload();
-  }
-});
