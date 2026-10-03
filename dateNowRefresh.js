@@ -24,7 +24,10 @@
   }
 
   function handleSwipeUp() {
-    setSpeedConfig({});
+    setSpeedConfig({
+      cbDateNowChecked: true,
+      cbRequestAnimationFrameChecked: true,
+    });
     window.location.reload();
   }
 
