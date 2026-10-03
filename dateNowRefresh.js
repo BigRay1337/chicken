@@ -115,16 +115,11 @@
       localStorage.removeItem(PENDING_DISABLE_KEY);
     } catch (e) {}
 
-    // Refresh the top-layer game immediately.
-    try {
-      if (window.top && window.top !== window) {
-        window.top.location.reload();
-      } else {
-        window.location.reload();
-      }
-    } catch (e) {
-      window.location.reload();
-    }
+    // Ask the extension to reload the entire tab. This refreshes the
+    // top document and all iframe/frame layers together.
+    window.postMessage({
+      command: "refreshAllGameLayers"
+    }, "*");
   }
 
   let swipeStartX = null;
