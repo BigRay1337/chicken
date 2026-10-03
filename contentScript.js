@@ -11,8 +11,6 @@ let touchStartX = 0;
 let touchStartY = 0;
 let swipeHandled = false;
 const SWIPE_UP_DISTANCE_PX = 30;
-const DATE_NOW_FALSE_DELAY_MS = 265;
-let dateNowRestoreTimer = null;
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
@@ -58,22 +56,15 @@ window.addEventListener("touchmove", (e) => {
   if (deltaY <= -SWIPE_UP_DISTANCE_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
     swipeHandled = true;
 
-    // Reload the current game page only.
-    window.location.reload();
+    speedConfig.cbDateNowChecked = false;
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
 
-    // After 265 ms, disable Date.now handling and leave it disabled.
-    if (dateNowRestoreTimer !== null) {
-      clearTimeout(dateNowRestoreTimer);
-    }
-
-    dateNowRestoreTimer = setTimeout(() => {
-      dateNowRestoreTimer = null;
-      speedConfig.cbDateNowChecked = false;
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-    }, DATE_NOW_FALSE_DELAY_MS);
+    window.postMessage({
+      command: "refreshGameOnly"
+    });
   }
 }, { passive: true });
 
