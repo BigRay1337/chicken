@@ -6,7 +6,7 @@
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: true,
   };
 
@@ -14,7 +14,7 @@
     speedConfig = {
       ...speedConfig,
       ...changes,
-      cbDateNowChecked: false,
+      cbDateNowChecked: true,
       cbRequestAnimationFrameChecked: true,
     };
     window.postMessage({
@@ -40,9 +40,16 @@
       speedConfig = {
         ...speedConfig,
         ...event.data.config,
-        cbDateNowChecked: false,
+        cbDateNowChecked: true,
         cbRequestAnimationFrameChecked: true,
       };
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: {
+          cbDateNowChecked: true,
+          cbRequestAnimationFrameChecked: true,
+        },
+      });
     }
   });
 
@@ -74,7 +81,7 @@
   window.postMessage({
     command: "setSpeedConfig",
     config: {
-      cbDateNowChecked: false,
+      cbDateNowChecked: true,
       cbRequestAnimationFrameChecked: true,
     },
   });
