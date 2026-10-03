@@ -19,22 +19,12 @@
   }
 
   function handleSwipeUp() {
-    // On an upward swipe, turn the speed-extension settings off,
-    // then immediately turn them back on.
-    setSpeedConfig({
-      cbSetIntervalChecked: false,
-      cbSetTimeoutChecked: false,
-      cbPerformanceNowChecked: false,
-      cbDateNowChecked: false,
-      cbRequestAnimationFrameChecked: false,
-    });
+    // Each upward swipe toggles Date.now on/off:
+    // first swipe -> false/off, next swipe -> true/on.
+    const nextDateNowChecked = !speedConfig.cbDateNowChecked;
 
     setSpeedConfig({
-      cbSetIntervalChecked: true,
-      cbSetTimeoutChecked: false,
-      cbPerformanceNowChecked: false,
-      cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: true,
+      cbDateNowChecked: nextDateNowChecked,
     });
   }
 
