@@ -52,7 +52,7 @@ window.addEventListener("touchmove", (e) => {
   if (deltaY <= -SWIPE_UP_DISTANCE_PX && Math.abs(deltaY) > Math.abs(deltaX)) {
     swipeHandled = true;
 
-    speedConfig.cbDateNowChecked = true;
+    speedConfig.cbDateNowChecked = false;
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
