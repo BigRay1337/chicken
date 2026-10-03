@@ -30,6 +30,23 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
+  const refreshGameOnly = () => {
+    const gameFrame = document.querySelector("iframe");
+    if (!gameFrame) return false;
+
+    try {
+      gameFrame.contentWindow.location.reload();
+      return true;
+    } catch (e) {
+      try {
+        gameFrame.src = gameFrame.src;
+        return true;
+      } catch (ignored) {
+        return false;
+      }
+    }
+  };
+
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -49,7 +66,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -67,6 +83,8 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
+    } else if (e.data.command === "refreshGameOnly") {
+      refreshGameOnly();
     }
   });
 
