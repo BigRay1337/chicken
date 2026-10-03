@@ -28,7 +28,15 @@
       cbDateNowChecked: true,
       cbRequestAnimationFrameChecked: true,
     });
-    window.location.reload();
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.reload();
+      } else {
+        window.location.reload();
+      }
+    } catch (e) {
+      window.location.reload();
+    }
   }
 
   let swipeStartX = null;
