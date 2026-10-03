@@ -30,6 +30,38 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
+  // Zero-pixel touch: refresh the game only and set cbDateNowChecked false.
+  let zeroPixelSwipeStartX = null;
+  let zeroPixelSwipeStartY = null;
+
+  window.addEventListener("touchstart", (event) => {
+    if (!event.touches || event.touches.length !== 1) return;
+    zeroPixelSwipeStartX = event.touches[0].clientX;
+    zeroPixelSwipeStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  window.addEventListener("touchend", (event) => {
+    if (zeroPixelSwipeStartX === null || zeroPixelSwipeStartY === null) return;
+    if (!event.changedTouches || event.changedTouches.length !== 1) return;
+
+    const endX = event.changedTouches[0].clientX;
+    const endY = event.changedTouches[0].clientY;
+    const deltaX = endX - zeroPixelSwipeStartX;
+    const deltaY = endY - zeroPixelSwipeStartY;
+
+    zeroPixelSwipeStartX = null;
+    zeroPixelSwipeStartY = null;
+
+    if (deltaX === 0 && deltaY === 0) {
+      speedConfig.cbDateNowChecked = false;
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+      window.location.reload();
+    }
+  }, { passive: true });
+
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -49,7 +81,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
