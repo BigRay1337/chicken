@@ -1,5 +1,7 @@
 (() => {
   const SWIPE_THRESHOLD_PX = 30;
+  const SWIPE_DATE_NOW_DELAY_MS = 264.9;
+  const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable_at";
 
   let speedConfig = {
     speed: 0,
@@ -11,39 +13,72 @@
   };
 
   let swipeDateNowDisabled = false;
+  let pendingDisableTimer = null;
 
-  function setDateNowChecked() {
-    if (swipeDateNowDisabled) return;
-
+  function postDateNowState(checked) {
     speedConfig = {
       ...speedConfig,
-      cbDateNowChecked: true,
+      cbDateNowChecked: checked,
     };
 
     window.postMessage({
       command: "setSpeedConfig",
       config: {
         ...speedConfig,
-        cbDateNowChecked: true,
+        cbDateNowChecked: checked,
       },
     });
   }
 
-  function handleSwipeUp() {
+  function disableDateNow() {
     swipeDateNowDisabled = true;
-    speedConfig = {
-      ...speedConfig,
-      cbDateNowChecked: false,
-    };
+    postDateNowState(false);
 
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      },
-    });
+    try {
+      localStorage.removeItem(PENDING_DISABLE_KEY);
+    } catch (e) {}
+  }
 
+  function schedulePendingDateNowDisable() {
+    let disableAt = null;
+
+    try {
+      const stored = localStorage.getItem(PENDING_DISABLE_KEY);
+      if (stored !== null) disableAt = Number(stored);
+    } catch (e) {}
+
+    if (!Number.isFinite(disableAt)) return;
+
+    const now = performance.timeOrigin + performance.now();
+    const remaining = disableAt - now;
+
+    if (remaining <= 0) {
+      disableDateNow();
+      return;
+    }
+
+    if (pendingDisableTimer !== null) {
+      clearTimeout(pendingDisableTimer);
+    }
+
+    pendingDisableTimer = setTimeout(() => {
+      pendingDisableTimer = null;
+      disableDateNow();
+    }, remaining);
+  }
+
+  function handleSwipeUp() {
+    // Persist the deadline so the state change survives the immediate top-layer reload.
+    try {
+      const disableAt =
+        performance.timeOrigin +
+        performance.now() +
+        SWIPE_DATE_NOW_DELAY_MS;
+
+      localStorage.setItem(PENDING_DISABLE_KEY, String(disableAt));
+    } catch (e) {}
+
+    // Refresh the top-layer game immediately.
     try {
       if (window.top && window.top !== window) {
         window.top.location.reload();
@@ -109,12 +144,17 @@
     handleSwipeUp();
   }, { passive: true });
 
-  // Keep cbDateNowChecked true continuously until a qualifying swipe disables it.
+  // Keep cbDateNowChecked true until the pending 264.9ms deadline is reached.
   function forceDateNowCheckedEveryFrame() {
-    setDateNowChecked();
+    if (!swipeDateNowDisabled) {
+      postDateNowState(true);
+    }
     window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
   }
 
-  setDateNowChecked();
+  schedulePendingDateNowDisable();
+  if (!swipeDateNowDisabled) {
+    postDateNowState(true);
+  }
   window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
 })();
