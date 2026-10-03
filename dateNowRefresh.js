@@ -10,24 +10,23 @@
     cbRequestAnimationFrameChecked: true,
   };
 
-  function setSpeedConfig(changes) {
+  function setDateNowChecked() {
     speedConfig = {
       ...speedConfig,
-      ...changes,
       cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: true,
     };
+
     window.postMessage({
       command: "setSpeedConfig",
-      config: speedConfig,
+      config: {
+        ...speedConfig,
+        cbDateNowChecked: true,
+      },
     });
   }
 
   function handleSwipeUp() {
-    setSpeedConfig({
-      cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: true,
-    });
+    // A qualifying 30px upward swipe does only one thing: refresh the game.
     try {
       if (window.top && window.top !== window) {
         window.top.location.reload();
@@ -52,13 +51,13 @@
         ...speedConfig,
         ...event.data.config,
         cbDateNowChecked: true,
-        cbRequestAnimationFrameChecked: true,
       };
+
       window.postMessage({
         command: "setSpeedConfig",
         config: {
+          ...speedConfig,
           cbDateNowChecked: true,
-          cbRequestAnimationFrameChecked: true,
         },
       });
     }
@@ -89,12 +88,12 @@
     handleSwipeUp();
   }, { passive: true });
 
-  window.postMessage({
-    command: "setSpeedConfig",
-    config: {
-      cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: true,
-    },
-  });
-  window.postMessage({ command: "getSpeedConfig" });
+  // Keep cbDateNowChecked true continuously, including every animation frame.
+  function forceDateNowCheckedEveryFrame() {
+    setDateNowChecked();
+    window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
+  }
+
+  setDateNowChecked();
+  window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
 })();
