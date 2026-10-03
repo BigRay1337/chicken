@@ -19,17 +19,6 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 0;
-  let dateNowDisableReloadTimer = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -61,12 +50,7 @@ function pageScript() {
       speedConfig = e.data.config;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
+      // Changing cbDateNowChecked must not reload the browser page.
     }
   });
 
