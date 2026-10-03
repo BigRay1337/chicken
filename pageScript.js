@@ -30,35 +30,37 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
-  // Zero-pixel touch: refresh the game only and set cbDateNowChecked false.
-  let zeroPixelSwipeStartX = null;
-  let zeroPixelSwipeStartY = null;
+  // A tap (0px movement) refreshes only the game layer and disables Date.now.
+  const refreshGameLayer = () => {
+    speedConfig.cbDateNowChecked = false;
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
 
-  window.addEventListener("touchstart", (event) => {
-    if (!event.touches || event.touches.length !== 1) return;
-    zeroPixelSwipeStartX = event.touches[0].clientX;
-    zeroPixelSwipeStartY = event.touches[0].clientY;
-  }, { passive: true });
+    const gameFrame = document.querySelector("iframe");
+    if (gameFrame) {
+      try {
+        gameFrame.contentWindow.location.reload();
+        return;
+      } catch (e) {
+        try {
+          gameFrame.src = gameFrame.src;
+          return;
+        } catch (ignored) {}
+      }
+    }
+
+    // If the game is the top-level document, reload the game document.
+    window.location.reload();
+  };
 
   window.addEventListener("touchend", (event) => {
-    if (zeroPixelSwipeStartX === null || zeroPixelSwipeStartY === null) return;
     if (!event.changedTouches || event.changedTouches.length !== 1) return;
-
-    const endX = event.changedTouches[0].clientX;
-    const endY = event.changedTouches[0].clientY;
-    const deltaX = endX - zeroPixelSwipeStartX;
-    const deltaY = endY - zeroPixelSwipeStartY;
-
-    zeroPixelSwipeStartX = null;
-    zeroPixelSwipeStartY = null;
-
-    if (deltaX === 0 && deltaY === 0) {
-      speedConfig.cbDateNowChecked = false;
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-      window.location.reload();
+    // A tap is exactly 0px of movement.
+    const touch = event.changedTouches[0];
+    if (touch.clientX === touch.screenX && touch.clientY === touch.screenY) {
+      refreshGameLayer();
     }
   }, { passive: true });
 
