@@ -10,7 +10,11 @@
     cbRequestAnimationFrameChecked: true,
   };
 
+  let swipeDateNowDisabled = false;
+
   function setDateNowChecked() {
+    if (swipeDateNowDisabled) return;
+
     speedConfig = {
       ...speedConfig,
       cbDateNowChecked: true,
@@ -26,16 +30,18 @@
   }
 
   function handleSwipeUp() {
-    // Send true and false together when the qualifying swipe ends.
-    const baseConfig = { ...speedConfig };
+    swipeDateNowDisabled = true;
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: false,
+    };
 
     window.postMessage({
       command: "setSpeedConfig",
-      config: { ...baseConfig, cbDateNowChecked: true },
-    });
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { ...baseConfig, cbDateNowChecked: false },
+      config: {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      },
     });
 
     try {
@@ -61,14 +67,18 @@
       speedConfig = {
         ...speedConfig,
         ...event.data.config,
-        cbDateNowChecked: true,
+        cbDateNowChecked: swipeDateNowDisabled
+          ? false
+          : true,
       };
 
       window.postMessage({
         command: "setSpeedConfig",
         config: {
           ...speedConfig,
-          cbDateNowChecked: true,
+          cbDateNowChecked: swipeDateNowDisabled
+            ? false
+            : true,
         },
       });
     }
@@ -99,7 +109,7 @@
     handleSwipeUp();
   }, { passive: true });
 
-  // Keep cbDateNowChecked true continuously, including every animation frame.
+  // Keep cbDateNowChecked true continuously until a qualifying swipe disables it.
   function forceDateNowCheckedEveryFrame() {
     setDateNowChecked();
     window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
