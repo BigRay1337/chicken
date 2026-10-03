@@ -3,7 +3,7 @@ let speedConfig = {
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
-  cbDateNowChecked: false,
+  cbDateNowChecked: true,
   cbRequestAnimationFrameChecked: false,
 };
 

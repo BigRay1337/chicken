@@ -4,7 +4,7 @@ function pageScript() {
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: false,
+    cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: false,
   };
 
@@ -49,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
