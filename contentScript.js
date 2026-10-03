@@ -23,7 +23,7 @@ document.addEventListener("touchend", (event) => {
   swipeStartY = null;
 
   if (swipeDistance >= 30) {
-    speedConfig.cbDateNowChecked = null;
+    speedConfig.cbDateNowChecked = false;
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
