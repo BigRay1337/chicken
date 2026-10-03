@@ -19,11 +19,6 @@
   }
 
   function handleSwipeUp() {
-    // Upward swipe: disable Date.now and immediately refresh the game.
-    setSpeedConfig({
-      cbDateNowChecked: false,
-    });
-
     window.location.reload();
   }
 
