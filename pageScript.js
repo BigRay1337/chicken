@@ -19,7 +19,7 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 0;
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
@@ -71,12 +71,6 @@ function pageScript() {
   });
 
   window.postMessage({ command: "getSpeedConfig" });
-
-  window.addEventListener("message", (e) => {
-    if (e.data && e.data.command === "refreshGameOnly") {
-      window.dispatchEvent(new CustomEvent("gameRefresh"));
-    }
-  });
 
   window.clearInterval = (id) => {
     originalClearInterval(id);

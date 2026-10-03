@@ -8,12 +8,3 @@ chrome.runtime.onInstalled.addListener((details) => {
     });
   }
 });
-
-chrome.runtime.onMessage.addListener((request, sender) => {
-  if (request.command === "swipeUpRefresh" && sender.tab?.id !== undefined) {
-    const tabId = sender.tab.id;
-
-    // Send a game-refresh event to the page without reloading the browser tab.
-    chrome.tabs.sendMessage(tabId, { command: "refreshGameOnly" });
-  }
-});
