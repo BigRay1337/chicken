@@ -13,12 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender) => {
   if (request.command === "swipeUpRefresh" && sender.tab?.id !== undefined) {
     const tabId = sender.tab.id;
 
-    // Force Date.now to remain enabled in every frame before reloading.
-    chrome.tabs.sendMessage(tabId, { command: "forceDateNowTrue" });
-
-    // Give every frame a moment to apply the setting, then refresh the game.
-    setTimeout(() => {
-      chrome.tabs.reload(tabId);
-    }, 0);
+    // Refresh the game only. Do not toggle the extension on/off or restore Date.now.
+    chrome.tabs.reload(tabId);
   }
 });
