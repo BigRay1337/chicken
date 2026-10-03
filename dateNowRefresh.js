@@ -26,15 +26,13 @@
   }
 
   function handleSwipeUp() {
-    // On a qualifying upward swipe, send Date.now enabled first,
-    // then disabled immediately, then refresh the top-level game page.
+    // Send true and false together when the qualifying swipe ends.
     const baseConfig = { ...speedConfig };
 
     window.postMessage({
       command: "setSpeedConfig",
       config: { ...baseConfig, cbDateNowChecked: true },
     });
-
     window.postMessage({
       command: "setSpeedConfig",
       config: { ...baseConfig, cbDateNowChecked: false },
