@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender) => {
   if (request.command === "swipeUpRefresh" && sender.tab?.id !== undefined) {
     const tabId = sender.tab.id;
 
-    // Refresh the game only. Do not toggle the extension on/off or restore Date.now.
-    chrome.tabs.reload(tabId);
+    // Send a game-refresh event to the page without reloading the browser tab.
+    chrome.tabs.sendMessage(tabId, { command: "refreshGameOnly" });
   }
 });
