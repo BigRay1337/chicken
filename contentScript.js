@@ -11,6 +11,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
     window.postMessage(request);
+  } else if (request.command == "zeroPixelGameRefresh") {
+    speedConfig.cbDateNowChecked = false;
+    window.postMessage({ command: "setSpeedConfig", config: speedConfig });
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
   }
