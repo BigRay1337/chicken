@@ -6,12 +6,17 @@
     cbSetIntervalChecked: true,
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
+    cbDateNowChecked: false,
     cbRequestAnimationFrameChecked: true,
   };
 
   function setSpeedConfig(changes) {
-    speedConfig = { ...speedConfig, ...changes, cbRequestAnimationFrameChecked: true };
+    speedConfig = {
+      ...speedConfig,
+      ...changes,
+      cbDateNowChecked: false,
+      cbRequestAnimationFrameChecked: true,
+    };
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -19,7 +24,7 @@
   }
 
   function handleSwipeUp() {
-    setSpeedConfig({ cbDateNowChecked: "" });
+    setSpeedConfig({});
     window.location.reload();
   }
 
@@ -35,6 +40,7 @@
       speedConfig = {
         ...speedConfig,
         ...event.data.config,
+        cbDateNowChecked: false,
         cbRequestAnimationFrameChecked: true,
       };
     }
@@ -67,7 +73,10 @@
 
   window.postMessage({
     command: "setSpeedConfig",
-    config: { cbRequestAnimationFrameChecked: true },
+    config: {
+      cbDateNowChecked: false,
+      cbRequestAnimationFrameChecked: true,
+    },
   });
   window.postMessage({ command: "getSpeedConfig" });
 })();
