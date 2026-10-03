@@ -58,7 +58,9 @@ window.addEventListener("touchmove", (e) => {
       config: speedConfig,
     });
 
-    chrome.runtime.sendMessage({ command: "swipeUpRefresh" });
+    window.postMessage({
+      command: "refreshGameOnly"
+    });
   }
 }, { passive: true });
 
