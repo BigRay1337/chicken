@@ -46,8 +46,11 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
+
+      // Changing cbDateNowChecked must not reload the browser page.
     }
   });
 
