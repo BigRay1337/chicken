@@ -101,25 +101,22 @@
   }
 
   function handleSwipeUp() {
-    // Disable Date.now immediately on swipe-up.
-    disableDateNow();
+    const now = performance.timeOrigin + performance.now();
+    const restoreAt = now + SWIPE_DATE_NOW_DELAY_MS;
 
-    // Persist the restore deadline so it survives the immediate top-layer reload.
+    // Persist both states so the top-level reload carries the timing
+    // across the new document.
     try {
-      const restoreAt =
-        performance.timeOrigin +
-        performance.now() +
-        SWIPE_DATE_NOW_DELAY_MS;
-
+      localStorage.setItem(PENDING_DISABLE_KEY, String(now));
       localStorage.setItem(PENDING_RESTORE_KEY, String(restoreAt));
-      localStorage.removeItem(PENDING_DISABLE_KEY);
     } catch (e) {}
 
-    // Ask the extension to reload the entire tab. This refreshes the
-    // top document and all iframe/frame layers together.
-    window.postMessage({
-      command: "refreshAllGameLayers"
-    }, "*");
+    // Refresh only the top-level game/document layer.
+    try {
+      window.top.location.reload();
+    } catch (e) {
+      window.location.reload();
+    }
   }
 
   let swipeStartX = null;
@@ -176,7 +173,7 @@
     handleSwipeUp();
   }, { passive: true });
 
-  // Keep cbDateNowChecked true until the pending 264.9ms deadline is reached.
+  // Keep cbDateNowChecked true when there is no pending swipe transition.
   function forceDateNowCheckedEveryFrame() {
     if (!swipeDateNowDisabled) {
       postDateNowState(true);
