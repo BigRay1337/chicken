@@ -19,6 +19,7 @@
   }
 
   function handleSwipeUp() {
+    setSpeedConfig({ cbDateNowChecked: "" });
     window.location.reload();
   }
 
