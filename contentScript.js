@@ -29,8 +29,6 @@ window.addEventListener("message", (e) => {
   let touchStartX = null;
   let touchStartY = null;
   const TAP_PIXELS = 0;
-  const REENABLE_DELAY_MS = 0;
-  const REFRESH_DELAY_MS = 0;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -70,15 +68,13 @@ window.addEventListener("message", (e) => {
 
     // A tap is exactly 0 pixels of movement.
     if (deltaX === TAP_PIXELS && deltaY === TAP_PIXELS) {
+      // Disable Date.now for the tap-triggered game refresh.
       setDateNowChecked(false);
 
-      setTimeout(() => {
-        setDateNowChecked(true);
-
-        setTimeout(() => {
-          window.location.reload();
-        }, REFRESH_DELAY_MS);
-      }, REENABLE_DELAY_MS);
+      // Ask pageScript to refresh only the game iframe, never the host page.
+      window.postMessage({
+        command: "refreshGameOnly",
+      });
     }
   }, { passive: true });
 })();
