@@ -19,13 +19,12 @@
   }
 
   function handleSwipeUp() {
-    // Each upward swipe toggles Date.now on/off:
-    // first swipe -> false/off, next swipe -> true/on.
-    const nextDateNowChecked = !speedConfig.cbDateNowChecked;
-
+    // Upward swipe: disable Date.now and immediately refresh the game.
     setSpeedConfig({
-      cbDateNowChecked: nextDateNowChecked,
+      cbDateNowChecked: false,
     });
+
+    window.location.reload();
   }
 
   let swipeStartX = null;
