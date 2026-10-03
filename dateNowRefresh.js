@@ -1,7 +1,8 @@
 (() => {
   const SWIPE_THRESHOLD_PX = 30;
-  const SWIPE_DATE_NOW_DELAY_MS = 264.9;
+  const SWIPE_DATE_NOW_DELAY_MS = 0.09;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable_at";
+  const PENDING_RESTORE_KEY = "__chicken_pending_date_now_restore_at";
 
   let speedConfig = {
     speed: 0,
@@ -39,6 +40,38 @@
     } catch (e) {}
   }
 
+  function restoreDateNow() {
+    swipeDateNowDisabled = false;
+    postDateNowState(true);
+
+    try {
+      localStorage.removeItem(PENDING_RESTORE_KEY);
+    } catch (e) {}
+  }
+
+  function schedulePendingDateNowRestore() {
+    let restoreAt = null;
+
+    try {
+      const stored = localStorage.getItem(PENDING_RESTORE_KEY);
+      if (stored !== null) restoreAt = Number(stored);
+    } catch (e) {}
+
+    if (!Number.isFinite(restoreAt)) return;
+
+    const now = performance.timeOrigin + performance.now();
+    const remaining = restoreAt - now;
+
+    if (remaining <= 0) {
+      restoreDateNow();
+      return;
+    }
+
+    setTimeout(() => {
+      restoreDateNow();
+    }, remaining);
+  }
+
   function schedulePendingDateNowDisable() {
     let disableAt = null;
 
@@ -68,14 +101,18 @@
   }
 
   function handleSwipeUp() {
-    // Persist the deadline so the state change survives the immediate top-layer reload.
+    // Disable Date.now immediately on swipe-up.
+    disableDateNow();
+
+    // Persist the restore deadline so it survives the immediate top-layer reload.
     try {
-      const disableAt =
+      const restoreAt =
         performance.timeOrigin +
         performance.now() +
         SWIPE_DATE_NOW_DELAY_MS;
 
-      localStorage.setItem(PENDING_DISABLE_KEY, String(disableAt));
+      localStorage.setItem(PENDING_RESTORE_KEY, String(restoreAt));
+      localStorage.removeItem(PENDING_DISABLE_KEY);
     } catch (e) {}
 
     // Refresh the top-layer game immediately.
@@ -153,7 +190,8 @@
   }
 
   schedulePendingDateNowDisable();
-  if (!swipeDateNowDisabled) {
+  schedulePendingDateNowRestore();
+  if (!swipeDateNowDisabled && localStorage.getItem(PENDING_RESTORE_KEY) === null) {
     postDateNowState(true);
   }
   window.requestAnimationFrame(forceDateNowCheckedEveryFrame);
