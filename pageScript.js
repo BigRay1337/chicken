@@ -22,24 +22,6 @@ function pageScript() {
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
-  // Detect a 30px upward swipe and disable Date.now spoofing.
-  let swipeStartY = null;
-  document.addEventListener("touchstart", (event) => {
-    if (event.touches.length === 1) swipeStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  document.addEventListener("touchend", (event) => {
-    if (swipeStartY === null || event.changedTouches.length === 0) return;
-    const swipeEndY = event.changedTouches[0].clientY;
-    const swipeDistance = swipeStartY - swipeEndY;
-    swipeStartY = null;
-
-    if (swipeDistance >= 30) {
-      speedConfig.cbDateNowChecked = false;
-      window.postMessage({ command: "setSpeedConfig", config: speedConfig });
-    }
-  }, { passive: true });
-
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
     dateNowDisableReloadTimer = originalSetTimeout(() => {
