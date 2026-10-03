@@ -11,7 +11,7 @@
   };
 
   function setSpeedConfig(changes) {
-    speedConfig = { ...speedConfig, ...changes };
+    speedConfig = { ...speedConfig, ...changes, cbRequestAnimationFrameChecked: true };
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -32,7 +32,11 @@
       event.data.command === "setSpeedConfig" &&
       event.data.config
     ) {
-      speedConfig = { ...speedConfig, ...event.data.config };
+      speedConfig = {
+        ...speedConfig,
+        ...event.data.config,
+        cbRequestAnimationFrameChecked: true,
+      };
     }
   });
 
@@ -61,5 +65,9 @@
     handleSwipeUp();
   }, { passive: true });
 
+  window.postMessage({
+    command: "setSpeedConfig",
+    config: { cbRequestAnimationFrameChecked: true },
+  });
   window.postMessage({ command: "getSpeedConfig" });
 })();
