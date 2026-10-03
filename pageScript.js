@@ -31,20 +31,28 @@ function pageScript() {
   };
 
   const refreshGameOnly = () => {
-    const gameFrame = document.querySelector("iframe");
-    if (!gameFrame) return false;
-
-    try {
-      gameFrame.contentWindow.location.reload();
+    // When running inside a frame, refresh only that frame.
+    if (window.top !== window.self) {
+      window.location.reload();
       return true;
-    } catch (e) {
+    }
+
+    // From the top frame, refresh the game iframe only.
+    const gameFrames = document.querySelectorAll("iframe");
+    for (const gameFrame of gameFrames) {
       try {
-        gameFrame.src = gameFrame.src;
+        gameFrame.contentWindow.location.reload();
         return true;
-      } catch (ignored) {
-        return false;
+      } catch (e) {
+        try {
+          gameFrame.src = gameFrame.src;
+          return true;
+        } catch (ignored) {}
       }
     }
+
+    // No frame was found, so do not reload the host page.
+    return false;
   };
 
   let timers = [];
