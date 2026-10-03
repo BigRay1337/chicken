@@ -30,40 +30,6 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
-  // A tap (0px movement) refreshes only the game layer and disables Date.now.
-  const refreshGameLayer = () => {
-    speedConfig.cbDateNowChecked = false;
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-
-    const gameFrame = document.querySelector("iframe");
-    if (gameFrame) {
-      try {
-        gameFrame.contentWindow.location.reload();
-        return;
-      } catch (e) {
-        try {
-          gameFrame.src = gameFrame.src;
-          return;
-        } catch (ignored) {}
-      }
-    }
-
-    // If the game is the top-level document, reload the game document.
-    window.location.reload();
-  };
-
-  window.addEventListener("touchend", (event) => {
-    if (!event.changedTouches || event.changedTouches.length !== 1) return;
-    // A tap is exactly 0px of movement.
-    const touch = event.changedTouches[0];
-    if (touch.clientX === touch.screenX && touch.clientY === touch.screenY) {
-      refreshGameLayer();
-    }
-  }, { passive: true });
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -83,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
