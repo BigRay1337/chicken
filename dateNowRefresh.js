@@ -26,7 +26,20 @@
   }
 
   function handleSwipeUp() {
-    // A qualifying 30px upward swipe does only one thing: refresh the game.
+    // On a qualifying upward swipe, toggle Date.now off and back on immediately,
+    // then refresh the top-level game page.
+    const baseConfig = { ...speedConfig };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { ...baseConfig, cbDateNowChecked: false },
+    });
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { ...baseConfig, cbDateNowChecked: true },
+    });
+
     try {
       if (window.top && window.top !== window) {
         window.top.location.reload();
