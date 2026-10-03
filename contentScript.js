@@ -18,6 +18,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
+  } else if (request.command == "refreshGameOnly") {
+    window.postMessage({
+      command: "refreshGameOnly"
+    });
   } else if (request.command == "forceDateNowTrue") {
     speedConfig.cbDateNowChecked = true;
     window.postMessage({
