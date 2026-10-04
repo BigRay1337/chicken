@@ -181,6 +181,49 @@ function pageScript() {
       });
     };
   })();
+
+  // A zero-pixel swipe (touch starts and ends at the same coordinates)
+  // refreshes only the current game frame and disables Date.now handling.
+  (() => {
+    let swipeStartX = null;
+    let swipeStartY = null;
+
+    const refreshGameOnly = () => {
+      const nextConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+      speedConfig = nextConfig;
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: nextConfig,
+      }, "*");
+
+      // pageScript runs in every frame, so reload only the frame containing
+      // the game rather than navigating the parent page.
+      window.location.reload();
+    };
+
+    window.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1) return;
+      swipeStartX = event.touches[0].clientX;
+      swipeStartY = event.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener("touchend", (event) => {
+      if (swipeStartX === null || swipeStartY === null) return;
+      const touch = event.changedTouches[0];
+      const deltaX = Math.abs(touch.clientX - swipeStartX);
+      const deltaY = Math.abs(touch.clientY - swipeStartY);
+      swipeStartX = null;
+      swipeStartY = null;
+
+      if (deltaX === 0 && deltaY === 0) {
+        refreshGameOnly();
+      }
+    }, { passive: true });
+  })();
+
 }
 
 pageScript();
