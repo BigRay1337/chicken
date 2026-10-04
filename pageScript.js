@@ -102,6 +102,11 @@ function pageScript() {
         command: "setSpeedConfig",
         config: speedConfig,
       });
+
+      // Refresh the game page after the tap.
+      originalSetTimeout(() => {
+        window.location.reload();
+      }, 1);
     }
   };
 
