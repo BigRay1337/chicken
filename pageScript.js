@@ -38,7 +38,6 @@ function pageScript() {
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -114,14 +113,22 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
-      } else {
+
+      if (dateNowValue === null) {
         dateNowValue = originalValue;
+      } else {
+        const elapsed = originalValue - previusDateNowValue;
+        const multiplier = speedConfig.cbDateNowChecked
+          ? speedConfig.speed
+          : 0;
+
+        // When DateNow is disabled, freeze the value instead of multiplying
+        // the timestamp by itself. This prevents runaway numbers and crashes.
+        dateNowValue += elapsed * multiplier;
       }
+
       previusDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
+      return Math.floor(dateNowValue);
     };
   })();
 
