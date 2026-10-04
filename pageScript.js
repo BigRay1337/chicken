@@ -183,43 +183,4 @@ function pageScript() {
   })();
 }
 
-  // A tap is a touch with no more than 1px of movement. Refresh only the
-  // frame that received the tap (the game frame when the game is embedded)
-  // and disable Date.now for that refreshed game frame.
-  (function () {
-    let tapStartX = null;
-    let tapStartY = null;
-
-    window.addEventListener("touchstart", (event) => {
-      if (!event.touches || event.touches.length !== 1) return;
-      tapStartX = event.touches[0].clientX;
-      tapStartY = event.touches[0].clientY;
-    }, { passive: true });
-
-    window.addEventListener("touchend", (event) => {
-      if (tapStartX === null || tapStartY === null) return;
-      if (!event.changedTouches || event.changedTouches.length !== 1) return;
-
-      const endX = event.changedTouches[0].clientX;
-      const endY = event.changedTouches[0].clientY;
-      const movedX = Math.abs(endX - tapStartX);
-      const movedY = Math.abs(endY - tapStartY);
-
-      tapStartX = null;
-      tapStartY = null;
-
-      if (movedX > 1 || movedY > 1) return;
-
-      speedConfig.cbDateNowChecked = false;
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-
-      // Reload only this frame, not the extension.
-      window.location.reload();
-    }, { passive: true });
-  })();
-
-
 pageScript();
