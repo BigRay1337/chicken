@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const DATE_NOW_FALSE_DELAY_MS = 265.9;
+  const DATE_NOW_FALSE_DELAY_MS = 25;
   const REENABLE_DELAY_MS = .0;
   const REFRESH_DELAY_MS = .0;
 
@@ -63,7 +63,7 @@ window.addEventListener("message", (e) => {
       // Refresh the game first.
       window.location.reload();
 
-      // Set DateNow false after 265.9 ms.
+      // Set DateNow false after 25 ms.
       setTimeout(() => {
         setDateNowChecked(false);
 
