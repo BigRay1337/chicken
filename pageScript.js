@@ -56,6 +56,20 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "setDateNowChecked") {
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: !!e.data.checked,
+      };
+      reloadTimers();
+      if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
+      } else if (!speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      }
+      return;
+    }
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
