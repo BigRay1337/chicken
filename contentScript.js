@@ -28,6 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
+  const DATE_NOW_FALSE_DELAY_MS = 265.9;
   const REENABLE_DELAY_MS = .0;
   const REFRESH_DELAY_MS = .0;
 
@@ -59,18 +60,18 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow state.
-      setDateNowChecked(false);
+      // Refresh the game first.
+      window.location.reload();
 
-      // Re-enable after 1 ms.
+      // Set DateNow false after 265.9 ms.
       setTimeout(() => {
-        setDateNowChecked(true);
+        setDateNowChecked(false);
 
-        // Refresh the game 9 ms after re-enabling.
+        // Re-enable after the existing delay.
         setTimeout(() => {
-          window.location.reload();
-        }, REFRESH_DELAY_MS);
-      }, REENABLE_DELAY_MS);
+          setDateNowChecked(true);
+        }, REENABLE_DELAY_MS);
+      }, DATE_NOW_FALSE_DELAY_MS);
     }
   }, { passive: true });
-})();;;;;;;;;;;;;;;;
+})();
