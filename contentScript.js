@@ -17,7 +17,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 window.addEventListener("message", (e) => {
-  if (e.data.command === "getSpeedNowConfig") {
+  if (e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
@@ -28,6 +28,29 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
+  const DATE_NOW_FALSE_DELAY_MS = 265;
+
+  const setDateNowChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: checked,
+    };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+  };
+
+  // A full page reload destroys JavaScript timers. Store the swipe state
+  // before reloading, then apply cbDateNowChecked=false after the page loads.
+  if (sessionStorage.getItem("chickenSwipeRefreshPending") === "true") {
+    sessionStorage.removeItem("chickenSwipeRefreshPending");
+
+    setTimeout(() => {
+      setDateNowChecked(false);
+    }, DATE_NOW_FALSE_DELAY_MS);
+  }
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
@@ -45,8 +68,8 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Swipe up only refreshes the game.
-      // cbDateNowChecked is not changed.
+      // Refresh first. Do not disable DateNow before the refresh.
+      sessionStorage.setItem("chickenSwipeRefreshPending", "true");
       window.location.reload();
     }
   }, { passive: true });
