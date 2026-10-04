@@ -26,9 +26,10 @@ window.addEventListener("message", (e) => {
 });
 
 (function () {
-  let touchStartX = null;
   let touchStartY = null;
-  const TAP_PIXELS = 0;
+  const SWIPE_UP_PIXELS = 30;
+  const REENABLE_DELAY_MS = 0.001;
+  const REFRESH_DELAY_MS = 0.56789;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -44,37 +45,32 @@ window.addEventListener("message", (e) => {
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
-    touchStartX = event.touches[0].clientX;
     touchStartY = event.touches[0].clientY;
   }, { passive: true });
 
   document.addEventListener("touchend", (event) => {
-    if (
-      touchStartX === null ||
-      touchStartY === null ||
-      event.changedTouches.length !== 1
-    ) {
-      touchStartX = null;
+    if (touchStartY === null || event.changedTouches.length !== 1) {
       touchStartY = null;
       return;
     }
 
-    const touch = event.changedTouches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartX);
-    const deltaY = Math.abs(touch.clientY - touchStartY);
-
-    touchStartX = null;
+    const touchEndY = event.changedTouches[0].clientY;
+    const swipeDistance = touchStartY - touchEndY;
     touchStartY = null;
 
-    // A tap is exactly 0 pixels of movement.
-    if (deltaX === TAP_PIXELS && deltaY === TAP_PIXELS) {
-      // Disable Date.now for the tap-triggered game refresh.
+    if (swipeDistance >= SWIPE_UP_PIXELS) {
+      // Disable DateNow state.
       setDateNowChecked(false);
 
-      // Ask pageScript to refresh only the game iframe, never the host page.
-      window.postMessage({
-        command: "refreshGameOnly",
-      });
+      // Re-enable after 1 ms.
+      setTimeout(() => {
+        setDateNowChecked(true);
+
+        // Refresh the game 9 ms after re-enabling.
+        setTimeout(() => {
+          window.location.reload();
+        }, REFRESH_DELAY_MS);
+      }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();
+})();;;;;;

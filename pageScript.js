@@ -30,31 +30,6 @@ function pageScript() {
     }, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
-  const refreshGameOnly = () => {
-    // When running inside a frame, refresh only that frame.
-    if (window.top !== window.self) {
-      window.location.reload();
-      return true;
-    }
-
-    // From the top frame, refresh the game iframe only.
-    const gameFrames = document.querySelectorAll("iframe");
-    for (const gameFrame of gameFrames) {
-      try {
-        gameFrame.contentWindow.location.reload();
-        return true;
-      } catch (e) {
-        try {
-          gameFrame.src = gameFrame.src;
-          return true;
-        } catch (ignored) {}
-      }
-    }
-
-    // No frame was found, so do not reload the host page.
-    return false;
-  };
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -74,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -91,8 +67,6 @@ function pageScript() {
         originalclearTimeout(dateNowDisableReloadTimer);
         dateNowDisableReloadTimer = null;
       }
-    } else if (e.data.command === "refreshGameOnly") {
-      refreshGameOnly();
     }
   });
 
