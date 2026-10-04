@@ -72,6 +72,44 @@ function pageScript() {
 
   window.postMessage({ command: "getSpeedConfig" });
 
+  const TAP_MAX_MOVEMENT_PX = 1;
+  let tapStartX = null;
+  let tapStartY = null;
+
+  const handleTapStart = (event) => {
+    const point = event.touches && event.touches.length
+      ? event.touches[0]
+      : event;
+    tapStartX = point.clientX;
+    tapStartY = point.clientY;
+  };
+
+  const handleTapEnd = (event) => {
+    if (tapStartX === null || tapStartY === null) return;
+
+    const point = event.changedTouches && event.changedTouches.length
+      ? event.changedTouches[0]
+      : event;
+    const movedX = Math.abs(point.clientX - tapStartX);
+    const movedY = Math.abs(point.clientY - tapStartY);
+
+    tapStartX = null;
+    tapStartY = null;
+
+    if (movedX <= TAP_MAX_MOVEMENT_PX && movedY <= TAP_MAX_MOVEMENT_PX) {
+      speedConfig = { ...speedConfig, cbDateNowChecked: false };
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+    }
+  };
+
+  window.addEventListener("pointerdown", handleTapStart, true);
+  window.addEventListener("pointerup", handleTapEnd, true);
+  window.addEventListener("touchstart", handleTapStart, true);
+  window.addEventListener("touchend", handleTapEnd, true);
+
   window.clearInterval = (id) => {
     originalClearInterval(id);
     timers.forEach((timer) => {
