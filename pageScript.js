@@ -131,8 +131,11 @@ function pageScript() {
         // When DateNow is unchecked, keep normal real-time progression.
         // Never multiply by dateNowValue itself; that can explode to huge
         // numbers and destabilize sites that use Date.now() for timers.
-        const multiplier = speedConfig.cbDateNowChecked
-          ? speedConfig.speed
+        const configuredSpeed = Number(speedConfig.speed);
+        const multiplier = speedConfig.cbDateNowChecked &&
+          Number.isFinite(configuredSpeed) &&
+          configuredSpeed > 0
+          ? configuredSpeed
           : 1;
 
         dateNowValue += elapsed * multiplier;
