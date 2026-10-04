@@ -31,6 +31,7 @@ window.addEventListener("message", (e) => {
   const DATE_NOW_FALSE_DELAY_MS = 265.9;
   const REENABLE_DELAY_MS = .0;
   const REFRESH_DELAY_MS = .0;
+  const REFRESH_PENDING_KEY = "chicken_refresh_then_disable_datenow";
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -43,6 +44,18 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   };
+
+  // After the refresh completes, disable DateNow 265.9 ms later.
+  if (sessionStorage.getItem(REFRESH_PENDING_KEY) === "true") {
+    sessionStorage.removeItem(REFRESH_PENDING_KEY);
+    setTimeout(() => {
+      setDateNowChecked(false);
+
+      setTimeout(() => {
+        setDateNowChecked(true);
+      }, REENABLE_DELAY_MS);
+    }, DATE_NOW_FALSE_DELAY_MS);
+  }
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
@@ -60,20 +73,9 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow 265.9 ms after the swipe up.
-      setTimeout(() => {
-        setDateNowChecked(false);
-
-        // Re-enable after the existing delay.
-        setTimeout(() => {
-          setDateNowChecked(true);
-
-          // Refresh the game after re-enabling.
-          setTimeout(() => {
-            window.location.reload();
-          }, REFRESH_DELAY_MS);
-        }, REENABLE_DELAY_MS);
-      }, DATE_NOW_FALSE_DELAY_MS);
+      // Refresh the game first.
+      sessionStorage.setItem(REFRESH_PENDING_KEY, "true");
+      window.location.reload();
     }
   }, { passive: true });
 })();
