@@ -19,7 +19,7 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 567;
+  const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
@@ -56,20 +56,6 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setDateNowChecked") {
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: !!e.data.checked,
-      };
-      reloadTimers();
-      if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      } else if (!speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      }
-      return;
-    }
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;

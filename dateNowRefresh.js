@@ -1,83 +1,61 @@
-(() => {
-  const HOLD_MS = 350;
-  const MAX_MOVE_PX = 0;
+(function () {
+  const DISABLE_DELAY_MS = -Number.MAX_VALUE("9".repeat(308));
+  const SWIPE_THRESHOLD_PX = 30;
 
-  let press = null;
+  let cbDateNowChecked = true;
+  let disableTimer = null;
 
-  function setDateNowCheckedFalse() {
+  function setDateNowChecked(enabled) {
+    cbDateNowChecked = enabled;
     window.postMessage({
-      command: "setDateNowChecked",
-      checked: false
-    }, "*");
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: enabled },
+    });
   }
 
-  function refreshGameOnly(x, y) {
-    // Refresh only an embedded game layer when one is present.
-    const element = document.elementFromPoint(x, y);
-    const frame = element && element.closest("iframe");
+  function handleSwipeUp() {
+    if (disableTimer !== null) clearTimeout(disableTimer);
+    disableTimer = setTimeout(() => {
+      disableTimer = null;
+      setDateNowChecked(false);
+    }, DISABLE_DELAY_MS);
+  }
 
-    if (frame) {
-      try {
-        frame.contentWindow.location.reload();
-        return;
-      } catch (_) {}
+  window.addEventListener("message", (event) => {
+    if (
+      event.data?.command === "setSpeedConfig" &&
+      typeof event.data.config?.cbDateNowChecked === "boolean"
+    ) {
+      cbDateNowChecked = event.data.config.cbDateNowChecked;
     }
+  });
 
-    // Give the game a chance to handle a layer-only refresh without
-    // reloading the containing page.
-    window.dispatchEvent(new CustomEvent("game-only-refresh", {
-      detail: { x, y }
-    }));
-  }
+  let swipeStartX = null;
+  let swipeStartY = null;
 
-  function start(x, y) {
-    press = { x, y, startedAt: performance.now() };
-  }
+  window.addEventListener("touchstart", (event) => {
+    if (!event.touches || event.touches.length !== 1) return;
+    swipeStartX = event.touches[0].clientX;
+    swipeStartY = event.touches[0].clientY;
+  }, { passive: true });
 
-  function move(x, y) {
-    if (!press) return;
-    if (Math.abs(x - press.x) > MAX_MOVE_PX ||
-        Math.abs(y - press.y) > MAX_MOVE_PX) {
-      press = null;
-    }
-  }
+  window.addEventListener("touchend", (event) => {
+    if (swipeStartX === null || swipeStartY === null) return;
+    if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
-  function end(x, y) {
-    if (!press) return;
+    const endX = event.changedTouches[0].clientX;
+    const endY = event.changedTouches[0].clientY;
+    const deltaX = endX - swipeStartX;
+    const deltaY = endY - swipeStartY;
 
-    const heldFor = performance.now() - press.startedAt;
-    const noMovement =
-      Math.abs(x - press.x) <= MAX_MOVE_PX &&
-      Math.abs(y - press.y) <= MAX_MOVE_PX;
+    swipeStartX = null;
+    swipeStartY = null;
 
-    const startX = press.x;
-    const startY = press.y;
-    press = null;
+    if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
 
-    if (heldFor >= HOLD_MS && noMovement) {
-      setDateNowCheckedFalse();
-      refreshGameOnly(startX, startY);
-    }
-  }
+    handleSwipeUp();
+    window.location.reload();
+  }, { passive: true });
 
-  document.addEventListener("touchstart", (event) => {
-    if (event.touches.length !== 1) return;
-    const touch = event.touches[0];
-    start(touch.clientX, touch.clientY);
-  }, { passive: true, capture: true });
-
-  document.addEventListener("touchmove", (event) => {
-    if (event.touches.length !== 1) return;
-    const touch = event.touches[0];
-    move(touch.clientX, touch.clientY);
-  }, { passive: true, capture: true });
-
-  document.addEventListener("touchend", (event) => {
-    const touch = event.changedTouches[0];
-    if (touch) end(touch.clientX, touch.clientY);
-  }, { passive: true, capture: true });
-
-  document.addEventListener("touchcancel", () => {
-    press = null;
-  }, { passive: true, capture: true });
+  window.postMessage({ command: "getSpeedConfig" });
 })();
