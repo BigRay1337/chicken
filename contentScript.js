@@ -28,8 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const REENABLE_DELAY_MS = .0;
-  const REFRESH_DELAY_MS = .0;
+  const LONG_DELAY_MS = 999999999999999999999999999999999999999999999999;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -71,22 +70,11 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable Date.now and requestAnimationFrame 267 ms after the swipe.
+      // Disable Date.now and requestAnimationFrame after the long 9s delay.
       setTimeout(() => {
         setDateNowChecked(false);
         setRequestAnimationFrameChecked(false);
-      }, +Number.NEGATIVE_INFINITY-Number.POSITIVE_INFINITY);
-
-      // Re-enable after 1 ms.
-      setTimeout(() => {
-        setDateNowChecked(true);
-        setRequestAnimationFrameChecked(true);
-
-        // Refresh the game 9 ms after re-enabling.
-        setTimeout(() => {
-          window.location.reload();
-        }, REFRESH_DELAY_MS);
-      }, REENABLE_DELAY_MS);
+      }, LONG_DELAY_MS);
     }
   }, { passive: true });
 })();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
