@@ -43,6 +43,18 @@ window.addEventListener("message", (e) => {
     });
   };
 
+  const setRequestAnimationFrameChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbRequestAnimationFrameChecked: checked,
+    };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+  };
+
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
     touchStartY = event.touches[0].clientY;
@@ -59,12 +71,14 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow state.
+      // Disable DateNow and requestAnimationFrame immediately after the swipe.
       setDateNowChecked(false);
+      setRequestAnimationFrameChecked(false);
 
       // Re-enable after 1 ms.
       setTimeout(() => {
         setDateNowChecked(true);
+        setRequestAnimationFrameChecked(true);
 
         // Refresh the game 9 ms after re-enabling.
         setTimeout(() => {
