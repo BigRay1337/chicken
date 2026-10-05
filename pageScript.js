@@ -17,7 +17,26 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
+  const OCCASIONAL_FALSE_DELAY_MS = 9000;
+  const OCCASIONAL_FALSE_HOLD_MS = 1;
   let pageInitializing = true;
+  let disableRequestAnimationFrame = false;
+
+  function scheduleOccasionalFalse() {
+    originalSetTimeout(() => {
+      const previousConfig = speedConfig;
+      speedConfig = { ...speedConfig, cbDateNowChecked: false };
+      disableRequestAnimationFrame = true;
+
+      originalSetTimeout(() => {
+        speedConfig = { ...previousConfig, cbDateNowChecked: true };
+        disableRequestAnimationFrame = false;
+        scheduleOccasionalFalse();
+      }, OCCASIONAL_FALSE_HOLD_MS);
+    }, OCCASIONAL_FALSE_DELAY_MS);
+  }
+
+  scheduleOccasionalFalse();
 
   const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
   let dateNowDisableReloadTimer = null;
@@ -145,7 +164,6 @@ function pageScript() {
   })();
 
   (function () {
-    let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
     window.requestAnimationFrame = (callback) => {
