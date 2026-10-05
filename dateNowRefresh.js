@@ -1,13 +1,12 @@
 (function () {
-  // Set LONG_DELAY_MS anywhere from 1 to 1000 ms.
-  const LONG_DELAY_MIN_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MAX_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-
+  // Swipe up 30 pixels: refresh immediately, then disable Date.now first.
+  // requestAnimationFrame is disabled 999 ms after the swipe.
   const SWIPE_THRESHOLD_PX = 30;
+  const RAF_DISABLE_DELAY_MS = 999;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
+  const PENDING_RAF_DISABLE_KEY = "__chicken_pending_raf_disable__";
 
-  let disableTimer = null;
+  let rafDisableTimer = null;
 
   function setDateNowChecked(enabled) {
     window.postMessage({
@@ -18,57 +17,42 @@
 
   function setRequestAnimationFrameChecked(enabled) {
     window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbRequestAnimationFrameChecked: enabled },
+      command: "setRequestAnimationFrameChecked",
+      enabled,
     });
   }
 
-  function scheduleDateNowDisable() {
-    if (disableTimer !== null) {
-      clearTimeout(disableTimer);
-    }
+  function scheduleRequestAnimationFrameDisable() {
+    try {
+      if (sessionStorage.getItem(PENDING_RAF_DISABLE_KEY) !== "true") return;
+      sessionStorage.removeItem(PENDING_RAF_DISABLE_KEY);
 
-    const delay = Math.min(
-      LONG_DELAY_MAX_MS,
-      Math.max(LONG_DELAY_MIN_MS, LONG_DELAY_MS)
-    );
-
-    disableTimer = setTimeout(() => {
-      disableTimer = null;
-      // Date.now goes false first; requestAnimationFrame follows immediately.
+      // Date.now must be false before requestAnimationFrame is disabled.
       setDateNowChecked(false);
-      setRequestAnimationFrameChecked(false);
-    }, delay);
+
+      rafDisableTimer = setTimeout(() => {
+        rafDisableTimer = null;
+        setRequestAnimationFrameChecked(false);
+      }, RAF_DISABLE_DELAY_MS);
+    } catch (_) {}
   }
 
   function handleSwipeUp() {
-    // Mark the swipe before refreshing so the next page can continue the sequence.
+    // Mark the swipe before refreshing so the next page continues the sequence.
     try {
-      sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
+      sessionStorage.setItem(PENDING_RAF_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // IMPORTANT: refresh happens immediately and first.
+    // Refresh immediately and first.
     window.location.reload();
   }
 
-  function schedulePendingDisableAfterRefresh() {
-    try {
-      if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
-        return;
-      }
-
-      sessionStorage.removeItem(PENDING_DISABLE_KEY);
-      scheduleDateNowDisable();
-    } catch (_) {}
-  }
-
-  // Only the page that was loaded by the swipe schedules the delayed false state.
   if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", schedulePendingDisableAfterRefresh, {
+    window.addEventListener("DOMContentLoaded", scheduleRequestAnimationFrameDisable, {
       once: true,
     });
   } else {
-    schedulePendingDisableAfterRefresh();
+    scheduleRequestAnimationFrameDisable();
   }
 
   let swipeStartX = null;
@@ -105,21 +89,3 @@
 
   window.postMessage({ command: "getSpeedConfig" });
 })();
-;
-
-})();
-;
-);
-;
-;
-;
-nfig" });
-})();
-;
-
-})();
-;
-);
-;
-;
-;
