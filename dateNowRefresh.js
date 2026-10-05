@@ -16,6 +16,13 @@
     });
   }
 
+  function setRequestAnimationFrameChecked(enabled) {
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbRequestAnimationFrameChecked: enabled },
+    });
+  }
+
   function scheduleDateNowDisable() {
     if (disableTimer !== null) {
       clearTimeout(disableTimer);
@@ -28,7 +35,9 @@
 
     disableTimer = setTimeout(() => {
       disableTimer = null;
+      // Date.now goes false first; requestAnimationFrame follows immediately.
       setDateNowChecked(false);
+      setRequestAnimationFrameChecked(false);
     }, delay);
   }
 
