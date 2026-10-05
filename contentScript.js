@@ -71,20 +71,25 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow and requestAnimationFrame immediately after the swipe.
+      // First disable Date.now immediately.
       setDateNowChecked(false);
-      setRequestAnimationFrameChecked(false);
 
-      // Re-enable after 1 ms.
+      // Then disable requestAnimationFrame immediately after Date.now.
+      // A microtask keeps the two state changes ordered with no timer delay.
+      queueMicrotask(() => {
+        setRequestAnimationFrameChecked(false);
+      });
+
+      // Re-enable after the configured delay.
       setTimeout(() => {
         setDateNowChecked(true);
         setRequestAnimationFrameChecked(true);
 
-        // Refresh the game 9 ms after re-enabling.
+        // Refresh after re-enabling.
         setTimeout(() => {
           window.location.reload();
         }, REFRESH_DELAY_MS);
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();;;;;;;;;;;;;;;;;;;;
+})();
