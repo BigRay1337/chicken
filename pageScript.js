@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   const originalClearInterval = window.clearInterval;
@@ -184,3 +184,7 @@ function pageScript() {
 }
 
 pageScript();
+
+
+
+
