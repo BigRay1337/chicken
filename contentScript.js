@@ -29,7 +29,7 @@ window.addEventListener("message", (e) => {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
   const REENABLE_DELAY_MS = .0;
-  const REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS = 999;
+  const REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS = 490;
   const REFRESH_DELAY_MS = .0;
 
   const setDateNowChecked = (checked) => {
@@ -72,7 +72,7 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow immediately, but delay requestAnimationFrame false by 999 ms.
+      // Disable DateNow immediately, but delay requestAnimationFrame false by 490 ms.
       setDateNowChecked(false);
       setTimeout(() => {
         setRequestAnimationFrameChecked(false);
@@ -90,4 +90,4 @@ window.addEventListener("message", (e) => {
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();;;;;;;;;;;;;;;;;;;;
+})();
