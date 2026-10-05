@@ -28,7 +28,6 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const DATE_NOW_FALSE_DELAY_MS = 0;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -41,16 +40,6 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   };
-
-  // Refresh first, then set DateNow false on the first timer turn
-  // after the refreshed page's content script starts.
-  if (sessionStorage.getItem("chickenSwipeRefreshPending") === "true") {
-    sessionStorage.removeItem("chickenSwipeRefreshPending");
-
-    setTimeout(() => {
-      setDateNowChecked(false);
-    }, DATE_NOW_FALSE_DELAY_MS);
-  }
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
@@ -68,7 +57,8 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      sessionStorage.setItem("chickenSwipeRefreshPending", "true");
+      // Swipe up immediately disables DateNow, then refreshes.
+      setDateNowChecked(false);
       window.location.reload();
     }
   }, { passive: true });
