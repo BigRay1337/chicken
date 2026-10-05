@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const DATE_NOW_FALSE_DELAY_MS = 265;
+  const DATE_NOW_FALSE_DELAY_MS = 1;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -42,8 +42,7 @@ window.addEventListener("message", (e) => {
     });
   };
 
-  // A full page reload destroys JavaScript timers. Store the swipe state
-  // before reloading, then apply cbDateNowChecked=false after the page loads.
+  // Refresh first, then set DateNow false after the page loads.
   if (sessionStorage.getItem("chickenSwipeRefreshPending") === "true") {
     sessionStorage.removeItem("chickenSwipeRefreshPending");
 
@@ -68,7 +67,6 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Refresh first. Do not disable DateNow before the refresh.
       sessionStorage.setItem("chickenSwipeRefreshPending", "true");
       window.location.reload();
     }
