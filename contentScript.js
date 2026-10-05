@@ -9,7 +9,6 @@ let speedConfig = {
 
 const SWIPE_UP_PIXELS = 30;
 const LONG_DELAY_MS = 9000;
-const PENDING_FALSE_KEY = "__chicken_pending_occasional_false__";
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
@@ -53,25 +52,6 @@ function setRequestAnimationFrameChecked(checked) {
   });
 }
 
-function scheduleOccasionalFalse() {
-  setTimeout(() => {
-    setDateNowChecked(false);
-    setRequestAnimationFrameChecked(false);
-
-    setTimeout(() => {
-      setDateNowChecked(true);
-      setRequestAnimationFrameChecked(true);
-    }, 1);
-  }, LONG_DELAY_MS);
-}
-
-function schedulePendingFalseAfterRefresh() {
-  if (sessionStorage.getItem(PENDING_FALSE_KEY) !== "true") return;
-
-  sessionStorage.removeItem(PENDING_FALSE_KEY);
-  scheduleOccasionalFalse();
-}
-
 document.addEventListener("touchstart", (event) => {
   if (event.touches.length !== 1) return;
   document.documentElement.dataset.chickenSwipeStartY =
@@ -91,21 +71,13 @@ document.addEventListener("touchend", (event) => {
 
   if (swipeDistance < SWIPE_UP_PIXELS) return;
 
-  // Refresh immediately on every valid swipe-up.
-  // Only some swipes schedule the 9-second false state.
-  if (Math.random() < 0.5) {
-    sessionStorage.setItem(PENDING_FALSE_KEY, "true");
-  } else {
-    sessionStorage.removeItem(PENDING_FALSE_KEY);
-  }
+  // Set false immediately on every valid swipe-up, then keep it for 9 seconds.
+  setDateNowChecked(false);
+  setRequestAnimationFrameChecked(false);
 
-  window.location.reload();
+  setTimeout(() => {
+    setDateNowChecked(true);
+    setRequestAnimationFrameChecked(true);
+  }, LONG_DELAY_MS);
 }, { passive: true });
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", schedulePendingFalseAfterRefresh, {
-    once: true,
-  });
-} else {
-  schedulePendingFalseAfterRefresh();
-}
