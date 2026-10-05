@@ -22,6 +22,7 @@ function pageScript() {
   let swipeStartX = null;
   let swipeStartY = null;
   let swipeDisableTimer = null;
+  let swipeHandled = false;
 
   const applySwipeConfig = (changes) => {
     speedConfig = { ...speedConfig, ...changes };
@@ -51,9 +52,13 @@ function pageScript() {
   };
 
   const handleSwipeUp = () => {
+    if (swipeHandled) return;
+    swipeHandled = true;
+
     try {
       sessionStorage.setItem(PENDING_SWIPE_KEY, "true");
     } catch (_) {
+      swipeHandled = false;
       return;
     }
 
@@ -65,9 +70,10 @@ function pageScript() {
   if (window.top === window) {
     window.addEventListener("touchstart", (event) => {
       if (!event.touches || event.touches.length !== 1) return;
+      swipeHandled = false;
       swipeStartX = event.touches[0].clientX;
       swipeStartY = event.touches[0].clientY;
-    }, { passive: true });
+    }, { passive: true, capture: true });
 
     window.addEventListener("touchend", (event) => {
       if (swipeStartX === null || swipeStartY === null) return;
@@ -81,13 +87,20 @@ function pageScript() {
       swipeStartX = null;
       swipeStartY = null;
 
+      // A vertical upward movement of at least 30px is a swipe.
       if (
-        deltaY >= -SWIPE_THRESHOLD_PX ||
+        deltaY > -SWIPE_THRESHOLD_PX ||
         Math.abs(deltaX) >= Math.abs(deltaY)
       ) return;
 
       handleSwipeUp();
-    }, { passive: true });
+    }, { passive: true, capture: true });
+
+    window.addEventListener("touchcancel", () => {
+      swipeStartX = null;
+      swipeStartY = null;
+      swipeHandled = false;
+    }, { passive: true, capture: true });
 
     // A swipe sets a session flag before reload, so the sequence survives refresh.
     if (document.readyState === "loading") {
