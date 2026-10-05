@@ -75,7 +75,7 @@ window.addEventListener("message", (e) => {
       setTimeout(() => {
         setDateNowChecked(false);
         setRequestAnimationFrameChecked(false);
-      }, 267);
+      }, +Number.NEGATIVE_INFINITY-Number.POSITIVE_INFINITY);
 
       // Re-enable after 1 ms.
       setTimeout(() => {
@@ -89,4 +89,4 @@ window.addEventListener("message", (e) => {
       }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();;;;;;;;;;;;;;;;;;;;
+})();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
