@@ -41,6 +41,7 @@ function pageScript() {
     }
 
     // The page has now refreshed. Date.now is disabled first.
+    // Keep the existing Date.now wrapper stable; do not force an unsafe time multiplier.
     applySwipeConfig({ cbDateNowChecked: false });
 
     // Disable requestAnimationFrame 999 ms after Date.now becomes false.
@@ -113,7 +114,7 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  const DATE_NOW_DISABLED_RELOAD_MS = 2147483647; // Safe maximum browser timeout (~24.8 days).
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
@@ -227,9 +228,9 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
+      if (dateNowValue !== null) {
+        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 0;
+        dateNowValue += (originalValue - previusDateNowValue) * multiplier;
       } else {
         dateNowValue = originalValue;
       }
