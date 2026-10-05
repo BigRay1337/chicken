@@ -28,7 +28,7 @@
     try {
       if (sessionStorage.getItem(PENDING_RAF_DISABLE_KEY) !== "true") return;
       sessionStorage.removeItem(PENDING_RAF_DISABLE_KEY);
-      setTimeout(() => setRequestAnimationFrameChecked(false), 490);
+      setTimeout(() => setRequestAnimationFrameChecked(false), 0);
     } catch (_) {}
   }
 
