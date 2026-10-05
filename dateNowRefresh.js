@@ -1,91 +1,107 @@
 (function () {
-  // Swipe up 30 pixels: refresh immediately, then disable Date.now first.
-  // requestAnimationFrame is disabled 999 ms after the swipe.
   const SWIPE_THRESHOLD_PX = 30;
-  const RAF_DISABLE_DELAY_MS = 999;
-  const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const PENDING_RAF_DISABLE_KEY = "__chicken_pending_raf_disable__";
+  const DISABLE_FALSE_DELAY_MS = 999;
+  const PENDING_SWIPE_KEY = "__chicken_pending_swipe_refresh__";
 
-  let rafDisableTimer = null;
+  let speedConfig = {
+    speed: 0,
+    cbSetIntervalChecked: true,
+    cbSetTimeoutChecked: false,
+    cbPerformanceNowChecked: false,
+    cbDateNowChecked: true,
+    cbRequestAnimationFrameChecked: true,
+  };
 
-  function setDateNowChecked(enabled) {
+  let disableTimer = null;
+
+  // Keep the complete config so changing one checkbox does not erase
+  // the other speed settings.
+  window.addEventListener("message", (event) => {
+    if (event.source !== window) return;
+    if (event.data && event.data.command === "setSpeedConfig" && event.data.config) {
+      speedConfig = { ...speedConfig, ...event.data.config };
+    }
+  });
+
+  function updateConfig(changes) {
+    speedConfig = { ...speedConfig, ...changes };
     window.postMessage({
       command: "setSpeedConfig",
-      config: { cbDateNowChecked: enabled },
+      config: speedConfig,
     });
   }
 
-  function setRequestAnimationFrameChecked(enabled) {
-    window.postMessage({
-      command: "setRequestAnimationFrameChecked",
-      enabled,
-    });
+  function disableFalseAfterDelay() {
+    if (disableTimer !== null) {
+      clearTimeout(disableTimer);
+    }
+
+    // Date.now becomes false immediately after the refresh.
+    updateConfig({ cbDateNowChecked: false });
+
+    // Then requestAnimationFrame becomes false after the requested delay.
+    disableTimer = setTimeout(() => {
+      disableTimer = null;
+      updateConfig({ cbRequestAnimationFrameChecked: false });
+    }, DISABLE_FALSE_DELAY_MS);
   }
 
-  function scheduleRequestAnimationFrameDisable() {
+  function finishPendingSwipe() {
     try {
-      if (sessionStorage.getItem(PENDING_RAF_DISABLE_KEY) !== "true") return;
-      sessionStorage.removeItem(PENDING_RAF_DISABLE_KEY);
-
-      // Date.now must be false before requestAnimationFrame is disabled.
-      setDateNowChecked(false);
-
-      rafDisableTimer = setTimeout(() => {
-        rafDisableTimer = null;
-        setRequestAnimationFrameChecked(false);
-      }, RAF_DISABLE_DELAY_MS);
-    } catch (_) {}
+      if (sessionStorage.getItem(PENDING_SWIPE_KEY) !== "true") return;
+      sessionStorage.removeItem(PENDING_SWIPE_KEY);
+      disableFalseAfterDelay();
+    } catch (_) {
+      // Still perform the disable sequence if sessionStorage is unavailable.
+      disableFalseAfterDelay();
+    }
   }
 
   function handleSwipeUp() {
-    // Mark the swipe before refreshing so the next page continues the sequence.
     try {
-      sessionStorage.setItem(PENDING_RAF_DISABLE_KEY, "true");
+      sessionStorage.setItem(PENDING_SWIPE_KEY, "true");
     } catch (_) {}
 
-    // Refresh immediately and first.
+    // Refresh first, immediately.
     window.location.reload();
   }
 
   if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", scheduleRequestAnimationFrameDisable, {
-      once: true,
-    });
+    window.addEventListener("DOMContentLoaded", finishPendingSwipe, { once: true });
   } else {
-    scheduleRequestAnimationFrameDisable();
+    finishPendingSwipe();
   }
 
-  let swipeStartX = null;
-  let swipeStartY = null;
+  let startX = null;
+  let startY = null;
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
 
-    swipeStartX = event.touches[0].clientX;
-    swipeStartY = event.touches[0].clientY;
+    startX = event.touches[0].clientX;
+    startY = event.touches[0].clientY;
   }, { passive: true });
 
   window.addEventListener("touchend", (event) => {
-    if (swipeStartX === null || swipeStartY === null) return;
+    if (startX === null || startY === null) return;
     if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
     const endX = event.changedTouches[0].clientX;
     const endY = event.changedTouches[0].clientY;
-    const deltaX = endX - swipeStartX;
-    const deltaY = endY - swipeStartY;
+    const deltaX = endX - startX;
+    const deltaY = endY - startY;
 
-    swipeStartX = null;
-    swipeStartY = null;
+    startX = null;
+    startY = null;
 
-    if (
-      deltaY > -SWIPE_THRESHOLD_PX ||
-      Math.abs(deltaX) > Math.abs(deltaY)
-    ) {
+    // Swipe up = at least 30 px upward and more vertical than horizontal.
+    if (deltaY >= -SWIPE_THRESHOLD_PX || Math.abs(deltaX) >= Math.abs(deltaY)) {
       return;
     }
 
     handleSwipeUp();
   }, { passive: true });
 
+  // Get the current extension configuration before the swipe sequence starts.
   window.postMessage({ command: "getSpeedConfig" });
 })();
