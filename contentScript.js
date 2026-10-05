@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const DATE_NOW_FALSE_DELAY_MS = 6399;
+  const DATE_NOW_FALSE_DELAY_MS = 2345;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -61,7 +61,7 @@ window.addEventListener("message", (e) => {
       // Refresh the game immediately first.
       window.location.reload();
 
-      // Set DateNow false 6399 ms after the swipe up.
+      // Set DateNow false 2345 ms after the swipe up.
       setTimeout(() => {
         setDateNowChecked(false);
       }, DATE_NOW_FALSE_DELAY_MS);
