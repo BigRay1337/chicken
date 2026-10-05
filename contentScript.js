@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const DATE_NOW_FALSE_DELAY_MS = 1;
+  const DATE_NOW_FALSE_DELAY_MS = 0;
 
   const setDateNowChecked = (checked) => {
     speedConfig = {
@@ -42,7 +42,8 @@ window.addEventListener("message", (e) => {
     });
   };
 
-  // Refresh first, then set DateNow false after the page loads.
+  // Refresh first, then set DateNow false on the first timer turn
+  // after the refreshed page's content script starts.
   if (sessionStorage.getItem("chickenSwipeRefreshPending") === "true") {
     sessionStorage.removeItem("chickenSwipeRefreshPending");
 
