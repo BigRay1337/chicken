@@ -1,20 +1,15 @@
 (function () {
-  // Long-delay range: 1 to 1000 ms. Current setting uses the full 1000 ms.
+  // Set LONG_DELAY_MS anywhere from 1 to 1000 ms.
   const LONG_DELAY_MIN_MS = 1;
   const LONG_DELAY_MAX_MS = 1000;
-  const LONG_DELAY_MS = Math.min(
-    LONG_DELAY_MAX_MS,
-    Math.max(LONG_DELAY_MIN_MS, 1000)
-  );
+  const LONG_DELAY_MS = 1000;
 
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  let cbDateNowChecked = true;
   let disableTimer = null;
 
   function setDateNowChecked(enabled) {
-    cbDateNowChecked = enabled;
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: enabled },
@@ -22,42 +17,49 @@
   }
 
   function scheduleDateNowDisable() {
-    if (disableTimer !== null) clearTimeout(disableTimer);
+    if (disableTimer !== null) {
+      clearTimeout(disableTimer);
+    }
+
+    const delay = Math.min(
+      LONG_DELAY_MAX_MS,
+      Math.max(LONG_DELAY_MIN_MS, LONG_DELAY_MS)
+    );
 
     disableTimer = setTimeout(() => {
       disableTimer = null;
       setDateNowChecked(false);
-    }, LONG_DELAY_MS);
+    }, delay);
   }
 
   function handleSwipeUp() {
+    // Mark the swipe before refreshing so the next page can continue the sequence.
     try {
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
-    } catch (_) {
-      // Continue with the refresh even if sessionStorage is unavailable.
-    }
+    } catch (_) {}
 
-    // Refresh the game first.
+    // IMPORTANT: refresh happens immediately and first.
     window.location.reload();
   }
 
-  window.addEventListener("message", (event) => {
-    if (
-      event.data?.command === "setSpeedConfig" &&
-      typeof event.data.config?.cbDateNowChecked === "boolean"
-    ) {
-      cbDateNowChecked = event.data.config.cbDateNowChecked;
-    }
-  });
+  function schedulePendingDisableAfterRefresh() {
+    try {
+      if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
+        return;
+      }
 
-  // After the refresh, wait the configured long delay before setting false.
-  try {
-    if (sessionStorage.getItem(PENDING_DISABLE_KEY) === "true") {
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
       scheduleDateNowDisable();
-    }
-  } catch (_) {
-    // Ignore storage errors.
+    } catch (_) {}
+  }
+
+  // Only the page that was loaded by the swipe schedules the delayed false state.
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", schedulePendingDisableAfterRefresh, {
+      once: true,
+    });
+  } else {
+    schedulePendingDisableAfterRefresh();
   }
 
   let swipeStartX = null;
@@ -65,6 +67,7 @@
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
+
     swipeStartX = event.touches[0].clientX;
     swipeStartY = event.touches[0].clientY;
   }, { passive: true });
@@ -81,7 +84,12 @@
     swipeStartX = null;
     swipeStartY = null;
 
-    if (deltaY > -SWIPE_THRESHOLD_PX || Math.abs(deltaX) > Math.abs(deltaY)) return;
+    if (
+      deltaY > -SWIPE_THRESHOLD_PX ||
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      return;
+    }
 
     handleSwipeUp();
   }, { passive: true });
