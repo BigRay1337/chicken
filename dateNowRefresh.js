@@ -1,8 +1,8 @@
 (function () {
   // Set LONG_DELAY_MS anywhere from 1 to 1000 ms.
-  const LONG_DELAY_MIN_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MAX_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  const LONG_DELAY_MIN_MS = 9000;
+  const LONG_DELAY_MAX_MS = 9000;
+  const LONG_DELAY_MS = 9000;
 
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
@@ -33,12 +33,16 @@
   }
 
   function handleSwipeUp() {
-    // Mark the swipe before refreshing so the next page can continue the sequence.
+    // Refresh immediately on every swipe.
     try {
-      sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
+      // Only some swipes schedule the delayed false state.
+      if (Math.random() < 0.5) {
+        sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
+      } else {
+        sessionStorage.removeItem(PENDING_DISABLE_KEY);
+      }
     } catch (_) {}
 
-    // IMPORTANT: refresh happens immediately and first.
     window.location.reload();
   }
 
