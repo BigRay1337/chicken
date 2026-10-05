@@ -56,6 +56,14 @@ function pageScript() {
   }, 0);
 
   window.addEventListener("message", (e) => {
+    if (e.data.command === "setRequestAnimationFrameChecked") {
+      speedConfig = {
+        ...speedConfig,
+        cbRequestAnimationFrameChecked: Boolean(e.data.enabled),
+      };
+      return;
+    }
+
     if (e.data.command === "setSpeedConfig") {
       const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
