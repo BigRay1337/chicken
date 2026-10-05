@@ -1,6 +1,5 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const DISABLE_FALSE_DELAY_MS = 999;
   const PENDING_SWIPE_KEY = "__chicken_pending_swipe_refresh__";
 
   let speedConfig = {
@@ -11,8 +10,6 @@
     cbDateNowChecked: true,
     cbRequestAnimationFrameChecked: true,
   };
-
-  let disableTimer = null;
 
   // Keep the complete config so changing one checkbox does not erase
   // the other speed settings.
@@ -31,29 +28,23 @@
     });
   }
 
-  function disableFalseAfterDelay() {
-    if (disableTimer !== null) {
-      clearTimeout(disableTimer);
-    }
-
-    // Date.now becomes false immediately after the refresh.
-    updateConfig({ cbDateNowChecked: false });
-
-    // Then requestAnimationFrame becomes false after the requested delay.
-    disableTimer = setTimeout(() => {
-      disableTimer = null;
-      updateConfig({ cbRequestAnimationFrameChecked: false });
-    }, DISABLE_FALSE_DELAY_MS);
+  function disableImmediatelyAfterRefresh() {
+    // No 999 ms timer: disable Date.now and requestAnimationFrame immediately
+    // after the refresh completes.
+    updateConfig({
+      cbDateNowChecked: false,
+      cbRequestAnimationFrameChecked: false,
+    });
   }
 
   function finishPendingSwipe() {
     try {
       if (sessionStorage.getItem(PENDING_SWIPE_KEY) !== "true") return;
       sessionStorage.removeItem(PENDING_SWIPE_KEY);
-      disableFalseAfterDelay();
+      disableImmediatelyAfterRefresh();
     } catch (_) {
       // Still perform the disable sequence if sessionStorage is unavailable.
-      disableFalseAfterDelay();
+      disableImmediatelyAfterRefresh();
     }
   }
 
