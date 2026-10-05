@@ -66,8 +66,8 @@ function pageScript() {
     window.location.reload();
   };
 
-  // Only the top frame owns the swipe gesture; pageScript still runs in all frames.
-  if (window.top === window) {
+  // Listen in every injected frame. Each frame can receive touch events from its own game layer.
+  {
     window.addEventListener("touchstart", (event) => {
       if (!event.touches || event.touches.length !== 1) return;
       swipeHandled = false;
