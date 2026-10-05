@@ -4,7 +4,7 @@ let speedConfig = {
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
   cbDateNowChecked: true,
-  cbRequestAnimationFrameChecked: true,
+  cbRequestAnimationFrameChecked: false,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -80,7 +80,7 @@ window.addEventListener("message", (e) => {
       // Re-enable after 1 ms.
       setTimeout(() => {
         setDateNowChecked(true);
-        setRequestAnimationFrameChecked(true);
+        setRequestAnimationFrameChecked(false);
 
         // Refresh the game 9 ms after re-enabling.
         setTimeout(() => {
