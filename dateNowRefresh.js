@@ -1,5 +1,12 @@
 (function () {
-  const DISABLE_DELAY_MS = 1000;
+  // Long-delay range: 1 to 1000 ms. Current setting uses the full 1000 ms.
+  const LONG_DELAY_MIN_MS = 1;
+  const LONG_DELAY_MAX_MS = 1000;
+  const LONG_DELAY_MS = Math.min(
+    LONG_DELAY_MAX_MS,
+    Math.max(LONG_DELAY_MIN_MS, 1000)
+  );
+
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
@@ -20,7 +27,7 @@
     disableTimer = setTimeout(() => {
       disableTimer = null;
       setDateNowChecked(false);
-    }, DISABLE_DELAY_MS);
+    }, LONG_DELAY_MS);
   }
 
   function handleSwipeUp() {
@@ -43,7 +50,7 @@
     }
   });
 
-  // After the refresh, wait the long 1000 ms delay before setting cbDateNowChecked false.
+  // After the refresh, wait the configured long delay before setting false.
   try {
     if (sessionStorage.getItem(PENDING_DISABLE_KEY) === "true") {
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
