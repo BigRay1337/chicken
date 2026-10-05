@@ -7,9 +7,6 @@ let speedConfig = {
   cbRequestAnimationFrameChecked: true,
 };
 
-const SWIPE_UP_PIXELS = 30;
-const LONG_DELAY_MS = 9000;
-
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
     speedConfig = request.config;
@@ -28,56 +25,68 @@ window.addEventListener("message", (e) => {
   }
 });
 
-function setDateNowChecked(checked) {
-  speedConfig = {
-    ...speedConfig,
-    cbDateNowChecked: checked,
+(function () {
+  let touchStartY = null;
+  const SWIPE_UP_PIXELS = 30;
+  const REENABLE_DELAY_MS = .0;
+  const REFRESH_DELAY_MS = .0;
+
+  const setDateNowChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: checked,
+    };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
   };
 
-  window.postMessage({
-    command: "setSpeedConfig",
-    config: speedConfig,
-  });
-}
+  const setRequestAnimationFrameChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbRequestAnimationFrameChecked: checked,
+    };
 
-function setRequestAnimationFrameChecked(checked) {
-  speedConfig = {
-    ...speedConfig,
-    cbRequestAnimationFrameChecked: checked,
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
   };
 
-  window.postMessage({
-    command: "setSpeedConfig",
-    config: speedConfig,
-  });
-}
+  document.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1) return;
+    touchStartY = event.touches[0].clientY;
+  }, { passive: true });
 
-document.addEventListener("touchstart", (event) => {
-  if (event.touches.length !== 1) return;
-  document.documentElement.dataset.chickenSwipeStartY =
-    String(event.touches[0].clientY);
-}, { passive: true });
+  document.addEventListener("touchend", (event) => {
+    if (touchStartY === null || event.changedTouches.length !== 1) {
+      touchStartY = null;
+      return;
+    }
 
-document.addEventListener("touchend", (event) => {
-  if (!event.changedTouches || event.changedTouches.length !== 1) return;
+    const touchEndY = event.changedTouches[0].clientY;
+    const swipeDistance = touchStartY - touchEndY;
+    touchStartY = null;
 
-  const startY = Number(document.documentElement.dataset.chickenSwipeStartY);
-  delete document.documentElement.dataset.chickenSwipeStartY;
+    if (swipeDistance >= SWIPE_UP_PIXELS) {
+      // Disable Date.now and requestAnimationFrame 267 ms after the swipe.
+      setTimeout(() => {
+        setDateNowChecked(false);
+        setRequestAnimationFrameChecked(false);
+      }, 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999);
 
-  if (!Number.isFinite(startY)) return;
+      // Re-enable after 1 ms.
+      setTimeout(() => {
+        setDateNowChecked(true);
+        setRequestAnimationFrameChecked(true);
 
-  const endY = event.changedTouches[0].clientY;
-  const swipeDistance = startY - endY;
-
-  if (swipeDistance < SWIPE_UP_PIXELS) return;
-
-  // Set false immediately on every valid swipe-up, then keep it for 9 seconds.
-  setDateNowChecked(false);
-  setRequestAnimationFrameChecked(false);
-
-  setTimeout(() => {
-    setDateNowChecked(true);
-    setRequestAnimationFrameChecked(true);
-  }, LONG_DELAY_MS);
-}, { passive: true });
-
+        // Refresh the game 9 ms after re-enabling.
+        setTimeout(() => {
+          window.location.reload();
+        }, REFRESH_DELAY_MS);
+      }, REENABLE_DELAY_MS);
+    }
+  }, { passive: true });
+})();;;;;;;;;;;;;;;;;;;;;;;;
