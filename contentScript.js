@@ -71,9 +71,9 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable DateNow and requestAnimationFrame immediately after the swipe.
-      setDateNowChecked(false);
+      // Disable requestAnimationFrame first, then disable Date.now immediately.
       setRequestAnimationFrameChecked(false);
+      setDateNowChecked(false);
 
       // Re-enable after 1 ms.
       setTimeout(() => {
