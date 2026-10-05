@@ -28,7 +28,7 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS = 490;
+  const REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS = 0;
   const PENDING_RAF_DISABLE_KEY = "__chicken_pending_raf_disable__";
 
   const setDateNowChecked = (checked) => {
