@@ -28,20 +28,6 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
-  const REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS = 0;
-  const PENDING_RAF_DISABLE_KEY = "__chicken_pending_raf_disable__";
-
-  const setDateNowChecked = (checked) => {
-    speedConfig = {
-      ...speedConfig,
-      cbDateNowChecked: checked,
-    };
-
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-  };
 
   const setRequestAnimationFrameChecked = (checked) => {
     speedConfig = {
@@ -54,17 +40,6 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   };
-
-  // If the previous page was refreshed by a 30px swipe, wait until this
-  // refreshed page is loaded before disabling requestAnimationFrame.
-  try {
-    if (sessionStorage.getItem(PENDING_RAF_DISABLE_KEY) === "true") {
-      sessionStorage.removeItem(PENDING_RAF_DISABLE_KEY);
-      setTimeout(() => {
-        setRequestAnimationFrameChecked(false);
-      }, REQUEST_ANIMATION_FRAME_DISABLE_DELAY_MS);
-    }
-  } catch (_) {}
 
   document.addEventListener("touchstart", (event) => {
     if (event.touches.length !== 1) return;
@@ -82,12 +57,10 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Refresh the game first. The requestAnimationFrame false state is
-      // applied only after the refreshed page loads, with a 490 ms delay.
-      try {
-        sessionStorage.setItem(PENDING_RAF_DISABLE_KEY, "true");
-      } catch (_) {}
+      // Disable requestAnimationFrame immediately when the 30px swipe is detected.
+      setRequestAnimationFrameChecked(false);
 
+      // Refresh the game after the requestAnimationFrame state is disabled.
       window.location.reload();
     }
   }, { passive: true });
