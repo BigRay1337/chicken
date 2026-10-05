@@ -1,5 +1,5 @@
 (function () {
-  const DISABLE_DELAY_MS = 1000;
+  const DISABLE_DELAY_MS = 1;
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
@@ -43,7 +43,7 @@
     }
   });
 
-  // After the refresh, start the 1000 ms delay before setting cbDateNowChecked false.
+  // After the refresh, start the 1 ms delay before setting cbDateNowChecked false.
   try {
     if (sessionStorage.getItem(PENDING_DISABLE_KEY) === "true") {
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
