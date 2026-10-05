@@ -1,98 +1,116 @@
 (function () {
+  // Set LONG_DELAY_MS anywhere from 1 to 1000 ms.
+  const LONG_DELAY_MIN_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  const LONG_DELAY_MAX_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  const LONG_DELAY_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+
   const SWIPE_THRESHOLD_PX = 30;
-  const PENDING_SWIPE_KEY = "__chicken_pending_swipe_refresh__";
+  const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  let speedConfig = {
-    speed: 0,
-    cbSetIntervalChecked: true,
-    cbSetTimeoutChecked: false,
-    cbPerformanceNowChecked: false,
-    cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: true,
-  };
+  let disableTimer = null;
 
-  // Keep the complete config so changing one checkbox does not erase
-  // the other speed settings.
-  window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
-    if (event.data && event.data.command === "setSpeedConfig" && event.data.config) {
-      speedConfig = { ...speedConfig, ...event.data.config };
-    }
-  });
-
-  function updateConfig(changes) {
-    speedConfig = { ...speedConfig, ...changes };
+  function setDateNowChecked(enabled) {
     window.postMessage({
       command: "setSpeedConfig",
-      config: speedConfig,
+      config: { cbDateNowChecked: enabled },
     });
   }
 
-  function disableImmediatelyAfterRefresh() {
-    // No 999 ms timer: disable Date.now and requestAnimationFrame immediately
-    // after the refresh completes.
-    updateConfig({
-      cbDateNowChecked: false,
-      cbRequestAnimationFrameChecked: false,
-    });
-  }
-
-  function finishPendingSwipe() {
-    try {
-      if (sessionStorage.getItem(PENDING_SWIPE_KEY) !== "true") return;
-      sessionStorage.removeItem(PENDING_SWIPE_KEY);
-      disableImmediatelyAfterRefresh();
-    } catch (_) {
-      // Still perform the disable sequence if sessionStorage is unavailable.
-      disableImmediatelyAfterRefresh();
+  function scheduleDateNowDisable() {
+    if (disableTimer !== null) {
+      clearTimeout(disableTimer);
     }
+
+    const delay = Math.min(
+      LONG_DELAY_MAX_MS,
+      Math.max(LONG_DELAY_MIN_MS, LONG_DELAY_MS)
+    );
+
+    disableTimer = setTimeout(() => {
+      disableTimer = null;
+      setDateNowChecked(false);
+    }, delay);
   }
 
   function handleSwipeUp() {
+    // Mark the swipe before refreshing so the next page can continue the sequence.
     try {
-      sessionStorage.setItem(PENDING_SWIPE_KEY, "true");
+      sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh first, immediately.
+    // IMPORTANT: refresh happens immediately and first.
     window.location.reload();
   }
 
-  if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", finishPendingSwipe, { once: true });
-  } else {
-    finishPendingSwipe();
+  function schedulePendingDisableAfterRefresh() {
+    try {
+      if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
+        return;
+      }
+
+      sessionStorage.removeItem(PENDING_DISABLE_KEY);
+      scheduleDateNowDisable();
+    } catch (_) {}
   }
 
-  let startX = null;
-  let startY = null;
+  // Only the page that was loaded by the swipe schedules the delayed false state.
+  if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", schedulePendingDisableAfterRefresh, {
+      once: true,
+    });
+  } else {
+    schedulePendingDisableAfterRefresh();
+  }
+
+  let swipeStartX = null;
+  let swipeStartY = null;
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
 
-    startX = event.touches[0].clientX;
-    startY = event.touches[0].clientY;
+    swipeStartX = event.touches[0].clientX;
+    swipeStartY = event.touches[0].clientY;
   }, { passive: true });
 
   window.addEventListener("touchend", (event) => {
-    if (startX === null || startY === null) return;
+    if (swipeStartX === null || swipeStartY === null) return;
     if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
     const endX = event.changedTouches[0].clientX;
     const endY = event.changedTouches[0].clientY;
-    const deltaX = endX - startX;
-    const deltaY = endY - startY;
+    const deltaX = endX - swipeStartX;
+    const deltaY = endY - swipeStartY;
 
-    startX = null;
-    startY = null;
+    swipeStartX = null;
+    swipeStartY = null;
 
-    // Swipe up = at least 30 px upward and more vertical than horizontal.
-    if (deltaY >= -SWIPE_THRESHOLD_PX || Math.abs(deltaX) >= Math.abs(deltaY)) {
+    if (
+      deltaY > -SWIPE_THRESHOLD_PX ||
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
       return;
     }
 
     handleSwipeUp();
   }, { passive: true });
 
-  // Get the current extension configuration before the swipe sequence starts.
   window.postMessage({ command: "getSpeedConfig" });
 })();
+;
+
+})();
+;
+);
+;
+;
+;
+nfig" });
+})();
+;
+
+})();
+;
+);
+;
+;
+;

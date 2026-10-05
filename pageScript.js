@@ -16,105 +16,10 @@ function pageScript() {
   const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  const SWIPE_THRESHOLD_PX = 30;
-  const SWIPE_DISABLE_DELAY_MS = 999;
-  const PENDING_SWIPE_KEY = "__chicken_pending_swipe_refresh__";
-  let swipeStartX = null;
-  let swipeStartY = null;
-  let swipeDisableTimer = null;
-  let swipeHandled = false;
-
-  const applySwipeConfig = (changes) => {
-    speedConfig = { ...speedConfig, ...changes };
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: speedConfig,
-    });
-  };
-
-  const finishPendingSwipe = () => {
-    try {
-      if (sessionStorage.getItem(PENDING_SWIPE_KEY) !== "true") return;
-      sessionStorage.removeItem(PENDING_SWIPE_KEY);
-    } catch (_) {
-      return;
-    }
-
-    // The page has now refreshed. Date.now is disabled first.
-    // Keep the existing Date.now wrapper stable; do not force an unsafe time multiplier.
-    applySwipeConfig({ cbDateNowChecked: false });
-
-    // Disable requestAnimationFrame 999 ms after Date.now becomes false.
-    if (swipeDisableTimer !== null) originalclearTimeout(swipeDisableTimer);
-    swipeDisableTimer = originalSetTimeout(() => {
-      swipeDisableTimer = null;
-      applySwipeConfig({ cbRequestAnimationFrameChecked: false });
-    }, SWIPE_DISABLE_DELAY_MS);
-  };
-
-  const handleSwipeUp = () => {
-    if (swipeHandled) return;
-    swipeHandled = true;
-
-    try {
-      sessionStorage.setItem(PENDING_SWIPE_KEY, "true");
-    } catch (_) {
-      swipeHandled = false;
-      return;
-    }
-
-    // Refresh immediately. The false state is applied after the new page starts.
-    window.location.reload();
-  };
-
-  // Listen in every injected frame. Each frame can receive touch events from its own game layer.
-  {
-    window.addEventListener("touchstart", (event) => {
-      if (!event.touches || event.touches.length !== 1) return;
-      swipeHandled = false;
-      swipeStartX = event.touches[0].clientX;
-      swipeStartY = event.touches[0].clientY;
-    }, { passive: true, capture: true });
-
-    window.addEventListener("touchend", (event) => {
-      if (swipeStartX === null || swipeStartY === null) return;
-      if (!event.changedTouches || event.changedTouches.length !== 1) return;
-
-      const endX = event.changedTouches[0].clientX;
-      const endY = event.changedTouches[0].clientY;
-      const deltaX = endX - swipeStartX;
-      const deltaY = endY - swipeStartY;
-
-      swipeStartX = null;
-      swipeStartY = null;
-
-      // A vertical upward movement of at least 30px is a swipe.
-      if (
-        deltaY > -SWIPE_THRESHOLD_PX ||
-        Math.abs(deltaX) >= Math.abs(deltaY)
-      ) return;
-
-      handleSwipeUp();
-    }, { passive: true, capture: true });
-
-    window.addEventListener("touchcancel", () => {
-      swipeStartX = null;
-      swipeStartY = null;
-      swipeHandled = false;
-    }, { passive: true, capture: true });
-
-    // A swipe sets a session flag before reload, so the sequence survives refresh.
-    if (document.readyState === "loading") {
-      window.addEventListener("DOMContentLoaded", finishPendingSwipe, { once: true });
-    } else {
-      finishPendingSwipe();
-    }
-  }
-
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 2147483647; // Safe maximum browser timeout (~24.8 days).
+  const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
@@ -228,9 +133,9 @@ function pageScript() {
     let previusDateNowValue = null;
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue !== null) {
-        const multiplier = speedConfig.cbDateNowChecked ? speedConfig.speed : 0;
-        dateNowValue += (originalValue - previusDateNowValue) * multiplier;
+      if (dateNowValue) {
+        dateNowValue += (originalValue - previusDateNowValue) *
+          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
       } else {
         dateNowValue = originalValue;
       }
