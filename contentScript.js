@@ -28,6 +28,20 @@ window.addEventListener("message", (e) => {
 (function () {
   let touchStartY = null;
   const SWIPE_UP_PIXELS = 30;
+  const REENABLE_DELAY_MS = .0;
+  const REFRESH_DELAY_MS = .0;
+
+  const setDateNowChecked = (checked) => {
+    speedConfig = {
+      ...speedConfig,
+      cbDateNowChecked: checked,
+    };
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: speedConfig,
+    });
+  };
 
   const setRequestAnimationFrameChecked = (checked) => {
     speedConfig = {
@@ -57,11 +71,20 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Disable requestAnimationFrame immediately when the 30px swipe is detected.
+      // Disable DateNow and requestAnimationFrame immediately after the swipe.
+      setDateNowChecked(false);
       setRequestAnimationFrameChecked(false);
 
-      // Refresh the game after the requestAnimationFrame state is disabled.
-      window.location.reload();
+      // Re-enable after 1 ms.
+      setTimeout(() => {
+        setDateNowChecked(true);
+        setRequestAnimationFrameChecked(true);
+
+        // Refresh the game 9 ms after re-enabling.
+        setTimeout(() => {
+          window.location.reload();
+        }, REFRESH_DELAY_MS);
+      }, REENABLE_DELAY_MS);
     }
   }, { passive: true });
-})();
+})();;;;;;;;;;;;;;;;;;;;

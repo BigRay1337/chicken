@@ -6,7 +6,6 @@
 
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const PENDING_RAF_DISABLE_KEY = "__chicken_pending_raf_disable__";
 
   let disableTimer = null;
 
@@ -15,21 +14,6 @@
       command: "setSpeedConfig",
       config: { cbDateNowChecked: enabled },
     });
-  }
-
-  function setRequestAnimationFrameChecked(enabled) {
-    window.postMessage({
-      command: "setRequestAnimationFrameChecked",
-      enabled,
-    });
-  }
-
-  function scheduleRequestAnimationFrameDisable() {
-    try {
-      if (sessionStorage.getItem(PENDING_RAF_DISABLE_KEY) !== "true") return;
-      sessionStorage.removeItem(PENDING_RAF_DISABLE_KEY);
-      setTimeout(() => setRequestAnimationFrameChecked(false), 0);
-    } catch (_) {}
   }
 
   function scheduleDateNowDisable() {
@@ -52,7 +36,6 @@
     // Mark the swipe before refreshing so the next page can continue the sequence.
     try {
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
-      sessionStorage.setItem(PENDING_RAF_DISABLE_KEY, "true");
     } catch (_) {}
 
     // IMPORTANT: refresh happens immediately and first.
@@ -67,7 +50,6 @@
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
       scheduleDateNowDisable();
-      scheduleRequestAnimationFrameDisable();
     } catch (_) {}
   }
 
