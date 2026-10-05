@@ -57,9 +57,13 @@ window.addEventListener("message", (e) => {
     touchStartY = null;
 
     if (swipeDistance >= SWIPE_UP_PIXELS) {
-      // Swipe up immediately disables DateNow, then refreshes.
+      // Apply DateNow=false first and give the page script a chance
+      // to receive the message before refreshing.
       setDateNowChecked(false);
-      window.location.reload();
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 0);
     }
   }, { passive: true });
 })();
