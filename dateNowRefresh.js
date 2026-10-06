@@ -22,24 +22,28 @@
       window.addEventListener("message", (event) => {
         if (event.data?.command !== "setSpeedConfig") return;
 
+        const config = event.data.config;
+
+        // Date.now is disabled immediately after the game refresh.
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: {
+            ...config,
+            cbDateNowChecked: false,
+          },
+        });
+
+        // RequestAnimationFrame is disabled separately after a random
+        // rarity delay of 1-1000 ms measured from the swipe-up refresh.
         const delayMs = getRandomRarityDelayMs();
 
         window.setTimeout(() => {
-          const rafDisabledConfig = {
-            ...event.data.config,
-            cbRequestAnimationFrameChecked: false,
-          };
-
-          window.postMessage({
-            command: "setSpeedConfig",
-            config: rafDisabledConfig,
-          });
-
           window.postMessage({
             command: "setSpeedConfig",
             config: {
-              ...rafDisabledConfig,
+              ...config,
               cbDateNowChecked: false,
+              cbRequestAnimationFrameChecked: false,
             },
           });
         }, delayMs);
@@ -54,6 +58,7 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
+    // Refresh immediately on swipe up.
     window.location.reload();
   }
 
