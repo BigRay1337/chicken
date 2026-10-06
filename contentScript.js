@@ -66,6 +66,10 @@ function scheduleFalseAfterSwipe() {
 }
 
 function handleSwipeUp() {
+  // Set Date.now and requestAnimationFrame false immediately on swipe.
+  setDateNowChecked(false);
+  setRequestAnimationFrameChecked(false);
+
   try {
     sessionStorage.setItem(PENDING_FALSE_KEY, "true");
   } catch (_) {}
