@@ -8,7 +8,7 @@ let speedConfig = {
 };
 
 const SWIPE_UP_PIXELS = 30;
-const FALSE_DELAY_MS = 9000;
+const FALSE_HOLD_MS = 9000;
 const PENDING_FALSE_KEY = "__chicken_pending_false__";
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -30,11 +30,7 @@ window.addEventListener("message", (e) => {
 });
 
 function setDateNowChecked(checked) {
-  speedConfig = {
-    ...speedConfig,
-    cbDateNowChecked: checked,
-  };
-
+  speedConfig = { ...speedConfig, cbDateNowChecked: checked };
   window.postMessage({
     command: "setSpeedConfig",
     config: speedConfig,
@@ -42,39 +38,29 @@ function setDateNowChecked(checked) {
 }
 
 function setRequestAnimationFrameChecked(checked) {
-  speedConfig = {
-    ...speedConfig,
-    cbRequestAnimationFrameChecked: checked,
-  };
-
+  speedConfig = { ...speedConfig, cbRequestAnimationFrameChecked: checked };
   window.postMessage({
     command: "setSpeedConfig",
     config: speedConfig,
   });
 }
 
-function scheduleFalseAfterSwipe() {
-  // False immediately after the swipe-triggered refresh.
+function setFalseImmediatelyFor9Seconds() {
   setDateNowChecked(false);
   setRequestAnimationFrameChecked(false);
 
-  // Keep the false state for 9 seconds, then restore it.
   setTimeout(() => {
     setDateNowChecked(true);
     setRequestAnimationFrameChecked(true);
-  }, FALSE_DELAY_MS);
+  }, FALSE_HOLD_MS);
 }
 
 function handleSwipeUp() {
-  // Set Date.now and requestAnimationFrame false immediately on swipe.
-  setDateNowChecked(false);
-  setRequestAnimationFrameChecked(false);
-
   try {
     sessionStorage.setItem(PENDING_FALSE_KEY, "true");
   } catch (_) {}
 
-  // Refresh immediately on every valid swipe-up.
+  // Refresh immediately. The new page will set both values false immediately.
   window.location.reload();
 }
 
@@ -82,7 +68,7 @@ function schedulePendingFalseAfterRefresh() {
   try {
     if (sessionStorage.getItem(PENDING_FALSE_KEY) !== "true") return;
     sessionStorage.removeItem(PENDING_FALSE_KEY);
-    scheduleFalseAfterSwipe();
+    setFalseImmediatelyFor9Seconds();
   } catch (_) {}
 }
 
@@ -92,55 +78,31 @@ function isSwipeUp(startY, endY) {
 
 let touchStartY = null;
 
-document.addEventListener("touchstart", (event) => {
+function onTouchStart(event) {
   if (!event.touches || event.touches.length !== 1) return;
   touchStartY = event.touches[0].clientY;
-}, { passive: true });
-
-document.addEventListener("touchend", (event) => {
-  if (touchStartY === null) return;
-
-  if (!event.changedTouches || event.changedTouches.length !== 1) {
-    touchStartY = null;
-    return;
-  }
-
-  const endY = event.changedTouches[0].clientY;
-  const startY = touchStartY;
-  touchStartY = null;
-
-  if (isSwipeUp(startY, endY)) {
-    handleSwipeUp();
-  }
-}, { passive: true });
-
-// Also support touch events received through the window/game layer.
-window.addEventListener("touchstart", (event) => {
-  if (!event.touches || event.touches.length !== 1) return;
-  touchStartY = event.touches[0].clientY;
-}, { passive: true });
-
-window.addEventListener("touchend", (event) => {
-  if (touchStartY === null) return;
-
-  if (!event.changedTouches || event.changedTouches.length !== 1) {
-    touchStartY = null;
-    return;
-  }
-
-  const endY = event.changedTouches[0].clientY;
-  const startY = touchStartY;
-  touchStartY = null;
-
-  if (isSwipeUp(startY, endY)) {
-    handleSwipeUp();
-  }
-}, { passive: true });
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", schedulePendingFalseAfterRefresh, {
-    once: true,
-  });
-} else {
-  schedulePendingFalseAfterRefresh();
 }
+
+function onTouchEnd(event) {
+  if (touchStartY === null) return;
+
+  if (!event.changedTouches || event.changedTouches.length !== 1) {
+    touchStartY = null;
+    return;
+  }
+
+  const endY = event.changedTouches[0].clientY;
+  const startY = touchStartY;
+  touchStartY = null;
+
+  if (isSwipeUp(startY, endY)) {
+    handleSwipeUp();
+  }
+}
+
+document.addEventListener("touchstart", onTouchStart, { passive: true });
+document.addEventListener("touchend", onTouchEnd, { passive: true });
+window.addEventListener("touchstart", onTouchStart, { passive: true });
+window.addEventListener("touchend", onTouchEnd, { passive: true });
+
+schedulePendingFalseAfterRefresh();
