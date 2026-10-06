@@ -21,7 +21,7 @@
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") return;
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
-      setDateNowChecked(false);
+      if (Math.random() < 0.5) setDateNowChecked(false);
     } catch (_) {}
   }
 
