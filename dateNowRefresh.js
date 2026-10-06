@@ -1,15 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const RAF_DISABLE_MIN_MS = 0;
-  const RAF_DISABLE_MAX_MS = 1000;
-
-  function getRandomRarityDelayMs() {
-    return Math.floor(
-      RAF_DISABLE_MAX_MS -
-        Math.random() * (RAF_DISABLE_MAX_MS - RAF_DISABLE_MIN_MS + 1)
-    );
-  }
 
   function disableAfterRefresh() {
     try {
@@ -33,19 +24,16 @@
           },
         });
 
-        // RequestAnimationFrame is disabled after a random 1000-to-0 ms delay.
-        const delayMs = getRandomRarityDelayMs();
-
-        window.setTimeout(() => {
-          window.postMessage({
-            command: "setSpeedConfig",
-            config: {
-              ...config,
-              cbDateNowChecked: false,
-              cbRequestAnimationFrameChecked: false,
-            },
-          });
-        }, delayMs);
+        // RequestAnimationFrame is disabled almost immediately after refresh,
+        // with no intentional delay.
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: {
+            ...config,
+            cbDateNowChecked: false,
+            cbRequestAnimationFrameChecked: false,
+          },
+        });
       }, { once: true });
 
       window.postMessage({ command: "getSpeedConfig" });
