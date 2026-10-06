@@ -1,5 +1,5 @@
 (function () {
-  // Rare delay counts down from 1000 ms to 1 ms.
+  // Randomly delay the false state from 1000 ms down to 1 ms.
   const RARE_DELAY_MAX_MS = 1000;
   const RARE_DELAY_MIN_MS = 1;
 
@@ -20,7 +20,9 @@
       clearTimeout(disableTimer);
     }
 
+    // Pick an integer uniformly from 1000 down to 1 ms.
     const delay =
+      RARE_DELAY_MAX_MS -
       Math.floor(
         Math.random() * (RARE_DELAY_MAX_MS - RARE_DELAY_MIN_MS + 1)
       );
@@ -32,12 +34,11 @@
   }
 
   function handleSwipeUp() {
-    // Mark the swipe before refreshing so the next page can continue the sequence.
     try {
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // IMPORTANT: refresh happens immediately and first.
+    // Refresh immediately and first. No fixed 9-second or other fixed delay.
     window.location.reload();
   }
 
@@ -52,11 +53,12 @@
     } catch (_) {}
   }
 
-  // Only the page that was loaded by the swipe schedules the delayed false state.
   if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", schedulePendingDisableAfterRefresh, {
-      once: true,
-    });
+    window.addEventListener(
+      "DOMContentLoaded",
+      schedulePendingDisableAfterRefresh,
+      { once: true }
+    );
   } else {
     schedulePendingDisableAfterRefresh();
   }
@@ -64,52 +66,42 @@
   let swipeStartX = null;
   let swipeStartY = null;
 
-  window.addEventListener("touchstart", (event) => {
-    if (!event.touches || event.touches.length !== 1) return;
+  window.addEventListener(
+    "touchstart",
+    (event) => {
+      if (!event.touches || event.touches.length !== 1) return;
 
-    swipeStartX = event.touches[0].clientX;
-    swipeStartY = event.touches[0].clientY;
-  }, { passive: true });
+      swipeStartX = event.touches[0].clientX;
+      swipeStartY = event.touches[0].clientY;
+    },
+    { passive: true }
+  );
 
-  window.addEventListener("touchend", (event) => {
-    if (swipeStartX === null || swipeStartY === null) return;
-    if (!event.changedTouches || event.changedTouches.length !== 1) return;
+  window.addEventListener(
+    "touchend",
+    (event) => {
+      if (swipeStartX === null || swipeStartY === null) return;
+      if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
-    const endX = event.changedTouches[0].clientX;
-    const endY = event.changedTouches[0].clientY;
-    const deltaX = endX - swipeStartX;
-    const deltaY = endY - swipeStartY;
+      const endX = event.changedTouches[0].clientX;
+      const endY = event.changedTouches[0].clientY;
+      const deltaX = endX - swipeStartX;
+      const deltaY = endY - swipeStartY;
 
-    swipeStartX = null;
-    swipeStartY = null;
+      swipeStartX = null;
+      swipeStartY = null;
 
-    if (
-      deltaY > -SWIPE_THRESHOLD_PX ||
-      Math.abs(deltaX) > Math.abs(deltaY)
-    ) {
-      return;
-    }
+      if (
+        deltaY > -SWIPE_THRESHOLD_PX ||
+        Math.abs(deltaX) > Math.abs(deltaY)
+      ) {
+        return;
+      }
 
-    handleSwipeUp();
-  }, { passive: true });
+      handleSwipeUp();
+    },
+    { passive: true }
+  );
 
   window.postMessage({ command: "getSpeedConfig" });
 })();
-;
-
-})();
-;
-);
-;
-;
-;
-nfig" });
-})();
-;
-
-})();
-;
-);
-;
-;
-;
