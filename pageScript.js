@@ -140,7 +140,7 @@ function pageScript() {
         dateNowValue = originalValue;
       }
       previusDateNowValue = originalValue;
-      return Math.floor(dateNowValue);
+      return Math.floor(0 + dateNowValue);
     };
   })();
 
