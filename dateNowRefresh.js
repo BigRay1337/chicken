@@ -1,52 +1,25 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const RAF_DISABLE_MIN_MS = 0;
-  const RAF_DISABLE_MAX_MS = 1;
 
-  function getRafRarityDelayMs() {
-    return RAF_DISABLE_MIN_MS +
-      Math.floor(Math.random() * (RAF_DISABLE_MAX_MS - RAF_DISABLE_MIN_MS + 1));
-  }
-
-  function disableAfterRefresh() {
+  function disableBeforeRefresh() {
     try {
-      if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
-        return;
-      }
-
-      sessionStorage.removeItem(PENDING_DISABLE_KEY);
+      window.postMessage({ command: "getSpeedConfig" });
 
       window.addEventListener("message", (event) => {
         if (event.data?.command !== "setSpeedConfig") return;
 
-        const config = event.data.config;
-
-        // Date.now is disabled immediately after the game refresh.
+        // Disable requestAnimationFrame before the game refresh.
         window.postMessage({
           command: "setSpeedConfig",
           config: {
-            ...config,
-            cbDateNowChecked: false,
+            ...event.data.config,
+            cbRequestAnimationFrameChecked: false,
           },
         });
 
-        // RequestAnimationFrame uses a 0-1 ms rarity delay.
-        const delayMs = getRafRarityDelayMs();
-
-        window.setTimeout(() => {
-          window.postMessage({
-            command: "setSpeedConfig",
-            config: {
-              ...config,
-              cbDateNowChecked: false,
-              cbRequestAnimationFrameChecked: false,
-            },
-          });
-        }, delayMs);
+        // Keep Date.now enabled until the refreshed game starts.
       }, { once: true });
-
-      window.postMessage({ command: "getSpeedConfig" });
     } catch (_) {}
   }
 
@@ -55,15 +28,42 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
+    // Disable RAF first, then refresh immediately.
+    disableBeforeRefresh();
     window.location.reload();
   }
 
+  function disableDateNowAfterRefresh() {
+    try {
+      if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
+        return;
+      }
+
+      sessionStorage.removeItem(PENDING_DISABLE_KEY);
+
+      window.postMessage({ command: "getSpeedConfig" });
+
+      window.addEventListener("message", (event) => {
+        if (event.data?.command !== "setSpeedConfig") return;
+
+        // Date.now is disabled immediately after the game refresh.
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: {
+            ...event.data.config,
+            cbDateNowChecked: false,
+          },
+        });
+      }, { once: true });
+    } catch (_) {}
+  }
+
   if (document.readyState === "loading") {
-    window.addEventListener("DOMContentLoaded", disableAfterRefresh, {
+    window.addEventListener("DOMContentLoaded", disableDateNowAfterRefresh, {
       once: true,
     });
   } else {
-    disableAfterRefresh();
+    disableDateNowAfterRefresh();
   }
 
   let swipeStartX = null;
