@@ -1,6 +1,7 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
+  const DISABLE_DELAY_MS = 9000;
 
   function setDateNowChecked(enabled) {
     window.postMessage({
