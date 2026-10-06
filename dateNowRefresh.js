@@ -1,12 +1,6 @@
 (function () {
-  // The only delay is the rare random 1-1000 ms delay before false.
-  const RARE_DELAY_MAX_MS = 1000;
-  const RARE_DELAY_MIN_MS = 1;
-
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-
-  let disableTimer = null;
 
   function setDateNowChecked(enabled) {
     window.postMessage({
@@ -15,52 +9,36 @@
     });
   }
 
-  function scheduleDateNowDisable() {
-    if (disableTimer !== null) {
-      clearTimeout(disableTimer);
-    }
-
-    // Pick an integer uniformly from 1 through 1000 ms.
-    const delay =
-      RARE_DELAY_MIN_MS +
-      Math.floor(
-        Math.random() * (RARE_DELAY_MAX_MS - RARE_DELAY_MIN_MS + 1)
-      );
-
-    disableTimer = setTimeout(() => {
-      disableTimer = null;
-      setDateNowChecked(false);
-    }, delay);
-  }
-
   function handleSwipeUp() {
     try {
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh immediately. No other fixed delay is used.
+    // Refresh immediately and first.
     window.location.reload();
   }
 
-  function schedulePendingDisableAfterRefresh() {
+  function disableDateNowAfterRefresh() {
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
         return;
       }
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
-      scheduleDateNowDisable();
+
+      // No timer: disable immediately after the refreshed game page loads.
+      setDateNowChecked(false);
     } catch (_) {}
   }
 
   if (document.readyState === "loading") {
     window.addEventListener(
       "DOMContentLoaded",
-      schedulePendingDisableAfterRefresh,
+      disableDateNowAfterRefresh,
       { once: true }
     );
   } else {
-    schedulePendingDisableAfterRefresh();
+    disableDateNowAfterRefresh();
   }
 
   let swipeStartX = null;
