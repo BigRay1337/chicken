@@ -128,10 +128,6 @@ function pageScript() {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
-    originalSetInterval(() => {
-      disableRequestAnimationFrame = true;
-      originalSetTimeout(() => { disableRequestAnimationFrame = false; }, 1);
-    }, 9000);
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
       return originalRequestAnimationFrame(() => {
