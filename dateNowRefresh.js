@@ -1,11 +1,12 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const RAF_DISABLE_MAX_MS = 500;
+  const RAF_DISABLE_MIN_MS = 0;
+  const RAF_DISABLE_MAX_MS = 1;
 
   function getRafRarityDelayMs() {
-    // Rarity runs from 500 down toward 0 ms.
-    return RAF_DISABLE_MAX_MS - Math.floor(Math.random() * (RAF_DISABLE_MAX_MS + 1));
+    return RAF_DISABLE_MIN_MS +
+      Math.floor(Math.random() * (RAF_DISABLE_MAX_MS - RAF_DISABLE_MIN_MS + 1));
   }
 
   function disableAfterRefresh() {
@@ -30,7 +31,7 @@
           },
         });
 
-        // RequestAnimationFrame uses a 500 -> 0 ms rarity delay.
+        // RequestAnimationFrame uses a 0-1 ms rarity delay.
         const delayMs = getRafRarityDelayMs();
 
         window.setTimeout(() => {
@@ -54,7 +55,6 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh immediately on swipe up.
     window.location.reload();
   }
 
