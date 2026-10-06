@@ -1,6 +1,15 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
+  const RAF_DISABLE_MIN_MS = 1;
+  const RAF_DISABLE_MAX_MS = 1000;
+
+  function getRandomRarityDelayMs() {
+    return Math.floor(
+      RAF_DISABLE_MIN_MS +
+        Math.random() * (RAF_DISABLE_MAX_MS - RAF_DISABLE_MIN_MS + 1)
+    );
+  }
 
   function disableAfterRefresh() {
     try {
@@ -10,31 +19,30 @@
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
 
-      // First action after the refresh: disable requestAnimationFrame.
-      window.postMessage({ command: "getSpeedConfig" });
-
       window.addEventListener("message", (event) => {
         if (event.data?.command !== "setSpeedConfig") return;
 
-        const rafDisabledConfig = {
-          ...event.data.config,
-          cbRequestAnimationFrameChecked: false,
-        };
+        const delayMs = getRandomRarityDelayMs();
 
-        // RAF is disabled first in the sequence.
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: rafDisabledConfig,
-        });
+        window.setTimeout(() => {
+          const rafDisabledConfig = {
+            ...event.data.config,
+            cbRequestAnimationFrameChecked: false,
+          };
 
-        // Date.now is disabled only after RAF.
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: {
-            ...rafDisabledConfig,
-            cbDateNowChecked: false,
-          },
-        });
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: rafDisabledConfig,
+          });
+
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: {
+              ...rafDisabledConfig,
+              cbDateNowChecked: false,
+            },
+          });
+        }, delayMs);
       }, { once: true });
 
       window.postMessage({ command: "getSpeedConfig" });
@@ -46,7 +54,6 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh first; the next page starts the disable sequence with RAF.
     window.location.reload();
   }
 
