@@ -2,11 +2,33 @@
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  function setDateNowChecked(enabled) {
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: enabled },
-    });
+  function setDisabledAfterRefresh() {
+    window.postMessage({ command: "getSpeedConfig" });
+
+    window.addEventListener("message", (event) => {
+      if (event.data?.command !== "setSpeedConfig") return;
+
+      // Disable requestAnimationFrame first.
+      const rafDisabledConfig = {
+        ...event.data.config,
+        cbRequestAnimationFrameChecked: false,
+      };
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: rafDisabledConfig,
+      });
+
+      // Then disable Date.now immediately, with no delay.
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: {
+          ...rafDisabledConfig,
+          cbDateNowChecked: false,
+        },
+      });
+    }, { once: true });
+
+    window.postMessage({ command: "getSpeedConfig" });
   }
 
   function handleSwipeUp() {
@@ -18,68 +40,56 @@
     window.location.reload();
   }
 
-  function disableDateNowAfterRefresh() {
+  function disableAfterRefresh() {
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
         return;
       }
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
-
-      // No timer: disable Date.now immediately after the refreshed game page loads.
-      setDateNowChecked(false);
+      setDisabledAfterRefresh();
     } catch (_) {}
   }
 
   if (document.readyState === "loading") {
-    window.addEventListener(
-      "DOMContentLoaded",
-      disableDateNowAfterRefresh,
-      { once: true }
-    );
+    window.addEventListener("DOMContentLoaded", disableAfterRefresh, {
+      once: true,
+    });
   } else {
-    disableDateNowAfterRefresh();
+    disableAfterRefresh();
   }
 
   let swipeStartX = null;
   let swipeStartY = null;
 
-  window.addEventListener(
-    "touchstart",
-    (event) => {
-      if (!event.touches || event.touches.length !== 1) return;
+  window.addEventListener("touchstart", (event) => {
+    if (!event.touches || event.touches.length !== 1) return;
 
-      swipeStartX = event.touches[0].clientX;
-      swipeStartY = event.touches[0].clientY;
-    },
-    { passive: true }
-  );
+    swipeStartX = event.touches[0].clientX;
+    swipeStartY = event.touches[0].clientY;
+  }, { passive: true });
 
-  window.addEventListener(
-    "touchend",
-    (event) => {
-      if (swipeStartX === null || swipeStartY === null) return;
-      if (!event.changedTouches || event.changedTouches.length !== 1) return;
+  window.addEventListener("touchend", (event) => {
+    if (swipeStartX === null || swipeStartY === null) return;
+    if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
-      const endX = event.changedTouches[0].clientX;
-      const endY = event.changedTouches[0].clientY;
-      const deltaX = endX - swipeStartX;
-      const deltaY = endY - swipeStartY;
+    const endX = event.changedTouches[0].clientX;
+    const endY = event.changedTouches[0].clientY;
+    const deltaX = endX - swipeStartX;
+    const deltaY = endY - swipeStartY;
 
-      swipeStartX = null;
-      swipeStartY = null;
+    swipeStartX = null;
+    swipeStartY = null;
 
-      if (
-        deltaY > -SWIPE_THRESHOLD_PX ||
-        Math.abs(deltaX) > Math.abs(deltaY)
-      ) {
-        return;
-      }
+    if (
+      deltaY > -SWIPE_THRESHOLD_PX ||
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      return;
+    }
 
-      handleSwipeUp();
-    },
-    { passive: true }
-  );
+    handleSwipeUp();
+  }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
 })();
