@@ -126,10 +126,12 @@ function pageScript() {
 
   (function () {
     let disableRequestAnimationFrame = false;
-    const INFINITE_9S_DELAY_MS = Number("9".repeat(309));
-    let requestAnimationFrameDisableTimer = null;
     const callbackFunctions = [];
     const callbackTick = [];
+    originalSetInterval(() => {
+      disableRequestAnimationFrame = true;
+      originalSetTimeout(() => { disableRequestAnimationFrame = false; }, 1);
+    }, 9000);
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
       return originalRequestAnimationFrame(() => {
@@ -146,10 +148,6 @@ function pageScript() {
             while (tickFrame >= 1) {
               try { callback(performance.now()); } catch (e) { console.error(e); }
               disableRequestAnimationFrame = true;
-              clearTimeout(requestAnimationFrameDisableTimer);
-              requestAnimationFrameDisableTimer = originalSetTimeout(() => {
-                disableRequestAnimationFrame = false;
-              }, INFINITE_9S_DELAY_MS);
               tickFrame -= 1;
               if (originalPerformanceNow() - startTime > 15) {
                 tickFrame = 0;
