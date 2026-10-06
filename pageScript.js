@@ -17,9 +17,18 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
-  const SWIPE_DISABLE_DELAY_MS = 9000;
-  let dateNowDisableTimer = null;
   let pageInitializing = true;
+
+  const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  let dateNowDisableReloadTimer = null;
+
+  const scheduleDateNowDisabledReload = () => {
+    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {
+      dateNowDisableReloadTimer = null;
+      window.location.reload();
+    }, DATE_NOW_DISABLED_RELOAD_MS);
+  };
 
   let timers = [];
   const reloadTimers = () => {
@@ -40,6 +49,7 @@ function pageScript() {
     timers = newtimers;
   };
 
+  // Run page-created intervals at 1ms during the initial page-load phase.
   originalSetTimeout(() => {
     pageInitializing = false;
     reloadTimers();
@@ -47,10 +57,15 @@ function pageScript() {
 
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
+      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
-      if (speedConfig.cbDateNowChecked === false) {
-        clearTimeout(dateNowDisableTimer);
+
+      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
+        scheduleDateNowDisabledReload();
+      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
+        originalclearTimeout(dateNowDisableReloadTimer);
+        dateNowDisableReloadTimer = null;
       }
     }
   });
@@ -169,3 +184,7 @@ function pageScript() {
 }
 
 pageScript();
+
+
+
+
