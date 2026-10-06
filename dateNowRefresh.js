@@ -21,10 +21,10 @@
       clearTimeout(disableTimer);
     }
 
-    const delay = Math.min(
-      LONG_DELAY_MAX_MS,
-      Math.max(LONG_DELAY_MIN_MS, LONG_DELAY_MS)
-    );
+    const delay =
+      Math.floor(
+        Math.random() * (RARE_DELAY_MAX_MS - RARE_DELAY_MIN_MS + 1)
+      ) + RARE_DELAY_MIN_MS;
 
     disableTimer = setTimeout(() => {
       disableTimer = null;
