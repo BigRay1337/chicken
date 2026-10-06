@@ -2,40 +2,28 @@
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  function setChecked(configUpdates) {
-    window.postMessage({
-      command: "getSpeedConfig",
-    });
+  function disableRafBeforeRefresh() {
+    try {
+      window.postMessage({ command: "getSpeedConfig" });
 
-    window.addEventListener(
-      "message",
-      (event) => {
-        if (event.data?.command !== "setSpeedConfig") return;
+      window.addEventListener(
+        "message",
+        (event) => {
+          if (event.data?.command !== "setSpeedConfig") return;
 
-        // First action after the game refresh: disable RAF immediately.
-        const rafDisabledConfig = {
-          ...event.data.config,
-          cbRequestAnimationFrameChecked: false,
-        };
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: {
+              ...event.data.config,
+              cbRequestAnimationFrameChecked: false,
+            },
+          });
+        },
+        { once: true }
+      );
 
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: rafDisabledConfig,
-        });
-
-        // Then disable Date.now immediately, with no delay.
-        window.postMessage({
-          command: "setSpeedConfig",
-          config: {
-            ...rafDisabledConfig,
-            ...configUpdates,
-          },
-        });
-      },
-      { once: true }
-    );
-
-    window.postMessage({ command: "getSpeedConfig" });
+      window.postMessage({ command: "getSpeedConfig" });
+    } catch (_) {}
   }
 
   function handleSwipeUp() {
@@ -43,11 +31,12 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh immediately and first.
+    // Sequence: RAF false first, then game refresh immediately.
+    disableRafBeforeRefresh();
     window.location.reload();
   }
 
-  function disableAfterRefresh() {
+  function disableDateNowAfterRefresh() {
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
         return;
@@ -55,23 +44,38 @@
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
 
-      // Sequence after refresh:
-      // 1. RAF false
-      // 2. Date.now false
-      setChecked({
-        cbDateNowChecked: false,
-      });
+      window.postMessage({ command: "getSpeedConfig" });
+
+      window.addEventListener(
+        "message",
+        (event) => {
+          if (event.data?.command !== "setSpeedConfig") return;
+
+          // Date.now becomes false immediately after the game refresh.
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: {
+              ...event.data.config,
+              cbDateNowChecked: false,
+              cbRequestAnimationFrameChecked: false,
+            },
+          });
+        },
+        { once: true }
+      );
+
+      window.postMessage({ command: "getSpeedConfig" });
     } catch (_) {}
   }
 
   if (document.readyState === "loading") {
     window.addEventListener(
       "DOMContentLoaded",
-      disableAfterRefresh,
+      disableDateNowAfterRefresh,
       { once: true }
     );
   } else {
-    disableAfterRefresh();
+    disableDateNowAfterRefresh();
   }
 
   let swipeStartX = null;
