@@ -54,10 +54,14 @@ function setRequestAnimationFrameChecked(checked) {
 }
 
 function scheduleFalseAfterSwipe() {
-  setTimeout(() => {
-    setDateNowChecked(false);
-    setRequestAnimationFrameChecked(false);
+  // False immediately after the swipe-triggered refresh.
+  setDateNowChecked(false);
+  setRequestAnimationFrameChecked(false);
 
+  // Keep the false state for 9 seconds, then restore it.
+  setTimeout(() => {
+    setDateNowChecked(true);
+    setRequestAnimationFrameChecked(true);
   }, FALSE_DELAY_MS);
 }
 
