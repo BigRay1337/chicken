@@ -1,7 +1,7 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const RAF_DISABLE_MIN_MS = 1;
+  const RAF_DISABLE_MIN_MS = 499;
   const RAF_DISABLE_MAX_MS = 1000;
 
   function getRandomRarityDelayMs() {
@@ -33,8 +33,7 @@
           },
         });
 
-        // RequestAnimationFrame is disabled separately after a random
-        // rarity delay of 1-1000 ms measured from the swipe-up refresh.
+        // RequestAnimationFrame is disabled after a random 499-1000 ms delay.
         const delayMs = getRandomRarityDelayMs();
 
         window.setTimeout(() => {
