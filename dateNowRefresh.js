@@ -1,9 +1,5 @@
 (function () {
-  // Set LONG_DELAY_MS anywhere from 1 to 1000 ms.
-  const LONG_DELAY_MIN_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MAX_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-  const LONG_DELAY_MS = 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
-
+  const LONG_DELAY_MS = 9000;
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
@@ -16,29 +12,29 @@
     });
   }
 
+  function disableDateNowAndRequestAnimationFrame() {
+    setDateNowChecked(false);
+    window.postMessage({
+      command: "disableRequestAnimationFrame",
+    });
+  }
+
   function scheduleDateNowDisable() {
     if (disableTimer !== null) {
       clearTimeout(disableTimer);
     }
 
-    const delay = Math.min(
-      LONG_DELAY_MAX_MS,
-      Math.max(LONG_DELAY_MIN_MS, LONG_DELAY_MS)
-    );
-
     disableTimer = setTimeout(() => {
       disableTimer = null;
-      setDateNowChecked(false);
-    }, delay);
+      disableDateNowAndRequestAnimationFrame();
+    }, LONG_DELAY_MS);
   }
 
   function handleSwipeUp() {
-    // Mark the swipe before refreshing so the next page can continue the sequence.
     try {
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // IMPORTANT: refresh happens immediately and first.
     window.location.reload();
   }
 
@@ -53,7 +49,6 @@
     } catch (_) {}
   }
 
-  // Only the page that was loaded by the swipe schedules the delayed false state.
   if (document.readyState === "loading") {
     window.addEventListener("DOMContentLoaded", schedulePendingDisableAfterRefresh, {
       once: true,
@@ -96,21 +91,3 @@
 
   window.postMessage({ command: "getSpeedConfig" });
 })();
-;
-
-})();
-;
-);
-;
-;
-;
-nfig" });
-})();
-;
-
-})();
-;
-);
-;
-;
-;
