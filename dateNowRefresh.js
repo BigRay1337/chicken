@@ -2,13 +2,10 @@
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  function setDateNowAndRequestAnimationFrameCheckedFalse() {
+  function setDateNowChecked(enabled) {
     window.postMessage({
       command: "setSpeedConfig",
-      config: {
-        cbDateNowChecked: false,
-        cbRequestAnimationFrameChecked: false,
-      },
+      config: { cbDateNowChecked: enabled },
     });
   }
 
@@ -21,7 +18,7 @@
     window.location.reload();
   }
 
-  function disableAfterRefresh() {
+  function disableDateNowAfterRefresh() {
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
         return;
@@ -29,20 +26,19 @@
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
 
-      // No timer or delay: disable Date.now and requestAnimationFrame immediately
-      // after the refreshed game page loads.
-      setDateNowAndRequestAnimationFrameCheckedFalse();
+      // No timer: disable Date.now immediately after the refreshed game page loads.
+      setDateNowChecked(false);
     } catch (_) {}
   }
 
   if (document.readyState === "loading") {
     window.addEventListener(
       "DOMContentLoaded",
-      disableAfterRefresh,
+      disableDateNowAfterRefresh,
       { once: true }
     );
   } else {
-    disableAfterRefresh();
+    disableDateNowAfterRefresh();
   }
 
   let swipeStartX = null;
