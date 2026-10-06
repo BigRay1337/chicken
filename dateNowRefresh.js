@@ -1,12 +1,12 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
-  const RAF_DISABLE_MIN_MS = 499;
+  const RAF_DISABLE_MIN_MS = 0;
   const RAF_DISABLE_MAX_MS = 1000;
 
   function getRandomRarityDelayMs() {
     return Math.floor(
-      RAF_DISABLE_MIN_MS +
+      RAF_DISABLE_MAX_MS -
         Math.random() * (RAF_DISABLE_MAX_MS - RAF_DISABLE_MIN_MS + 1)
     );
   }
@@ -33,7 +33,7 @@
           },
         });
 
-        // RequestAnimationFrame is disabled after a random 499-1000 ms delay.
+        // RequestAnimationFrame is disabled after a random 1000-to-0 ms delay.
         const delayMs = getRandomRarityDelayMs();
 
         window.setTimeout(() => {
