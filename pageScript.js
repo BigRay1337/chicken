@@ -17,6 +17,8 @@ function pageScript() {
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   const STARTUP_INTERVAL_MS = 1;
+  const SWIPE_DISABLE_DELAY_MS = 9000;
+  let dateNowDisableTimer = null;
   let pageInitializing = true;
 
   let timers = [];
@@ -47,6 +49,9 @@ function pageScript() {
     if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
+      if (speedConfig.cbDateNowChecked === false) {
+        clearTimeout(dateNowDisableTimer);
+      }
     }
   });
 
