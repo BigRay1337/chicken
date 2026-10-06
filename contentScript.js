@@ -9,7 +9,6 @@ let speedConfig = {
 
 const SWIPE_UP_PIXELS = 30;
 const FALSE_DELAY_MS = 9000;
-const REENABLE_DELAY_MS = 1;
 const PENDING_FALSE_KEY = "__chicken_pending_false__";
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -59,10 +58,6 @@ function scheduleFalseAfterSwipe() {
     setDateNowChecked(false);
     setRequestAnimationFrameChecked(false);
 
-    setTimeout(() => {
-      setDateNowChecked(true);
-      setRequestAnimationFrameChecked(true);
-    }, REENABLE_DELAY_MS);
   }, FALSE_DELAY_MS);
 }
 
