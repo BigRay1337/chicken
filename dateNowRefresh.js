@@ -1,5 +1,5 @@
 (function () {
-  // Randomly delay the false state from 1000 ms down to 1 ms.
+  // The only delay is the rare random 1-1000 ms delay before false.
   const RARE_DELAY_MAX_MS = 1000;
   const RARE_DELAY_MIN_MS = 1;
 
@@ -20,9 +20,9 @@
       clearTimeout(disableTimer);
     }
 
-    // Pick an integer uniformly from 1000 down to 1 ms.
+    // Pick an integer uniformly from 1 through 1000 ms.
     const delay =
-      RARE_DELAY_MAX_MS -
+      RARE_DELAY_MIN_MS +
       Math.floor(
         Math.random() * (RARE_DELAY_MAX_MS - RARE_DELAY_MIN_MS + 1)
       );
@@ -38,7 +38,7 @@
       sessionStorage.setItem(PENDING_DISABLE_KEY, "true");
     } catch (_) {}
 
-    // Refresh immediately and first. No fixed 9-second or other fixed delay.
+    // Refresh immediately. No other fixed delay is used.
     window.location.reload();
   }
 
