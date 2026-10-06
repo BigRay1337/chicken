@@ -2,11 +2,40 @@
   const SWIPE_THRESHOLD_PX = 30;
   const PENDING_DISABLE_KEY = "__chicken_pending_date_now_disable__";
 
-  function setDateNowChecked(enabled) {
+  function setChecked(configUpdates) {
     window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: enabled },
+      command: "getSpeedConfig",
     });
+
+    window.addEventListener(
+      "message",
+      (event) => {
+        if (event.data?.command !== "setSpeedConfig") return;
+
+        // First action after the game refresh: disable RAF immediately.
+        const rafDisabledConfig = {
+          ...event.data.config,
+          cbRequestAnimationFrameChecked: false,
+        };
+
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: rafDisabledConfig,
+        });
+
+        // Then disable Date.now immediately, with no delay.
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: {
+            ...rafDisabledConfig,
+            ...configUpdates,
+          },
+        });
+      },
+      { once: true }
+    );
+
+    window.postMessage({ command: "getSpeedConfig" });
   }
 
   function handleSwipeUp() {
@@ -18,7 +47,7 @@
     window.location.reload();
   }
 
-  function disableDateNowAfterRefresh() {
+  function disableAfterRefresh() {
     try {
       if (sessionStorage.getItem(PENDING_DISABLE_KEY) !== "true") {
         return;
@@ -26,19 +55,23 @@
 
       sessionStorage.removeItem(PENDING_DISABLE_KEY);
 
-      // No timer: disable immediately after the refreshed game page loads.
-      setDateNowChecked(false);
+      // Sequence after refresh:
+      // 1. RAF false
+      // 2. Date.now false
+      setChecked({
+        cbDateNowChecked: false,
+      });
     } catch (_) {}
   }
 
   if (document.readyState === "loading") {
     window.addEventListener(
       "DOMContentLoaded",
-      disableDateNowAfterRefresh,
+      disableAfterRefresh,
       { once: true }
     );
   } else {
-    disableDateNowAfterRefresh();
+    disableAfterRefresh();
   }
 
   let swipeStartX = null;
