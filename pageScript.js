@@ -16,7 +16,7 @@ function pageScript() {
   const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  const STARTUP_INTERVAL_MS = 1;
+  const STARTUP_INTERVAL_MS = Infinity;
   let pageInitializing = true;
 
   const DATE_NOW_DISABLED_RELOAD_MS = 567;
