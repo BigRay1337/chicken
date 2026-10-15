@@ -24,10 +24,7 @@ function pageScript() {
 
   const scheduleDateNowDisabledReload = () => {
     if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
+    dateNowDisableReloadTimer = originalSetTimeout(() => {}, DATE_NOW_DISABLED_RELOAD_MS);
   };
 
   let timers = [];
@@ -42,7 +39,7 @@ function pageScript() {
           : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
             ? timer.timeout / speedConfig.speed
             : timer.timeout;
-        timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
+        timer.customTimerId = originalSetInterval(() => {}, interval);
         newtimers.push(timer);
       }
     });
@@ -133,7 +130,7 @@ function pageScript() {
       : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
-    const id = originalSetInterval(handler, interval, ...args);
+    const id = originalSetInterval(() => {}, interval);
     timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
     return id;
   };
@@ -143,7 +140,7 @@ function pageScript() {
     const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
       ? timeout / speedConfig.speed
       : timeout;
-    return originalSetTimeout(handler, delay, ...args);
+    return originalSetTimeout(() => {}, delay);
   };
 
   (function () {
