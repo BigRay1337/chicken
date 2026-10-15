@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: true,
+    cbRequestAnimationFrameChecked: false,
   };
 
   const originalClearInterval = window.clearInterval;
@@ -19,7 +19,7 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 1;
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+  const DATE_NOW_DISABLED_RELOAD_MS = 567;
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
@@ -69,6 +69,40 @@ function pageScript() {
       }
     }
   });
+
+  // Swipe up on the screen disables Date.now speed mode immediately.
+  const SWIPE_UP_THRESHOLD_PX = 50;
+  let swipeStartY = null;
+
+  window.addEventListener("touchstart", (event) => {
+    if (!event.touches || event.touches.length === 0) return;
+    swipeStartY = event.touches[0].clientY;
+  }, { passive: true });
+
+  window.addEventListener("touchend", (event) => {
+    if (swipeStartY === null || !event.changedTouches || event.changedTouches.length === 0) {
+      swipeStartY = null;
+      return;
+    }
+
+    const swipeEndY = event.changedTouches[0].clientY;
+    const swipeDistance = swipeStartY - swipeEndY;
+    swipeStartY = null;
+
+    if (swipeDistance >= SWIPE_UP_THRESHOLD_PX && speedConfig.cbDateNowChecked) {
+      speedConfig = {
+        ...speedConfig,
+        cbDateNowChecked: false,
+      };
+
+      reloadTimers();
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: speedConfig,
+      });
+      scheduleDateNowDisabledReload();
+    }
+  }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
 
@@ -184,7 +218,3 @@ function pageScript() {
 }
 
 pageScript();
-
-
-
-
