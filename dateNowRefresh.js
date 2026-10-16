@@ -1,14 +1,11 @@
 // Detect the game's existing upward-swipe refresh gesture.
-// A swipe up of at least 30 CSS pixels is left to the game's own touch
-// handlers to trigger its in-page refresh. Keep Date.now enabled for a longer
-// render window, then disable it; this does not reload the browser tab.
+// Let the game's touch handlers run first and initiate its in-page refresh.
+// Only after that event dispatch has finished and a short render window has
+// passed do we disable Date.now. This does not reload the browser tab.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
-  // 60 native frames gives the game's refresh/render sequence about one second
-  // at 60 Hz before Date.now is disabled. This is a buffer, not a guaranteed
-  // signal that every asynchronous game refresh has completed.
-  const FRAMES_BEFORE_DISABLING_DATE_NOW = 60;
-  const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+  const REFRESH_FIRST_DELAY_MS = 1500;
+  const nativeSetTimeout = window.setTimeout.bind(window);
   let latestConfig = null;
   let touchStartY = null;
   let disableScheduled = false;
@@ -28,6 +25,7 @@
     touchStartY = event.touches[0].clientY;
   }, { capture: true, passive: true });
 
+  // Bubble phase lets earlier game touch handlers process the swipe first.
   window.addEventListener("touchend", function (event) {
     if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) {
       touchStartY = null;
@@ -45,28 +43,22 @@
       return;
     }
 
-    // Let the game's existing touch handling initiate the in-page refresh.
-    // Count frames using the native scheduler, not the extension's RAF override.
+    // The game's own touchend handler gets to run before this timer fires.
+    // This gives its in-page refresh a head start; it is not a guaranteed
+    // completion signal if the game takes longer than the delay.
     disableScheduled = true;
-    let framesRemaining = FRAMES_BEFORE_DISABLING_DATE_NOW;
-
-    function waitForNextFrame() {
-      nativeRequestAnimationFrame(function () {
-        framesRemaining -= 1;
-        if (framesRemaining > 0) {
-          waitForNextFrame();
-          return;
-        }
-
-        const nextConfig = Object.assign({}, latestConfig, {
-          cbDateNowChecked: false
-        });
-        latestConfig = nextConfig;
-        window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+    nativeSetTimeout(function () {
+      if (!latestConfig) {
         disableScheduled = false;
-      });
-    }
+        return;
+      }
 
-    waitForNextFrame();
+      const nextConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false
+      });
+      latestConfig = nextConfig;
+      window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+      disableScheduled = false;
+    }, REFRESH_FIRST_DELAY_MS);
   }, { capture: false, passive: true });
 })();
