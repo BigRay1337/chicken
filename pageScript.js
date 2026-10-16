@@ -47,9 +47,15 @@ function pageScript() {
   };
 
   window.addEventListener("message", (e) => {
-    if (e.data.command === "setSpeedConfig") {
+    if (!e.data) return;
+
+    if (e.data.command === "setSpeedConfig" && e.data.config) {
       speedConfig = e.data.config;
       reloadTimers();
+    } else if (e.data.command === "disableDateNowAfterGameRefresh") {
+      // Keep the current settings, but disable Date.now only after the
+      // swipe handler and the following animation frames have run.
+      speedConfig = { ...speedConfig, cbDateNowChecked: false };
     }
   });
 
