@@ -6,7 +6,8 @@
   let dateNowValue = null;
   let previousDateNowValue = null;
 
-  const LONG_DELAY = "9".repeat(Infinity);
+  // Infinity is a numeric limit; repeating a string Infinity times throws RangeError.
+  const LONG_DELAY = Infinity;
 
   window.addEventListener("message", (e) => {
     if (!e.data || e.data.command !== "setSpeedConfig") return;
@@ -39,7 +40,7 @@
     const elapsed = Math.max(0, realNow - previousDateNowValue);
     previousDateNowValue = realNow;
 
-    // Keep each Date.now() progression within the 0–1000 ms range.
+    // Infinity means there is no finite cap on elapsed time.
     const delayedElapsed = Math.min(elapsed, LONG_DELAY);
     dateNowValue += delayedElapsed;
 
