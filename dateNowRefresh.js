@@ -1,41 +1,33 @@
-// Detect an upward swipe of at least 30 CSS pixels.
-// Let the game's own touch handlers receive the swipe and perform its in-page
-// refresh. After touchend propagation, disable Date.now on the next native frame.
-// This does not reload the browser tab or synthesize a separate refresh action.
+// Reload the page only when Date.now is changed from enabled to disabled.
+// This file is intentionally separate from pageScript.js so the original
+// Date.now implementation and timing code are not modified.
 (function () {
-  const SWIPE_UP_THRESHOLD_PX = 30;
-  const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
-  let touchStartY = null;
-  let disableScheduled = false;
+  let previousEnabled = null;
+  let refreshScheduled = false;
 
-  window.addEventListener("touchstart", function (event) {
-    if (!event.touches || event.touches.length !== 1) {
-      touchStartY = null;
-      return;
-    }
-    touchStartY = event.touches[0].clientY;
-  }, { capture: true, passive: true });
-
-  window.addEventListener("touchend", function (event) {
-    if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) {
-      touchStartY = null;
+  window.addEventListener("message", function (event) {
+    const data = event && event.data;
+    if (!data || data.command !== "setSpeedConfig" || !data.config) {
       return;
     }
 
-    const endY = event.changedTouches[0].clientY;
-    const swipeUpDistance = touchStartY - endY;
-    touchStartY = null;
+    const enabled = data.config.cbDateNowChecked === true;
 
-    if (swipeUpDistance < SWIPE_UP_THRESHOLD_PX || disableScheduled) {
+    // Do not refresh for the initial configuration received during page load.
+    if (previousEnabled === null) {
+      previousEnabled = enabled;
       return;
     }
 
-    disableScheduled = true;
+    // Only refresh on the transition: Date.now enabled -> disabled.
+    if (previousEnabled === true && enabled === false && !refreshScheduled) {
+      refreshScheduled = true;
+      window.setTimeout(function () {
+        window.location.reload();
+      }, );
+    }
 
-    // One native animation frame after the game's touchend handlers.
-    nativeRequestAnimationFrame(function () {
-      window.postMessage({ command: "disableDateNowAfterGameRefresh" }, "*");
-      disableScheduled = false;
-    });
-  }, { capture: false, passive: true });
+    previousEnabled = enabled;
+  });
 })();
+)();

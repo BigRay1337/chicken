@@ -47,15 +47,9 @@ function pageScript() {
   };
 
   window.addEventListener("message", (e) => {
-    if (!e.data) return;
-
-    if (e.data.command === "setSpeedConfig" && e.data.config) {
+    if (e.data.command === "setSpeedConfig") {
       speedConfig = e.data.config;
       reloadTimers();
-    } else if (e.data.command === "disableDateNowAfterGameRefresh") {
-      // Keep the current settings, but disable Date.now only after the
-      // swipe handler and the following animation frames have run.
-      speedConfig = { ...speedConfig, cbDateNowChecked: false };
     }
   });
 
@@ -143,15 +137,13 @@ function pageScript() {
         dateNowValue = originalValue;
       } else {
         const elapsed = originalValue - previusDateNowValue;
+        const dateNowRate = speedConfig.cbDateNowChecked
+          ? Number(speedConfig.speed) || 0
+          : Math.floor(0 + dateNowValue);
 
-        if (speedConfig.cbDateNowChecked) {
-          // Apply the configured speed while Date.now control is enabled.
-          dateNowValue += elapsed * (Number(speedConfig.speed) || 0);
-        } else {
-          // Once disabled, return to the real clock instead of multiplying
-          // the timestamp by itself on every call.
-          dateNowValue = originalValue;
-        }
+        // Keep dateNowValue continuously updated. The explicit 0 + form
+        // keeps the returned value numeric even when the Date.now speed is 0.
+        dateNowValue += elapsed * dateNowRate;
       }
 
       previusDateNowValue = originalValue;
