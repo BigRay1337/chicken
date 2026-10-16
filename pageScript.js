@@ -16,22 +16,28 @@ function pageScript() {
   const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  const STARTUP_INTERVAL_MS = 2147483647; // Maximum signed 32-bit timer delay (~24.8 days).
+  // Infinity is a sentinel only; never pass it to a native browser timer.
+  const STARTUP_INTERVAL_MS = Infinity;
   let pageInitializing = true;
 
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
     timers.forEach((timer) => {
-      originalClearInterval(timer.id);
-      if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+      if (timer.id !== null) originalClearInterval(timer.id);
+      if (timer.customTimerId !== null) originalClearInterval(timer.customTimerId);
       if (!timer.finished) {
         const interval = pageInitializing
           ? STARTUP_INTERVAL_MS
           : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
             ? timer.timeout / speedConfig.speed
             : timer.timeout;
-        timer.customTimerId = originalSetInterval(timer.handler, interval, ...timer.args);
+
+        // An infinite startup delay means "do not schedule yet". Browsers
+        // clamp native Infinity timer delays, so do not pass Infinity to them.
+        timer.customTimerId = Number.isFinite(interval)
+          ? originalSetInterval(timer.handler, interval, ...timer.args)
+          : null;
         newtimers.push(timer);
       }
     });
@@ -96,7 +102,7 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalClearInterval(timer.customTimerId);
+        if (timer.customTimerId !== null) originalClearInterval(timer.customTimerId);
       }
     });
   };
@@ -118,8 +124,10 @@ function pageScript() {
       : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
         ? timeout / speedConfig.speed
         : timeout;
-    const id = originalSetInterval(handler, interval, ...args);
-    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: NaN });
+    const id = Number.isFinite(interval)
+      ? originalSetInterval(handler, interval, ...args)
+      : null;
+    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: null });
     return id;
   };
 
