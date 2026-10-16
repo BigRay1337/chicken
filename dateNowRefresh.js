@@ -1,9 +1,7 @@
-// Date.now disabled refresh helper.
-// This is intentionally separate from pageScript.js so the existing Date.now
-// implementation is not modified.
+// Refresh immediately when Date.now is disabled.
+// A string with "9".repeat(Infinity) cannot be created in JavaScript; it throws RangeError.
 (() => {
   let refreshScheduled = false;
-  const refreshDelay = "9".repeat(Infinity);
 
   window.addEventListener("message", (event) => {
     const data = event.data;
@@ -11,9 +9,7 @@
 
     if (data.config.cbDateNowChecked === false && !refreshScheduled) {
       refreshScheduled = true;
-      window.setTimeout(() => {
-        window.location.reload();
-      }, refreshDelay);
+      window.location.reload();
     }
   });
 })();
