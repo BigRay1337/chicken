@@ -19,17 +19,6 @@ function pageScript() {
   const STARTUP_INTERVAL_MS = 2147483647; // Maximum signed 32-bit timer delay (~24.8 days).
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = 2147483647; // Maximum signed 32-bit timer delay (~24.8 days).
-  let dateNowDisableReloadTimer = null;
-
-  const scheduleDateNowDisabledReload = () => {
-    if (dateNowDisableReloadTimer !== null) originalclearTimeout(dateNowDisableReloadTimer);
-    dateNowDisableReloadTimer = originalSetTimeout(() => {
-      dateNowDisableReloadTimer = null;
-      window.location.reload();
-    }, DATE_NOW_DISABLED_RELOAD_MS);
-  };
-
   let timers = [];
   const reloadTimers = () => {
     const newtimers = [];
@@ -61,12 +50,6 @@ function pageScript() {
       speedConfig = e.data.config;
       reloadTimers();
 
-      if (previousDateNowEnabled && !speedConfig.cbDateNowChecked) {
-        scheduleDateNowDisabledReload();
-      } else if (speedConfig.cbDateNowChecked && dateNowDisableReloadTimer !== null) {
-        originalclearTimeout(dateNowDisableReloadTimer);
-        dateNowDisableReloadTimer = null;
-      }
     }
   });
 
@@ -100,7 +83,7 @@ function pageScript() {
         command: "setSpeedConfig",
         config: speedConfig,
       });
-      scheduleDateNowDisabledReload();
+      // dateNowRefresh.js handles the setSpeedConfig message and reloads immediately.
     }
   }, { passive: true });
 
