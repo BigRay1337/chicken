@@ -16,10 +16,10 @@ function pageScript() {
   const originalDateNow = Date.now;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  const STARTUP_INTERVAL_MS = "9".repeat(Infinity);
+  const STARTUP_INTERVAL_MS = 2147483647; // Maximum signed 32-bit timer delay (~24.8 days).
   let pageInitializing = true;
 
-  const DATE_NOW_DISABLED_RELOAD_MS = "9".repeat(Infinity);
+  const DATE_NOW_DISABLED_RELOAD_MS = 2147483647; // Maximum signed 32-bit timer delay (~24.8 days).
   let dateNowDisableReloadTimer = null;
 
   const scheduleDateNowDisabledReload = () => {
