@@ -1,33 +1,42 @@
-// Reload the page only when Date.now is changed from enabled to disabled.
-// This file is intentionally separate from pageScript.js so the original
-// Date.now implementation and timing code are not modified.
+// Detect an upward swipe of at least 30 CSS pixels.
+// Let the game's swipe handlers run, then disable Date.now after two animation
+// frames so the browser has an opportunity to process the game's internal refresh.
+// This does not reload the webpage.
 (function () {
-  let previousEnabled = null;
-  let refreshScheduled = false;
+  const SWIPE_UP_THRESHOLD_PX = 30;
+  let touchStartY = null;
+  let disableScheduled = false;
 
-  window.addEventListener("message", function (event) {
-    const data = event && event.data;
-    if (!data || data.command !== "setSpeedConfig" || !data.config) {
+  window.addEventListener("touchstart", function (event) {
+    if (!event.touches || event.touches.length !== 1) {
+      touchStartY = null;
+      return;
+    }
+    touchStartY = event.touches[0].clientY;
+  }, { capture: true, passive: true });
+
+  window.addEventListener("touchend", function (event) {
+    if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) {
+      touchStartY = null;
       return;
     }
 
-    const enabled = data.config.cbDateNowChecked === true;
+    const endY = event.changedTouches[0].clientY;
+    const swipeUpDistance = touchStartY - endY;
+    touchStartY = null;
 
-    // Do not refresh for the initial configuration received during page load.
-    if (previousEnabled === null) {
-      previousEnabled = enabled;
+    if (swipeUpDistance < SWIPE_UP_THRESHOLD_PX || disableScheduled) {
       return;
     }
 
-    // Only refresh on the transition: Date.now enabled -> disabled.
-    if (previousEnabled === true && enabled === false && !refreshScheduled) {
-      refreshScheduled = true;
-      window.setTimeout(function () {
-        window.location.reload();
-      }, );
-    }
+    disableScheduled = true;
 
-    previousEnabled = enabled;
-  });
+    // Allow the game's touchend handler and a paint opportunity to run first.
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        window.postMessage({ command: "disableDateNowAfterGameRefresh" }, "*");
+        disableScheduled = false;
+      });
+    });
+  }, { capture: false, passive: true });
 })();
-)();
