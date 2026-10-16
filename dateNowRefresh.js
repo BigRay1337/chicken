@@ -1,10 +1,11 @@
 // Detect the game's existing upward-swipe refresh gesture.
-// Let the game's touch handlers run first and initiate its in-page refresh.
-// Only after that event dispatch has finished and a short render window has
-// passed do we disable Date.now. This does not reload the browser tab.
+// Let the game's touch handlers initiate its in-page refresh first.
+// After the swipe event has finished, wait 10,101 ms before disabling Date.now.
+// This does not reload the browser tab or prove that an asynchronous refresh
+// has completed; it provides a fixed delay after the game's handler can run.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
-  const REFRESH_FIRST_DELAY_MS = 1500;
+  const DATE_NOW_DISABLE_DELAY_MS = 10101;
   const nativeSetTimeout = window.setTimeout.bind(window);
   let latestConfig = null;
   let touchStartY = null;
@@ -25,7 +26,7 @@
     touchStartY = event.touches[0].clientY;
   }, { capture: true, passive: true });
 
-  // Bubble phase lets earlier game touch handlers process the swipe first.
+  // Bubble phase lets the game's earlier touch handlers process the swipe first.
   window.addEventListener("touchend", function (event) {
     if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) {
       touchStartY = null;
@@ -43,9 +44,8 @@
       return;
     }
 
-    // The game's own touchend handler gets to run before this timer fires.
-    // This gives its in-page refresh a head start; it is not a guaranteed
-    // completion signal if the game takes longer than the delay.
+    // The game's touchend handler can initiate the refresh before this timer
+    // fires. Disable Date.now 10,101 ms later, not immediately on the swipe.
     disableScheduled = true;
     nativeSetTimeout(function () {
       if (!latestConfig) {
@@ -59,6 +59,6 @@
       latestConfig = nextConfig;
       window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
       disableScheduled = false;
-    }, REFRESH_FIRST_DELAY_MS);
+    }, DATE_NOW_DISABLE_DELAY_MS);
   }, { capture: false, passive: true });
 })();
