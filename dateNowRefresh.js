@@ -1,15 +1,20 @@
-// Refresh immediately when Date.now is disabled.
-// A string with "9".repeat(Infinity) cannot be created in JavaScript; it throws RangeError.
+// Refresh the page immediately when Date.now is disabled.
+// pageScript.js detects swipe-up and posts the updated speed configuration.
 (() => {
-  let refreshScheduled = false;
+  let refreshStarted = false;
+
+  const refreshImmediately = () => {
+    if (refreshStarted) return;
+    refreshStarted = true;
+    window.location.reload();
+  };
 
   window.addEventListener("message", (event) => {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    if (data.config.cbDateNowChecked === false && !refreshScheduled) {
-      refreshScheduled = true;
-      window.location.reload();
+    if (data.config.cbDateNowChecked === false) {
+      refreshImmediately();
     }
   });
 })();
