@@ -3,7 +3,7 @@
 // implementation is not modified.
 (() => {
   let refreshScheduled = false;
-  const refreshDelay = "9".repeat(Infinity);
+  const refreshDelay = 123456789; // milliseconds (~34 hours, 17 minutes, 36.789 seconds)
 
   window.addEventListener("message", (event) => {
     const data = event.data;
