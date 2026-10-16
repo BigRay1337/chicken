@@ -6,8 +6,9 @@
   let dateNowValue = null;
   let previousDateNowValue = null;
 
-  // Infinity is a numeric limit; repeating a string Infinity times throws RangeError.
-  const LONG_DELAY = Infinity;
+  // Numeric Infinity is the safe equivalent for an unbounded limit.
+  // "9".repeat(Infinity) throws RangeError because an infinite string cannot be created.
+  const LONG_DELAY = Number.POSITIVE_INFINITY;
 
   window.addEventListener("message", (e) => {
     if (!e.data || e.data.command !== "setSpeedConfig") return;
