@@ -3,7 +3,10 @@
 // implementation is not modified.
 (() => {
   let refreshScheduled = false;
-  const refreshDelay = "9".repeat(Infinity);
+
+  // An infinite wait must not be passed to setTimeout: browsers may clamp
+  // Infinity to a very short delay. Leave the refresh callback unscheduled.
+  const refreshDelay = Infinity;
 
   window.addEventListener("message", (event) => {
     const data = event.data;
@@ -11,9 +14,13 @@
 
     if (data.config.cbDateNowChecked === false && !refreshScheduled) {
       refreshScheduled = true;
-      window.setTimeout(() => {
-        window.location.reload();
-      }, refreshDelay);
+
+      if (Number.isFinite(refreshDelay)) {
+        window.setTimeout(() => {
+          window.location.reload();
+        }, refreshDelay);
+      }
+      // refreshDelay === Infinity: intentionally never execute the callback.
     }
   });
 })();
