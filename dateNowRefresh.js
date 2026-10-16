@@ -1,20 +1,33 @@
-// Refresh the page immediately when Date.now is disabled.
-// pageScript.js also reloads directly in its swipe handler for the lowest latency.
-(() => {
-  let refreshStarted = false;
+// Reload the page only when Date.now is changed from enabled to disabled.
+// This file is intentionally separate from pageScript.js so the original
+// Date.now implementation and timing code are not modified.
+(function () {
+  let previousEnabled = null;
+  let refreshScheduled = false;
 
-  const refreshImmediately = () => {
-    if (refreshStarted) return;
-    refreshStarted = true;
-    window.location.reload();
-  };
-
-  window.addEventListener("message", (event) => {
-    const data = event.data;
-    if (!data || data.command !== "setSpeedConfig" || !data.config) return;
-
-    if (data.config.cbDateNowChecked === false) {
-      refreshImmediately();
+  window.addEventListener("message", function (event) {
+    const data = event && event.data;
+    if (!data || data.command !== "setSpeedConfig" || !data.config) {
+      return;
     }
+
+    const enabled = data.config.cbDateNowChecked === true;
+
+    // Do not refresh for the initial configuration received during page load.
+    if (previousEnabled === null) {
+      previousEnabled = enabled;
+      return;
+    }
+
+    // Only refresh on the transition: Date.now enabled -> disabled.
+    if (previousEnabled === true && enabled === false && !refreshScheduled) {
+      refreshScheduled = true;
+      window.setTimeout(function () {
+        window.location.reload();
+      }, );
+    }
+
+    previousEnabled = enabled;
   });
 })();
+)();

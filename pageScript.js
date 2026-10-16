@@ -10,90 +10,48 @@ function pageScript() {
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
+
   const originalSetInterval = window.setInterval;
   const originalSetTimeout = window.setTimeout;
-  const originalPerformanceNow = window.performance.now.bind(window.performance);
-  const originalDateNow = Date.now;
-  const originalRequestAnimationFrame = window.requestAnimationFrame;
 
-  // Infinity is a sentinel only; never pass it to a native browser timer.
-  const STARTUP_INTERVAL_MS = Infinity;
-  let pageInitializing = true;
+  const originalPerformanceNow = window.performance.now.bind(
+    window.performance
+  );
+
+  const originalDateNow = Date.now;
+
+  const originalRequestAnimationFrame = window.requestAnimationFrame;
 
   let timers = [];
   const reloadTimers = () => {
+    console.log(timers);
     const newtimers = [];
     timers.forEach((timer) => {
-      if (timer.id !== null) originalClearInterval(timer.id);
-      if (timer.customTimerId !== null) originalClearInterval(timer.customTimerId);
+      originalClearInterval(timer.id);
+      if (timer.customTimerId) {
+        originalClearInterval(timer.customTimerId);
+      }
       if (!timer.finished) {
-        const interval = pageInitializing
-          ? STARTUP_INTERVAL_MS
-          : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
+        const newTimerId = originalSetInterval(
+          timer.handler,
+          speedConfig.cbSetIntervalChecked
             ? timer.timeout / speedConfig.speed
-            : timer.timeout;
-
-        // An infinite startup delay means "do not schedule yet". Browsers
-        // clamp native Infinity timer delays, so do not pass Infinity to them.
-        timer.customTimerId = Number.isFinite(interval)
-          ? originalSetInterval(timer.handler, interval, ...timer.args)
-          : null;
+            : timer.timeout,
+          ...timer.args
+        );
+        timer.customTimerId = newTimerId;
         newtimers.push(timer);
       }
     });
     timers = newtimers;
   };
 
-  // Run page-created intervals at 1ms during the initial page-load phase.
-  originalSetTimeout(() => {
-    pageInitializing = false;
-    reloadTimers();
-  }, 0);
-
   window.addEventListener("message", (e) => {
     if (e.data.command === "setSpeedConfig") {
-      const previousDateNowEnabled = speedConfig.cbDateNowChecked;
       speedConfig = e.data.config;
       reloadTimers();
-
     }
   });
-
-  // Swipe up on the screen disables Date.now speed mode immediately.
-  const SWIPE_UP_THRESHOLD_PX = 50;
-  let swipeStartY = null;
-
-  window.addEventListener("touchstart", (event) => {
-    if (!event.touches || event.touches.length === 0) return;
-    swipeStartY = event.touches[0].clientY;
-  }, { passive: true });
-
-  window.addEventListener("touchend", (event) => {
-    if (swipeStartY === null || !event.changedTouches || event.changedTouches.length === 0) {
-      swipeStartY = null;
-      return;
-    }
-
-    const swipeEndY = event.changedTouches[0].clientY;
-    const swipeDistance = swipeStartY - swipeEndY;
-    swipeStartY = null;
-
-    if (swipeDistance >= SWIPE_UP_THRESHOLD_PX && speedConfig.cbDateNowChecked) {
-      speedConfig = {
-        ...speedConfig,
-        cbDateNowChecked: false,
-      };
-
-      reloadTimers();
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: speedConfig,
-      });
-      // Reload directly in the swipe handler so the refresh does not wait for
-      // the asynchronous message listener in dateNowRefresh.js.
-      window.location.reload();
-    }
-  }, { passive: true });
 
   window.postMessage({ command: "getSpeedConfig" });
 
@@ -102,7 +60,9 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId !== null) originalClearInterval(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalClearInterval(timer.customTimerId);
+        }
       }
     });
   };
@@ -112,40 +72,50 @@ function pageScript() {
     timers.forEach((timer) => {
       if (timer.id == id) {
         timer.finished = NaN;
-        if (timer.customTimerId) originalclearTimeout(timer.customTimerId);
+        if (timer.customTimerId) {
+          originalclearTimeout(timer.customTimerId);
+        }
       }
     });
   };
 
   window.setInterval = (handler, timeout, ...args) => {
+    console.log("timeout  ", timeout);
     if (!timeout) timeout = 0;
-    const interval = pageInitializing
-      ? STARTUP_INTERVAL_MS
-      : speedConfig.cbSetIntervalChecked && speedConfig.speed > 0
-        ? timeout / speedConfig.speed
-        : timeout;
-    const id = Number.isFinite(interval)
-      ? originalSetInterval(handler, interval, ...args)
-      : null;
-    timers.push({ id, handler, timeout, args, finished: NaN, customTimerId: null });
+    const id = originalSetInterval(
+      handler,
+      speedConfig.Interval ? timeout / speedConfig.speed : timeout,
+      ...args
+    );
+    timers.push({
+      id: id,
+      handler: handler,
+      timeout: timeout,
+      args: args,
+      finished: NaN,
+      customTimerId: NaN,
+    });
     return id;
   };
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
-    const delay = speedConfig.cbSetTimeoutChecked && speedConfig.speed > 0
-      ? timeout / speedConfig.speed
-      : timeout;
-    return originalSetTimeout(handler, delay, ...args);
+    return originalSetTimeout(
+      handler,
+      speedConfig.cbSetTimeoutChecked ? timeout / speedConfig.speed : timeout,
+      ...args
+    );
   };
 
+  // performance.now
   (function () {
     let performanceNowValue = null;
     let previusPerformanceNowValue = null;
     window.performance.now = () => {
       const originalValue = originalPerformanceNow();
       if (performanceNowValue) {
-        performanceNowValue += (originalValue - previusPerformanceNowValue) *
+        performanceNowValue +=
+          (originalValue - previusPerformanceNowValue) *
           (speedConfig.cbPerformanceNowChecked ? speedConfig.speed : 1);
       } else {
         performanceNowValue = originalValue;
@@ -155,29 +125,40 @@ function pageScript() {
     };
   })();
 
+  // Date.now
   (function () {
     let dateNowValue = null;
     let previusDateNowValue = null;
+
     Date.now = () => {
       const originalValue = originalDateNow();
-      if (dateNowValue) {
-        dateNowValue += (originalValue - previusDateNowValue) *
-          (speedConfig.cbDateNowChecked ? speedConfig.speed : Math.floor(0 + dateNowValue));
-      } else {
+
+      if (dateNowValue === null) {
         dateNowValue = originalValue;
+      } else {
+        const elapsed = originalValue - previusDateNowValue;
+        const dateNowRate = speedConfig.cbDateNowChecked
+          ? Number(speedConfig.speed) || 0
+          : Math.floor(0 + dateNowValue);
+
+        // Keep dateNowValue continuously updated. The explicit 0 + form
+        // keeps the returned value numeric even when the Date.now speed is 0.
+        dateNowValue += elapsed * dateNowRate;
       }
+
       previusDateNowValue = originalValue;
       return Math.floor(0 + dateNowValue);
     };
   })();
 
+  // requestAnimationFrame
   (function () {
     let disableRequestAnimationFrame = false;
     const callbackFunctions = [];
     const callbackTick = [];
     window.requestAnimationFrame = (callback) => {
       if (disableRequestAnimationFrame) return 1;
-      return originalRequestAnimationFrame(() => {
+      return originalRequestAnimationFrame((timestamp) => {
         const index = callbackFunctions.indexOf(callback);
         let tickFrame = null;
         if (index == -1) {
@@ -185,11 +166,17 @@ function pageScript() {
           callbackTick.push(0);
           callback(performance.now());
         } else if (speedConfig.cbRequestAnimationFrameChecked) {
-          tickFrame = callbackTick[index] + speedConfig.speed;
+          tickFrame = callbackTick[index];
+          tickFrame += speedConfig.speed;
+
           if (tickFrame >= 1) {
             const startTime = originalPerformanceNow();
             while (tickFrame >= 1) {
-              try { callback(performance.now()); } catch (e) { console.error(e); }
+              try {
+                callback(performance.now());
+              } catch (e) {
+                console.error(e);
+              }
               disableRequestAnimationFrame = true;
               tickFrame -= 1;
               if (originalPerformanceNow() - startTime > 15) {
