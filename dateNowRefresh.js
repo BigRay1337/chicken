@@ -1,10 +1,13 @@
 // Detect the game's existing upward-swipe refresh gesture.
 // A swipe up of at least 30 CSS pixels is left to the game's own touch
-// handlers to trigger its in-page refresh. Turn Date.now off after 11 native
-// animation frames; this does not reload the browser tab.
+// handlers to trigger its in-page refresh. Keep Date.now enabled for a longer
+// render window, then disable it; this does not reload the browser tab.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
-  const FRAMES_BEFORE_DISABLING_DATE_NOW = 11;
+  // 60 native frames gives the game's refresh/render sequence about one second
+  // at 60 Hz before Date.now is disabled. This is a buffer, not a guaranteed
+  // signal that every asynchronous game refresh has completed.
+  const FRAMES_BEFORE_DISABLING_DATE_NOW = 60;
   const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
   let latestConfig = null;
   let touchStartY = null;
