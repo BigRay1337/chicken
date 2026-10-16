@@ -1,5 +1,5 @@
 // Refresh the page immediately when Date.now is disabled.
-// pageScript.js detects swipe-up and posts the updated speed configuration.
+// pageScript.js also reloads directly in its swipe handler for the lowest latency.
 (() => {
   let refreshStarted = false;
 
