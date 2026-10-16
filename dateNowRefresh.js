@@ -1,8 +1,7 @@
 // Detect an upward swipe of at least 30 CSS pixels.
-// Use the browser's native animation-frame scheduler so the extension's
-// Date.now/requestAnimationFrame overrides cannot delay this sequence.
-// Disable Date.now only for this swipe, after the game's touch handlers have
-// run and two native frames have passed. The browser tab is not reloaded.
+// Let the game's own touch handlers receive the swipe and perform its in-page
+// refresh. After touchend propagation, disable Date.now on the next native frame.
+// This does not reload the browser tab or synthesize a separate refresh action.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
   const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
@@ -33,13 +32,10 @@
 
     disableScheduled = true;
 
-    // Run after touchend propagation, then allow two native frames for the
-    // game's in-page refresh/render to process before switching Date.now off.
+    // One native animation frame after the game's touchend handlers.
     nativeRequestAnimationFrame(function () {
-      nativeRequestAnimationFrame(function () {
-        window.postMessage({ command: "disableDateNowAfterGameRefresh" }, "*");
-        disableScheduled = false;
-      });
+      window.postMessage({ command: "disableDateNowAfterGameRefresh" }, "*");
+      disableScheduled = false;
     });
   }, { capture: false, passive: true });
 })();
