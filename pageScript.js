@@ -83,7 +83,9 @@ function pageScript() {
         command: "setSpeedConfig",
         config: speedConfig,
       });
-      // dateNowRefresh.js handles the setSpeedConfig message and reloads immediately.
+      // Reload directly in the swipe handler so the refresh does not wait for
+      // the asynchronous message listener in dateNowRefresh.js.
+      window.location.reload();
     }
   }, { passive: true });
 
