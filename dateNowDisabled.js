@@ -6,7 +6,8 @@
   let dateNowValue = null;
   let previousDateNowValue = null;
 
-  // Use numeric Infinity as an unbounded elapsed-time cap.
+  // Numeric Infinity is the safe equivalent for an unbounded limit.
+  // "9".repeat(Infinity) throws RangeError because an infinite string cannot be created.
   const LONG_DELAY = Number.POSITIVE_INFINITY;
 
   window.addEventListener("message", (e) => {
@@ -40,7 +41,9 @@
     const elapsed = Math.max(0, realNow - previousDateNowValue);
     previousDateNowValue = realNow;
 
-    dateNowValue += Math.min(elapsed, LONG_DELAY);
+    // Infinity means there is no finite cap on elapsed time.
+    const delayedElapsed = Math.min(elapsed, LONG_DELAY);
+    dateNowValue += delayedElapsed;
 
     return Math.floor(0 + dateNowValue);
   };
