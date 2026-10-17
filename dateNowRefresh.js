@@ -176,11 +176,19 @@
       quietLongEnough
     ) {
       if (latestConfig) {
-        const nextConfig = Object.assign({}, latestConfig, {
+        // Briefly disable Date.now, then re-enable it immediately after the
+        // swipe-triggered refresh has completed.
+        const disabledConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: false
         });
-        latestConfig = nextConfig;
-        window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+        latestConfig = disabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
+          cbDateNowChecked: true
+        });
+        latestConfig = enabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
       return;
