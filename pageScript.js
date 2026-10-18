@@ -13,6 +13,7 @@ function pageScript() {
   const dateNowValue = 0.64;
   const DATE_NOW_FALLBACK_SPEED = "0.36999999999999991999999999999999";
   const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -dateNowValue;
+  const DATE_NOW_POSITIVE_FALLBACK_SPEED = dateNowValue;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
