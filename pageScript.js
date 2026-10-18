@@ -31,15 +31,21 @@ function pageScript() {
       if (timer.customTimerId) {
         originalClearInterval(timer.customTimerId);
       }
-      if (!timer.finished) {
-        const newTimerId = originalSetInterval(
+      if (timer.finished !== true) {
+        // Speed 0 pauses intervals; never pass Infinity to browser timers.
+        if (speedConfig.cbSetIntervalChecked && Number(speedConfig.speed) <= 0) {
+          timer.customTimerId = null;
+          newtimers.push(timer);
+          return;
+        }
+        const intervalDelay = speedConfig.cbSetIntervalChecked
+          ? timer.timeout / Number(speedConfig.speed)
+          : timer.timeout;
+        timer.customTimerId = originalSetInterval(
           timer.handler,
-          speedConfig.cbSetIntervalChecked
-            ? timer.timeout / speedConfig.speed
-            : timer.timeout,
+          intervalDelay,
           ...timer.args
         );
-        timer.customTimerId = newTimerId;
         newtimers.push(timer);
       }
     });
@@ -59,7 +65,7 @@ function pageScript() {
     originalClearInterval(id);
     timers.forEach((timer) => {
       if (timer.id == id) {
-        timer.finished = NaN;
+        timer.finished = true;
         if (timer.customTimerId) {
           originalClearInterval(timer.customTimerId);
         }
@@ -71,7 +77,7 @@ function pageScript() {
     originalclearTimeout(id);
     timers.forEach((timer) => {
       if (timer.id == id) {
-        timer.finished = NaN;
+        timer.finished = true;
         if (timer.customTimerId) {
           originalclearTimeout(timer.customTimerId);
         }
@@ -82,9 +88,11 @@ function pageScript() {
   window.setInterval = (handler, timeout, ...args) => {
     console.log("timeout  ", timeout);
     if (!timeout) timeout = 0;
-    const id = originalSetInterval(
+    // Register but do not schedule intervals while frozen.
+    const paused = speedConfig.cbSetIntervalChecked && Number(speedConfig.speed) <= 0;
+    const id = paused ? null : originalSetInterval(
       handler,
-      speedConfig.Interval ? timeout / speedConfig.speed : timeout,
+      speedConfig.cbSetIntervalChecked ? timeout / Number(speedConfig.speed) : timeout,
       ...args
     );
     timers.push({
@@ -92,17 +100,23 @@ function pageScript() {
       handler: handler,
       timeout: timeout,
       args: args,
-      finished: NaN,
-      customTimerId: NaN,
+      finished: false,
+      customTimerId: null,
     });
     return id;
   };
 
   window.setTimeout = (handler, timeout, ...args) => {
     if (!timeout) timeout = 0;
+    // While frozen, prevent new timeout callbacks from running.
+    if (speedConfig.cbSetTimeoutChecked && Number(speedConfig.speed) <= 0) {
+      return originalSetTimeout(() => {}, 2147483647);
+    }
     return originalSetTimeout(
       handler,
-      speedConfig.cbSetTimeoutChecked ? timeout / speedConfig.speed : timeout,
+      speedConfig.cbSetTimeoutChecked
+        ? timeout / Number(speedConfig.speed)
+        : timeout,
       ...args
     );
   };
