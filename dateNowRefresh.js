@@ -152,11 +152,18 @@
     const swipeUpDistance = touchStartY - event.changedTouches[0].clientY;
     touchStartY = null;
 
-    if (swipeUpDistance < SWIPE_UP_THRESHOLD_PX || refreshCheckActive || !latestConfig) {
+    if (swipeUpDistance < SWIPE_UP_THRESHOLD_PX || refreshCheckActive) {
       return;
     }
 
+    // A swipe of at least 30 px must refresh the website, even if the game
+    // does not expose a detectable network or DOM refresh event.
     refreshCheckActive = true;
+    nativeSetTimeout(function () {
+      window.location.reload();
+    }, 0);
+
+
     refreshActivitySeen = false;
     refreshStartedAt = nativeDateNow();
     lastActivityAt = refreshStartedAt;
