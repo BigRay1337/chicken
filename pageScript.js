@@ -8,10 +8,11 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Decimal fallback multiplier used when the Date.now speed toggle is disabled.
-  const DATE_NOW_FALLBACK_SPEED = 0.64;
-  // Separate negative-only decimal fallback; kept independent of the positive fallback.
-  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -0.64;
+  // Positive and negative decimal fallback speeds derived from a dedicated decimal value.
+  // Keep this multiplier separate from dateNowValue, which tracks the Date.now timestamp.
+  const dateNowValue = 0.64;
+  const DATE_NOW_FALLBACK_SPEED = Math.abs(Number(dateNowValue));
+  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -Math.abs(Number(dateNowValue));
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
