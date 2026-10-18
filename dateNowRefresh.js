@@ -189,11 +189,17 @@
       quietLongEnough
     ) {
       if (latestConfig) {
-        const nextConfig = Object.assign({}, latestConfig, {
+        const disabledConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: false
         });
-        latestConfig = nextConfig;
-        window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+        latestConfig = disabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
+          cbDateNowChecked: true
+        });
+        latestConfig = enabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
       return;
