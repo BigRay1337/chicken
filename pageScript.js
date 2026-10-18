@@ -9,8 +9,9 @@ function pageScript() {
   };
 
   // Decimal fallback multiplier used when the Date.now speed toggle is disabled.
-  const DATE_NOW_FALLBACK_SPEED = 0.36999999999999991999999999999999;
-  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -0.36999999999999991999999999999999;
+  const DATE_NOW_FALLBACK_SPEED = 0.64;
+  // Separate negative-only decimal fallback; kept independent of the positive fallback.
+  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -0.64;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
