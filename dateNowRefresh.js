@@ -16,32 +16,15 @@
   let touchStartY = null;
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
-  let dateNowDisabledDuringRefresh = false;
   let pendingRequests = 0;
   let lastActivityAt = 0;
   let domObserver = null;
   let pageLoadSeen = document.readyState === "complete";
 
-  function setDateNowEnabled(enabled) {
-    if (!latestConfig) return;
-    const nextConfig = Object.assign({}, latestConfig, {
-      cbDateNowChecked: enabled
-    });
-    latestConfig = nextConfig;
-    window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
-  }
-
   function markActivity() {
     if (!refreshCheckActive) return;
     refreshActivitySeen = true;
     lastActivityAt = nativeDateNow();
-
-    // Pause Date.now once the swipe-triggered refresh shows activity.
-    // It is re-enabled when the refresh has settled.
-    if (!dateNowDisabledDuringRefresh) {
-      dateNowDisabledDuringRefresh = true;
-      setDateNowEnabled(false);
-    }
   }
 
   window.addEventListener("load", function () {
@@ -173,7 +156,6 @@
 
     refreshCheckActive = true;
     refreshActivitySeen = false;
-    dateNowDisabledDuringRefresh = false;
     lastActivityAt = nativeDateNow();
 
     // Let the current touch event dispatch finish before checking for refresh
@@ -193,9 +175,13 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      // Re-enable Date.now after the refresh has finished.
-      setDateNowEnabled(true);
-      dateNowDisabledDuringRefresh = false;
+      if (latestConfig) {
+        const nextConfig = Object.assign({}, latestConfig, {
+          cbDateNowChecked: false
+        });
+        latestConfig = nextConfig;
+        window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+      }
       refreshCheckActive = false;
       return;
     }
