@@ -2,10 +2,10 @@ function pageScript() {
   let speedConfig = {
     speed: 0,
     cbSetIntervalChecked: true,
-    cbSetTimeoutChecked: false,
-    cbPerformanceNowChecked: false,
+    cbSetTimeoutChecked: true,
+    cbPerformanceNowChecked: true,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   const originalClearInterval = window.clearInterval;
@@ -197,4 +197,4 @@ function pageScript() {
   })();
 }
 
-pageScript();
+pageScript();();
