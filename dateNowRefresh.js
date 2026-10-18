@@ -4,6 +4,7 @@
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
   const QUIET_WINDOW_MS = 750;
+  const MIN_REFRESH_WINDOW_MS = 750;
   const CHECK_INTERVAL_MS = 50;
   const nativeSetTimeout = window.setTimeout.bind(window);
   const nativeDateNow = Date.now.bind(Date);
@@ -17,6 +18,7 @@
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
   let pendingRequests = 0;
+  let refreshStartedAt = 0;
   let lastActivityAt = 0;
   let domObserver = null;
   let pageLoadSeen = document.readyState === "complete";
@@ -156,7 +158,8 @@
 
     refreshCheckActive = true;
     refreshActivitySeen = false;
-    lastActivityAt = nativeDateNow();
+    refreshStartedAt = nativeDateNow();
+    lastActivityAt = refreshStartedAt;
 
     // Let the current touch event dispatch finish before checking for refresh
     // activity. If the document is still loading, wait for its load event too.
@@ -166,10 +169,13 @@
   function checkRefreshCompletion() {
     if (!refreshCheckActive) return;
 
-    const quietLongEnough = nativeDateNow() - lastActivityAt >= QUIET_WINDOW_MS;
+    const now = nativeDateNow();
+    const minimumRefreshWindowPassed = now - refreshStartedAt >= MIN_REFRESH_WINDOW_MS;
+    const quietLongEnough = now - lastActivityAt >= QUIET_WINDOW_MS;
     const documentLoaded = pageLoadSeen || document.readyState === "complete";
 
     if (
+      minimumRefreshWindowPassed &&
       documentLoaded &&
       refreshActivitySeen &&
       pendingRequests === 0 &&
