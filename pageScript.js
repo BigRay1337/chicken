@@ -8,12 +8,10 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Positive fallback speed is kept as the requested decimal string.
-  // The negative fallback is a separate numeric value derived from dateNowValue.
+  // Date.now fallback speed and its negative-only additional fallback.
   const dateNowValue = 0.64;
   const DATE_NOW_FALLBACK_SPEED = "0.36999999999999991999999999999999";
   const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -dateNowValue;
-  const DATE_NOW_POSITIVE_FALLBACK_SPEED = dateNowValue;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
