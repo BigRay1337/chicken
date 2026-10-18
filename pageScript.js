@@ -8,10 +8,10 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Date.now fallback speed and its negative-only additional fallback.
+  // Date.now fallback speed and positive additional fallback.
   const dateNowValue = 0.64;
   const DATE_NOW_FALLBACK_SPEED = "0.36999999999999991999999999999999";
-  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -dateNowValue;
+  const DATE_NOW_POSITIVE_FALLBACK_SPEED = Math.abs(dateNowValue);
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -142,9 +142,12 @@ function pageScript() {
         dateNowValue = originalValue;
       } else {
         const elapsed = originalValue - previusDateNowValue;
+        const parsedFallbackSpeed = Number(DATE_NOW_FALLBACK_SPEED);
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : Number(DATE_NOW_FALLBACK_SPEED);
+          : parsedFallbackSpeed > 0
+            ? parsedFallbackSpeed
+            : DATE_NOW_POSITIVE_FALLBACK_SPEED;
         dateNowValue += elapsed * dateNowRate;
       }
 
