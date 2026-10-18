@@ -5,13 +5,11 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   // Fallback multiplier used when the Date.now speed toggle is disabled.
   const DATE_NOW_FALLBACK_SPEED = 0.36999999999999991999999999999999;
-  // Additional fallback multiplier if the primary fallback is not finite.
-  const DATE_NOW_ADDITIONAL_FALLBACK_SPEED = 1;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -142,12 +140,9 @@ function pageScript() {
         dateNowValue = originalValue;
       } else {
         const elapsed = originalValue - previusDateNowValue;
-        const primaryFallbackSpeed = Number(DATE_NOW_FALLBACK_SPEED);
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : Number.isFinite(primaryFallbackSpeed)
-            ? primaryFallbackSpeed
-            : DATE_NOW_ADDITIONAL_FALLBACK_SPEED;
+          : DATE_NOW_FALLBACK_SPEED;
 
         dateNowValue += elapsed * dateNowRate;
       }
