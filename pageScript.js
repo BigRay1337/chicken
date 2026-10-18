@@ -8,11 +8,11 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Positive and negative decimal fallback speeds derived from a dedicated decimal value.
-  // Keep this multiplier separate from dateNowValue, which tracks the Date.now timestamp.
+  // Positive fallback speed is kept as the requested decimal string.
+  // The negative fallback is a separate numeric value derived from dateNowValue.
   const dateNowValue = 0.64;
-  const DATE_NOW_FALLBACK_SPEED = Math.abs(Number(dateNowValue));
-  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -Math.abs(Number(dateNowValue));
+  const DATE_NOW_FALLBACK_SPEED = "0.36999999999999991999999999999999";
+  const DATE_NOW_NEGATIVE_FALLBACK_SPEED = -dateNowValue;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -145,8 +145,7 @@ function pageScript() {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : DATE_NOW_FALLBACK_SPEED;
-
+          : Number(DATE_NOW_FALLBACK_SPEED);
         dateNowValue += elapsed * dateNowRate;
       }
 
