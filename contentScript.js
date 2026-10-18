@@ -1,10 +1,10 @@
 let speedConfig = {
   speed: 0,
   cbSetIntervalChecked: true,
-  cbSetTimeoutChecked: false,
-  cbPerformanceNowChecked: false,
+  cbSetTimeoutChecked: true,
+  cbPerformanceNowChecked: true,
   cbDateNowChecked: true,
-  cbRequestAnimationFrameChecked: false,
+  cbRequestAnimationFrameChecked: true,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
