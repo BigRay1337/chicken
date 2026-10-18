@@ -156,13 +156,21 @@
       return;
     }
 
-    // A swipe of at least 30 px must refresh the website, even if the game
-    // does not expose a detectable network or DOM refresh event.
+    // Disable Date.now before initiating the website refresh.
+    // The config message is handled by pageScript before the reload timer runs.
+    if (latestConfig) {
+      const disabledConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false
+      });
+      latestConfig = disabledConfig;
+      window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+    }
+
+    // A swipe of at least 30 px refreshes the website after Date.now is disabled.
     refreshCheckActive = true;
     nativeSetTimeout(function () {
       window.location.reload();
-    }, 0);
-
+    }, 50);
 
     refreshActivitySeen = false;
     refreshStartedAt = nativeDateNow();
