@@ -11,7 +11,7 @@ function pageScript() {
   // Date.now fallback speed and positive additional fallback.
   const dateNowValue = 0.64;
   const DATE_NOW_FALLBACK_SPEED = "0.36999999999999991999999999999999";
-  const DATE_NOW_POSITIVE_FALLBACK_SPEED = Math.abs(dateNowValue);
+  const DATE_NOW_POSITIVE_FALLBACK_SPEED = dateNowValue > 0 ? dateNowValue : 0;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
