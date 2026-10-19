@@ -8,8 +8,12 @@ function pageScript() {
     cbRequestAnimationFrameChecked: true,
   };
 
-  // Fallback multiplier used when the Date.now speed toggle is disabled.
-  const DATE_NOW_FALLBACK_SPEED = 0.36999999999999991999999999999999;
+  // Literal fallback speed labels requested by the user.
+  const DATE_NOW_FALLBACK_SPEED = "dateNow";
+  const DATE_NOW_ADDITIONAL_FALLBACK_SPEED = "-dateNow";
+
+  // Keep the existing numeric fallback multiplier so Date.now remains numeric.
+  const DATE_NOW_FALLBACK_MULTIPLIER = 0.36999999999999991999999999999999;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -142,7 +146,7 @@ function pageScript() {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : DATE_NOW_FALLBACK_SPEED;
+          : DATE_NOW_FALLBACK_MULTIPLIER;
 
         dateNowValue += elapsed * dateNowRate;
       }
