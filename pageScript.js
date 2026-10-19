@@ -19,7 +19,7 @@ function pageScript() {
   ]);
 
   // Decimal-only fallback multiplier. Keep this finite and numeric.
-  const DATE_NOW_FALLBACK_VALUE = 0.35;
+  const DATE_NOW_FALLBACK_VALUE = 0;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -144,8 +144,6 @@ function pageScript() {
     let previusDateNowValue = null;
 
     const getDateNowFallbackRate = () => {
-      // Keep the fallback choices explicit and constrain value modes to a
-      // finite decimal number. "dateNow" modes use a +/- 1 rate.
       const mode = DATE_NOW_FALLBACK_SPEEDS.includes(DATE_NOW_FALLBACK_SPEED)
         ? DATE_NOW_FALLBACK_SPEED
         : "dateNow";
