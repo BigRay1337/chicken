@@ -8,18 +8,12 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Select the default fallback mode. Supported modes:
-  // "dateNow", "-dateNow", "dateNowValue", "-dateNowValue".
+  // Select the default fallback mode: "dateNow" or "-dateNow".
   const DATE_NOW_FALLBACK_SPEED = "dateNow";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
     "dateNow",
     "-dateNow",
-    "dateNowValue",
-    "-dateNowValue",
   ]);
-
-  // Decimal-only fallback multiplier. Keep this finite and numeric.
-  const DATE_NOW_FALLBACK_VALUE = 0;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -151,10 +145,6 @@ function pageScript() {
       switch (mode) {
         case "-dateNow":
           return -1;
-        case "dateNowValue":
-          return Math.abs(DATE_NOW_FALLBACK_VALUE);
-        case "-dateNowValue":
-          return -Math.abs(DATE_NOW_FALLBACK_VALUE);
         case "dateNow":
         default:
           return 1;
