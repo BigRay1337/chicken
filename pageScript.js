@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: true,
+    cbRequestAnimationFrameChecked: false,
   };
 
   // Literal fallback speed labels requested by the user.
