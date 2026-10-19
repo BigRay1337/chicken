@@ -8,7 +8,7 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Select the default fallback mode: "dateNow" or "-dateNow".
+  // Select the default fallback mode: "date" or "-date".
   const DATE_NOW_FALLBACK_SPEED = "date";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
     "date",
