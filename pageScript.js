@@ -19,7 +19,7 @@ function pageScript() {
   ]);
 
   // Decimal-only fallback multiplier. Keep this finite and numeric.
-  const DATE_NOW_FALLBACK_VALUE = 0.3699999999999999;
+  const DATE_NOW_FALLBACK_VALUE = 0.35;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
