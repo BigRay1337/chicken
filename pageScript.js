@@ -9,10 +9,10 @@ function pageScript() {
   };
 
   // Select the default fallback mode: "dateNow" or "-dateNow".
-  const DATE_NOW_FALLBACK_SPEED = "dateNow";
+  const DATE_NOW_FALLBACK_SPEED = "date";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
-    "dateNow",
-    "-dateNow",
+    "date",
+    "-date",
   ]);
 
   const originalClearInterval = window.clearInterval;
@@ -143,9 +143,9 @@ function pageScript() {
         : "dateNow";
 
       switch (mode) {
-        case "-dateNow":
+        case "-date":
           return -1;
-        case "dateNow":
+        case "date":
         default:
           return 1;
       }
