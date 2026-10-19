@@ -8,12 +8,18 @@ function pageScript() {
     cbRequestAnimationFrameChecked: false,
   };
 
-  // Literal fallback speed labels requested by the user.
+  // Select the default fallback mode. Supported modes:
+  // "dateNow", "-dateNow", "dateNowValue", "-dateNowValue".
   const DATE_NOW_FALLBACK_SPEED = "dateNow";
-  const DATE_NOW_ADDITIONAL_FALLBACK_SPEED = "-dateNow";
+  const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
+    "dateNow",
+    "-dateNow",
+    "dateNowValue",
+    "-dateNowValue",
+  ]);
 
-  // Keep the existing numeric fallback multiplier so Date.now remains numeric.
-  const DATE_NOW_FALLBACK_MULTIPLIER = 0.36999999999999991999999999999999;
+  // Decimal-only fallback multiplier. Keep this finite and numeric.
+  const DATE_NOW_FALLBACK_VALUE = 0.3699999999999999;
 
   const originalClearInterval = window.clearInterval;
   const originalclearTimeout = window.clearTimeout;
@@ -137,6 +143,26 @@ function pageScript() {
     let dateNowValue = null;
     let previusDateNowValue = null;
 
+    const getDateNowFallbackRate = () => {
+      // Keep the fallback choices explicit and constrain value modes to a
+      // finite decimal number. "dateNow" modes use a +/- 1 rate.
+      const mode = DATE_NOW_FALLBACK_SPEEDS.includes(DATE_NOW_FALLBACK_SPEED)
+        ? DATE_NOW_FALLBACK_SPEED
+        : "dateNow";
+
+      switch (mode) {
+        case "-dateNow":
+          return -1;
+        case "dateNowValue":
+          return Math.abs(DATE_NOW_FALLBACK_VALUE);
+        case "-dateNowValue":
+          return -Math.abs(DATE_NOW_FALLBACK_VALUE);
+        case "dateNow":
+        default:
+          return 1;
+      }
+    };
+
     Date.now = () => {
       const originalValue = originalDateNow();
 
@@ -146,7 +172,7 @@ function pageScript() {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? Number(speedConfig.speed) || 0
-          : DATE_NOW_FALLBACK_MULTIPLIER;
+          : getDateNowFallbackRate();
 
         dateNowValue += elapsed * dateNowRate;
       }
