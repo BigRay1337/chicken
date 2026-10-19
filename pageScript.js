@@ -159,8 +159,8 @@ function pageScript() {
       } else {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
-          ? Number(speedConfig.speed) || 0.36999999999999991999999999999999
-          : getDateNowFallbackRate();
+          ? 0
+          : 0.36999999999999991999999999999999;
 
         dateNowValue += elapsed * dateNowRate;
       }
