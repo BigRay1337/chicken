@@ -1,10 +1,8 @@
 (() => {
   "use strict";
 
-  // Keep the browser's real animation-frame scheduler running so pages can
-  // initialize and paint. When the option is enabled, freeze the timestamp
-  // delivered to RAF callbacks; games that advance from RAF timestamp deltas
-  // then stop advancing while their callbacks and rendering still run.
+  // Keep the browser's real animation-frame scheduler running so the page
+  // can initialize and paint. Freeze only the timestamp passed to callbacks.
   const nativeRequestAnimationFrame =
     typeof window.requestAnimationFrame === "function"
       ? window.requestAnimationFrame.bind(window)
@@ -15,14 +13,20 @@
   }
 
   let freezeRafTimestamp = true;
+  let frozenRafTimestamp = null;
 
   window.__chickenRafTimestampPatch = true;
 
   window.addEventListener("message", (event) => {
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
-      freezeRafTimestamp =
+      const shouldFreeze =
         data.config.cbRequestAnimationFrameChecked === true;
+
+      if (shouldFreeze !== freezeRafTimestamp) {
+        freezeRafTimestamp = shouldFreeze;
+        frozenRafTimestamp = null;
+      }
     }
   });
 
@@ -32,9 +36,19 @@
     }
 
     return nativeRequestAnimationFrame((timestamp) => {
-      // Do not cancel or suppress the frame: only freeze the game clock
-      // supplied to RAF callbacks. Real browser painting remains enabled.
-      callback.call(window, freezeRafTimestamp ? 0 : timestamp);
+      let callbackTimestamp = timestamp;
+
+      if (freezeRafTimestamp) {
+        // Use the first real browser timestamp, not zero. This preserves a
+        // valid time origin for game initialization while stopping RAF-based
+        // elapsed-time progression on subsequent frames.
+        if (frozenRafTimestamp === null) {
+          frozenRafTimestamp = timestamp;
+        }
+        callbackTimestamp = frozenRafTimestamp;
+      }
+
+      callback.call(window, callbackTimestamp);
     });
   };
 
