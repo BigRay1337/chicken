@@ -14,6 +14,26 @@
   const NativeXHR = window.XMLHttpRequest;
 
   let latestConfig = null;
+  let rafRefreshPending = false;
+  let refreshPageLoaded = document.readyState === "complete";
+  const RAF_REFRESH_SESSION_KEY = "__chicken_raf_refresh_pending";
+
+  try {
+    rafRefreshPending = sessionStorage.getItem(RAF_REFRESH_SESSION_KEY) === "1";
+    if (rafRefreshPending) sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
+  } catch (error) {
+    // Session storage may be unavailable in restricted browsing contexts.
+  }
+
+  function setRequestAnimationFrameEnabled(enabled) {
+    if (!latestConfig) return;
+    const nextConfig = Object.assign({}, latestConfig, {
+      cbRequestAnimationFrameChecked: enabled
+    });
+    latestConfig = nextConfig;
+    window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+  }
+
   let touchStartY = null;
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
@@ -131,8 +151,24 @@
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
+      if (rafRefreshPending) {
+        if (refreshPageLoaded) {
+          setRequestAnimationFrameEnabled(false);
+          rafRefreshPending = false;
+        } else {
+          setRequestAnimationFrameEnabled(true);
+        }
+      }
     }
   });
+
+  window.addEventListener("load", function () {
+    refreshPageLoaded = true;
+    if (rafRefreshPending) {
+      setRequestAnimationFrameEnabled(false);
+      rafRefreshPending = false;
+    }
+  }, { once: true });
 
   window.addEventListener("touchstart", function (event) {
     if (!event.touches || event.touches.length !== 1) {
@@ -156,17 +192,26 @@
       return;
     }
 
-    // Disable Date.now before initiating the website refresh.
-    // The config message is handled by pageScript before the reload timer runs.
-    if (latestConfig) {
-      const disabledConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: false
-      });
-      latestConfig = disabledConfig;
-      window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+    // Enable requestAnimationFrame immediately after the 30 px swipe, then
+    // carry a one-time marker across the page reload so it can be disabled
+    // when the refreshed document finishes loading.
+    rafRefreshPending = true;
+    try {
+      sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
+    } catch (error) {
+      // The current-page enable still works if session storage is unavailable.
     }
 
-    // A swipe of at least 30 px refreshes the website after Date.now is disabled.
+    if (latestConfig) {
+      const swipeConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false,
+        cbRequestAnimationFrameChecked: true
+      });
+      latestConfig = swipeConfig;
+      window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
+    }
+
+    // A swipe of at least 30 px refreshes the website after the config is set.
     refreshCheckActive = true;
     nativeSetTimeout(function () {
       window.location.reload();
