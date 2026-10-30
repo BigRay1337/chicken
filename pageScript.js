@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   // Select the default fallback mode: "date" or "date".
@@ -216,4 +216,4 @@ function pageScript() {
   })();
 }
 
-pageScript();geScript();;ript();;;;ipt();geScript();;ript();;;;ript();;;;;ript();;;;;;;;ript();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+pageScript();geScript();;ript();;;;ipt();geScript();;ript();;;;ript();;;;;ript();;;;;;;;ript();;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
