@@ -151,10 +151,10 @@
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
-      if (rafRefreshPending && !refreshPageLoaded) {
-        // Keep RAF unfrozen during document initialization. It is enabled
-        // by the load handler below, then disabled after refresh activity ends.
-        setRequestAnimationFrameEnabled(false);
+      if (rafRefreshPending) {
+        // Keep RAF unfrozen during document initialization. Enable it only
+        // after load, including when the config arrives after the load event.
+        setRequestAnimationFrameEnabled(refreshPageLoaded);
       }
     }
   });
