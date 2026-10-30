@@ -210,9 +210,11 @@
     }
 
     if (latestConfig) {
+      // Do not spoof RAF on the old document. The one-time session marker
+      // enables it in the newly refreshed document while that page loads.
       const swipeConfig = Object.assign({}, latestConfig, {
         cbDateNowChecked: false,
-        cbRequestAnimationFrameChecked: true
+        cbRequestAnimationFrameChecked: false
       });
       latestConfig = swipeConfig;
       window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
