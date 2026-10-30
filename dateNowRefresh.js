@@ -9,7 +9,15 @@
 
   const nativeSetTimeout = window.setTimeout.bind(window);
   const nativeNow = Date.now.bind(Date);
-  let latestConfig = null;
+  const defaultConfig = {
+    speed: 0,
+    cbSetIntervalChecked: true,
+    cbSetTimeoutChecked: false,
+    cbPerformanceNowChecked: false,
+    cbDateNowChecked: true,
+    cbRequestAnimationFrameChecked: false
+  };
+  let latestConfig = Object.assign({}, defaultConfig);
   let touchStartY = null;
   let touchStartX = null;
   let finishing = false;
@@ -17,9 +25,8 @@
   let lastActivityAt = nativeNow();
 
   function sendConfig(changes) {
-    const next = Object.assign({}, latestConfig || {}, changes);
-    latestConfig = next;
-    window.postMessage({ command: "setSpeedConfig", config: next }, "*");
+    latestConfig = Object.assign({}, latestConfig, changes);
+    window.postMessage({ command: "setSpeedConfig", config: latestConfig }, "*");
   }
 
   function markActivity() {
@@ -39,23 +46,20 @@
       if (value) window.sessionStorage.setItem(PENDING_KEY, "1");
       else window.sessionStorage.removeItem(PENDING_KEY);
     } catch (_) {
-      // If sessionStorage is unavailable, the current page can still refresh,
-      // but completion state cannot be carried across the navigation.
+      // Without sessionStorage the refresh still works, but the completion
+      // toggles cannot be carried across the page navigation.
     }
   }
 
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
-      latestConfig = Object.assign({}, data.config);
+      latestConfig = Object.assign({}, latestConfig, data.config);
     }
   });
 
-  // Ask the isolated content script for the user's current popup settings.
   window.postMessage({ command: "getSpeedConfig" }, "*");
 
-  // Track refresh activity so the post-reload state is applied after loading
-  // and outstanding page requests have settled.
   if (typeof window.fetch === "function") {
     const nativeFetch = window.fetch;
     window.fetch = function () {
@@ -138,7 +142,6 @@
       const quiet = nativeNow() - lastActivityAt >= COMPLETION_QUIET_MS;
 
       if (loaded && pendingRequests === 0 && quiet) {
-        // Apply these in the requested order at the end of the refresh.
         sendConfig({ cbDateNowChecked: false });
         sendConfig({ cbRequestAnimationFrameChecked: false });
         safeSetPending(false);
@@ -152,10 +155,7 @@
     nativeSetTimeout(check, CHECK_INTERVAL_MS);
   }
 
-  // A refresh flag survives location.reload() in the same tab.
   if (safeGetPending()) {
-    // The new document starts with RAF enabled, then turns both settings off
-    // after its load event and a short period without detectable activity.
     sendConfig({ cbRequestAnimationFrameChecked: true });
     if (document.readyState === "complete") markActivity();
     finishRefreshWhenSettled();
@@ -189,13 +189,9 @@
     touchStartY = null;
     touchStartX = null;
 
-    // Require an upward movement of at least 30 CSS pixels and reject
-    // predominantly horizontal gestures.
     if (deltaY < SWIPE_UP_MIN_PX || deltaY <= deltaX) return;
     if (safeGetPending()) return;
 
-    // Enable RAF immediately after the recognized swipe and carry the state
-    // through the reload. Date.now is turned off only after the new page loads.
     sendConfig({ cbRequestAnimationFrameChecked: true });
     safeSetPending(true);
     nativeSetTimeout(function () {
