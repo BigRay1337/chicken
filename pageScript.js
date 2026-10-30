@@ -52,6 +52,31 @@
     });
   };
 
+  // Date.now starts at zero speed while the Date.now option is enabled.
+  // The existing 30 px swipe flow switches it to native time (false), then
+  // restores the zero-speed state when refresh activity has finished.
+  const nativeDateNow = Date.now.bind(Date);
+  let freezeDateNow = true;
+  let frozenDateNowValue = nativeDateNow();
+
+  window.addEventListener("message", (event) => {
+    const data = event && event.data;
+    if (data && data.command === "setSpeedConfig" && data.config) {
+      const shouldFreezeDateNow = data.config.cbDateNowChecked !== false;
+
+      if (shouldFreezeDateNow !== freezeDateNow) {
+        freezeDateNow = shouldFreezeDateNow;
+        if (freezeDateNow) {
+          frozenDateNowValue = nativeDateNow();
+        }
+      }
+    }
+  });
+
+  Date.now = function () {
+    return freezeDateNow ? frozenDateNowValue : nativeDateNow();
+  };
+
   // Ask the isolated content script for the user's current checkbox state.
   window.postMessage({ command: "getSpeedConfig" }, "*");
 })();
