@@ -5,7 +5,7 @@ function pageScript() {
     cbSetTimeoutChecked: false,
     cbPerformanceNowChecked: false,
     cbDateNowChecked: true,
-    cbRequestAnimationFrameChecked: false,
+    cbRequestAnimationFrameChecked: true,
   };
 
   // Select the default fallback mode: "date" or "date".
@@ -184,7 +184,10 @@ function pageScript() {
           callbackFunctions.push(callback);
           callbackTick.push(0);
           callback(performance.now());
-        } else if (speedConfig.cbRequestAnimationFrameChecked) {
+        } else if (
+          speedConfig.cbRequestAnimationFrameChecked &&
+          document.readyState === "complete"
+        ) {
           tickFrame = callbackTick[index];
           tickFrame += speedConfig.speed;
 
