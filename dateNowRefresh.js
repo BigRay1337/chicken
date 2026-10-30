@@ -196,7 +196,7 @@
     }
 
     // Record the 30 px swipe. RAF stays unfrozen during document loading,
-    // is enabled after the refreshed document's load event, and is disabled
+    // is enabled after the refreshed document's load event and stays enabled
     // when refresh activity has settled.
     rafRefreshPending = true;
     refreshPageLoaded = false;
@@ -245,7 +245,8 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      setRequestAnimationFrameEnabled(false);
+      // Keep RequestAnimationFrame enabled after the game refresh completes.
+      setRequestAnimationFrameEnabled(true);
       rafRefreshPending = false;
 
       if (latestConfig) {
