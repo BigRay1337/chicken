@@ -17,34 +17,21 @@
   let rafRefreshPending = false;
   let refreshPageLoaded = document.readyState === "complete";
   const RAF_REFRESH_SESSION_KEY = "__chicken_raf_refresh_pending";
-  const SAVED_CONFIG_SESSION_KEY = "__chicken_saved_speed_config";
-  let restoreConfigAfterRefresh = null;
 
   try {
     rafRefreshPending = sessionStorage.getItem(RAF_REFRESH_SESSION_KEY) === "1";
-    const savedConfig = sessionStorage.getItem(SAVED_CONFIG_SESSION_KEY);
-    if (savedConfig) restoreConfigAfterRefresh = JSON.parse(savedConfig);
     if (rafRefreshPending) sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
   } catch (error) {
     // Session storage may be unavailable in restricted browsing contexts.
   }
 
-  function publishConfig(config) {
-    if (!config) return;
-    latestConfig = config;
-    window.postMessage({ command: "setSpeedConfig", config: config }, "*");
-  }
-
-  function setAllSpeedHooksEnabled(enabled) {
+  function setRequestAnimationFrameEnabled(enabled) {
     if (!latestConfig) return;
     const nextConfig = Object.assign({}, latestConfig, {
-      cbSetIntervalChecked: enabled && !!latestConfig.cbSetIntervalChecked,
-      cbSetTimeoutChecked: enabled && !!latestConfig.cbSetTimeoutChecked,
-      cbPerformanceNowChecked: enabled && !!latestConfig.cbPerformanceNowChecked,
-      cbDateNowChecked: enabled && !!latestConfig.cbDateNowChecked,
-      cbRequestAnimationFrameChecked: enabled && !!latestConfig.cbRequestAnimationFrameChecked
+      cbRequestAnimationFrameChecked: enabled
     });
-    publishConfig(nextConfig);
+    latestConfig = nextConfig;
+    window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
   }
 
   let touchStartY = null;
@@ -165,32 +152,17 @@
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
       if (rafRefreshPending) {
-        // Keep all extension speed hooks suspended until refresh completion.
-        setAllSpeedHooksEnabled(false);
+        // Keep RAF unfrozen during document initialization. Enable it only
+        // after load, including when the config arrives after the load event.
+        setRequestAnimationFrameEnabled(refreshPageLoaded);
       }
     }
   });
 
-  // Ask the isolated content script for the current settings. Retry briefly
-  // because document_start ordering between MAIN and ISOLATED scripts varies.
-  // This ensures a swipe can suspend the real active settings even if the
-  // popup has not been opened on this page yet.
-  function requestInitialConfig(attempt) {
-    if (latestConfig) return;
-    window.postMessage({ command: "getSpeedConfig" }, "*");
-    if (attempt < 20) {
-      nativeSetTimeout(function () {
-        requestInitialConfig(attempt + 1);
-      }, 50);
-    }
-  }
-  requestInitialConfig(0);
-
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
     if (rafRefreshPending) {
-      // Keep the extension's speed hooks suspended while the refreshed game
-      // settles. They are restored only after the completion checks pass.
+      setRequestAnimationFrameEnabled(true);
       // Begin checking on the refreshed document, not the document that
       // received the swipe (which is replaced by location.reload()).
       refreshCheckActive = true;
@@ -223,21 +195,25 @@
       return;
     }
 
-    // Save the user's current settings, then suspend every speed hook for
-    // the refresh. The saved settings survive the document reload.
+    // Record the 30 px swipe. RAF stays unfrozen during document loading,
+    // is enabled after the refreshed document's load event and stays enabled
+    // when refresh activity has settled.
     rafRefreshPending = true;
     refreshPageLoaded = false;
     try {
       sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
-      if (latestConfig) {
-        restoreConfigAfterRefresh = Object.assign({}, latestConfig);
-        sessionStorage.setItem(SAVED_CONFIG_SESSION_KEY, JSON.stringify(restoreConfigAfterRefresh));
-      }
     } catch (error) {
-      // The in-memory suspension still works if session storage is unavailable.
+      // The current-page enable still works if session storage is unavailable.
     }
 
-    setAllSpeedHooksEnabled(false);
+    if (latestConfig) {
+      const swipeConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false,
+        cbRequestAnimationFrameChecked: false
+      });
+      latestConfig = swipeConfig;
+      window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
+    }
 
     // A swipe of at least 30 px refreshes the website after the config is set.
     refreshCheckActive = true;
@@ -269,18 +245,25 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      // Restore the exact speed-hook settings that were active before the
-      // swipe. This resumes the extension without changing pageScript.js.
-      if (restoreConfigAfterRefresh) {
-        publishConfig(Object.assign({}, restoreConfigAfterRefresh));
-      }
-      try {
-        sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
-        sessionStorage.removeItem(SAVED_CONFIG_SESSION_KEY);
-      } catch (error) {
-        // Ignore unavailable session storage.
-      }
+      // At the end of the game refresh, briefly disable RAF and immediately
+      // re-enable it so the final state is enabled.
+      setRequestAnimationFrameEnabled(false);
+      setRequestAnimationFrameEnabled(true);
       rafRefreshPending = false;
+
+      if (latestConfig) {
+        const disabledConfig = Object.assign({}, latestConfig, {
+          cbDateNowChecked: false
+        });
+        latestConfig = disabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
+          cbDateNowChecked: true
+        });
+        latestConfig = enabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
+      }
       refreshCheckActive = false;
       return;
     }
