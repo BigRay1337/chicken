@@ -23,4 +23,4 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   }
-});
+});;

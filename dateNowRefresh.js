@@ -14,12 +14,32 @@
   const NativeXHR = window.XMLHttpRequest;
 
   let latestConfig = null;
+  let rafRefreshPending = false;
+  let refreshPageLoaded = document.readyState === "complete";
+  const RAF_REFRESH_SESSION_KEY = "__chicken_raf_refresh_pending";
+
+  try {
+    rafRefreshPending = sessionStorage.getItem(RAF_REFRESH_SESSION_KEY) === "1";
+    if (rafRefreshPending) sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
+  } catch (error) {
+    // Session storage may be unavailable in restricted browsing contexts.
+  }
+
+  function setRequestAnimationFrameEnabled(enabled) {
+    if (!latestConfig) return;
+    const nextConfig = Object.assign({}, latestConfig, {
+      cbRequestAnimationFrameChecked: enabled
+    });
+    latestConfig = nextConfig;
+    window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
+  }
+
   let touchStartY = null;
-  let refreshCheckActive = false;
-  let refreshActivitySeen = false;
+  let refreshCheckActive = rafRefreshPending;
+  let refreshActivitySeen = rafRefreshPending;
   let pendingRequests = 0;
-  let refreshStartedAt = 0;
-  let lastActivityAt = 0;
+  let refreshStartedAt = rafRefreshPending ? nativeDateNow() : 0;
+  let lastActivityAt = refreshStartedAt;
   let domObserver = null;
   let pageLoadSeen = document.readyState === "complete";
 
@@ -131,8 +151,27 @@
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
+      if (rafRefreshPending) {
+        // Keep RAF unfrozen during document initialization. Enable it only
+        // after load, including when the config arrives after the load event.
+        setRequestAnimationFrameEnabled(refreshPageLoaded);
+      }
     }
   });
+
+  window.addEventListener("load", function () {
+    refreshPageLoaded = true;
+    if (rafRefreshPending) {
+      setRequestAnimationFrameEnabled(true);
+      // Begin checking on the refreshed document, not the document that
+      // received the swipe (which is replaced by location.reload()).
+      refreshCheckActive = true;
+      refreshActivitySeen = true;
+      refreshStartedAt = nativeDateNow();
+      lastActivityAt = refreshStartedAt;
+      nativeSetTimeout(checkRefreshCompletion, CHECK_INTERVAL_MS);
+    }
+  }, { once: true });
 
   window.addEventListener("touchstart", function (event) {
     if (!event.touches || event.touches.length !== 1) {
@@ -156,18 +195,31 @@
       return;
     }
 
-    // Keep Date.now enabled while the game's own swipe-refresh runs.
-    // It will be disabled only after refresh activity has finished.
-    if (latestConfig) {
-      const enabledConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: true
-      });
-      latestConfig = enabledConfig;
-      window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
+    // Record the 30 px swipe. RAF stays unfrozen during document loading,
+    // is enabled after the refreshed document's load event and stays enabled
+    // when refresh activity has settled.
+    rafRefreshPending = true;
+    refreshPageLoaded = false;
+    try {
+      sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
+    } catch (error) {
+      // The current-page enable still works if session storage is unavailable.
     }
 
-    // Let the game handle its own refresh; do not reload the browser tab.
+    if (latestConfig) {
+      const swipeConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false,
+        cbRequestAnimationFrameChecked: false
+      });
+      latestConfig = swipeConfig;
+      window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
+    }
+
+    // A swipe of at least 30 px refreshes the website after the config is set.
     refreshCheckActive = true;
+    nativeSetTimeout(function () {
+      window.location.reload();
+    }, 50);
 
     refreshActivitySeen = false;
     refreshStartedAt = nativeDateNow();
@@ -193,12 +245,24 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
+      // At the end of the game refresh, briefly disable RAF and immediately
+      // re-enable it so the final state is enabled.
+      setRequestAnimationFrameEnabled(false);
+      setRequestAnimationFrameEnabled(true);
+      rafRefreshPending = false;
+
       if (latestConfig) {
         const disabledConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: false
         });
         latestConfig = disabledConfig;
         window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
+          cbDateNowChecked: true
+        });
+        latestConfig = enabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
       return;
