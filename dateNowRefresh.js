@@ -245,7 +245,9 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      // Keep RequestAnimationFrame enabled after the game refresh completes.
+      // At the end of the game refresh, briefly disable RAF and immediately
+      // re-enable it so the final state is enabled.
+      setRequestAnimationFrameEnabled(false);
       setRequestAnimationFrameEnabled(true);
       rafRefreshPending = false;
 
