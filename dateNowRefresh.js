@@ -14,26 +14,6 @@
   const NativeXHR = window.XMLHttpRequest;
 
   let latestConfig = null;
-  let rafRefreshPending = false;
-  let refreshPageLoaded = document.readyState === "complete";
-  const RAF_REFRESH_SESSION_KEY = "__chicken_raf_refresh_pending";
-
-  try {
-    rafRefreshPending = sessionStorage.getItem(RAF_REFRESH_SESSION_KEY) === "1";
-    if (rafRefreshPending) sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
-  } catch (error) {
-    // Session storage may be unavailable in restricted browsing contexts.
-  }
-
-  function setRequestAnimationFrameEnabled(enabled) {
-    if (!latestConfig) return;
-    const nextConfig = Object.assign({}, latestConfig, {
-      cbRequestAnimationFrameChecked: enabled
-    });
-    latestConfig = nextConfig;
-    window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
-  }
-
   let touchStartY = null;
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
@@ -147,35 +127,12 @@
     document.addEventListener("DOMContentLoaded", observePage, { once: true });
   }
 
-  // RAF spoofing is OFF during normal use. It is enabled only for the
-  // one-time document load caused by the detected swipe refresh.
   window.addEventListener("message", function (event) {
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
-      const shouldEnableRaf = rafRefreshPending && !refreshPageLoaded;
-
-      // Normalize incoming popup/content-script settings so they cannot
-      // accidentally leave RAF spoofing enabled outside the refresh window.
-      if (latestConfig.cbRequestAnimationFrameChecked !== shouldEnableRaf) {
-        setRequestAnimationFrameEnabled(shouldEnableRaf);
-      }
     }
   });
-
-  // The refreshed document is ready: immediately turn RAF spoofing off.
-  window.addEventListener("load", function () {
-    refreshPageLoaded = true;
-    if (rafRefreshPending) {
-      setRequestAnimationFrameEnabled(false);
-      rafRefreshPending = false;
-    } else if (latestConfig) {
-      setRequestAnimationFrameEnabled(false);
-    }
-  }, { once: true });
-
-  // Request the current config so the normal (non-refresh) state is forced OFF.
-  window.postMessage({ command: "getSpeedConfig" }, "*");
 
   window.addEventListener("touchstart", function (event) {
     if (!event.touches || event.touches.length !== 1) {
@@ -199,26 +156,17 @@
       return;
     }
 
-    // Enable RAF spoofing immediately after the 30 px swipe and carry a
-    // one-time marker across reload so it stays enabled only while loading.
-    rafRefreshPending = true;
-    refreshPageLoaded = false;
-    try {
-      sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
-    } catch (error) {
-      // The current-page enable still works if session storage is unavailable.
-    }
-
+    // Disable Date.now before initiating the website refresh.
+    // The config message is handled by pageScript before the reload timer runs.
     if (latestConfig) {
-      const swipeConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: false,
-        cbRequestAnimationFrameChecked: true
+      const disabledConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: false
       });
-      latestConfig = swipeConfig;
-      window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
+      latestConfig = disabledConfig;
+      window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
     }
 
-    // A swipe of at least 30 px refreshes the website after the config is set.
+    // A swipe of at least 30 px refreshes the website after Date.now is disabled.
     refreshCheckActive = true;
     nativeSetTimeout(function () {
       window.location.reload();

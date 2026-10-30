@@ -4,7 +4,7 @@ let speedConfig = {
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
   cbDateNowChecked: true,
-  cbRequestAnimationFrameChecked: true,
+  cbRequestAnimationFrameChecked: false,
 };
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -23,4 +23,4 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     });
   }
-});;
+});
