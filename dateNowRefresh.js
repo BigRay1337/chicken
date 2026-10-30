@@ -156,21 +156,18 @@
       return;
     }
 
-    // Disable Date.now before initiating the website refresh.
-    // The config message is handled by pageScript before the reload timer runs.
+    // Keep Date.now enabled while the game's own swipe-refresh runs.
+    // It will be disabled only after refresh activity has finished.
     if (latestConfig) {
-      const disabledConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: false
+      const enabledConfig = Object.assign({}, latestConfig, {
+        cbDateNowChecked: true
       });
-      latestConfig = disabledConfig;
-      window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+      latestConfig = enabledConfig;
+      window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
     }
 
-    // A swipe of at least 30 px refreshes the website after Date.now is disabled.
+    // Let the game handle its own refresh; do not reload the browser tab.
     refreshCheckActive = true;
-    nativeSetTimeout(function () {
-      window.location.reload();
-    }, 50);
 
     refreshActivitySeen = false;
     refreshStartedAt = nativeDateNow();
@@ -202,12 +199,6 @@
         });
         latestConfig = disabledConfig;
         window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
-
-        const enabledConfig = Object.assign({}, disabledConfig, {
-          cbDateNowChecked: true
-        });
-        latestConfig = enabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
       return;
