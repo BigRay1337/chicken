@@ -171,6 +171,21 @@
     }
   });
 
+  // Ask the isolated content script for the current settings. Retry briefly
+  // because document_start ordering between MAIN and ISOLATED scripts varies.
+  // This ensures a swipe can suspend the real active settings even if the
+  // popup has not been opened on this page yet.
+  function requestInitialConfig(attempt) {
+    if (latestConfig) return;
+    window.postMessage({ command: "getSpeedConfig" }, "*");
+    if (attempt < 20) {
+      nativeSetTimeout(function () {
+        requestInitialConfig(attempt + 1);
+      }, 50);
+    }
+  }
+  requestInitialConfig(0);
+
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
     if (rafRefreshPending) {
