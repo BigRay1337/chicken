@@ -9,8 +9,8 @@ let speedConfig = {
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
-    speedConfig = request.config;
-    window.postMessage(request, "*");
+    speedConfig = Object.assign({}, speedConfig, request.config);
+    window.postMessage({ command: "setSpeedConfig", config: speedConfig }, "*");
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
   }
@@ -25,8 +25,7 @@ window.addEventListener("message", (e) => {
       config: speedConfig,
     }, "*");
   } else if (e.data.command === "setSpeedConfig" && e.source === window) {
-    // Keep the isolated-world copy synchronized with changes made by the
-    // main-world refresh helper so popup settings do not overwrite them.
-    speedConfig = e.data.config;
+    // Keep popup settings synchronized with refresh-state changes.
+    speedConfig = Object.assign({}, speedConfig, e.data.config);
   }
 });
