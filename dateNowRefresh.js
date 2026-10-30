@@ -1,6 +1,5 @@
-// Detect the game's upward-swipe refresh gesture. Keep Date.now enabled while
-// the refresh produces network/DOM activity, then disable it after requests
-// finish and the page has been quiet. This does not reload the browser tab.
+// Detect the game's upward-swipe refresh gesture. Keep the original Date.now
+// freeze enabled throughout the refresh. This does not reload the browser tab.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
   const QUIET_WINDOW_MS = 750;
@@ -209,7 +208,7 @@
 
     if (latestConfig) {
       const swipeConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: false,
+        cbDateNowChecked: true,
         cbRequestAnimationFrameChecked: true
       });
       latestConfig = swipeConfig;
@@ -246,18 +245,12 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      if (latestConfig) {
-        const disabledConfig = Object.assign({}, latestConfig, {
-          cbDateNowChecked: false
-        });
-        latestConfig = disabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
-
-        const enabledConfig = Object.assign({}, disabledConfig, {
+      if (latestConfig && latestConfig.cbDateNowChecked !== true) {
+        const frozenConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: true
         });
-        latestConfig = enabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
+        latestConfig = frozenConfig;
+        window.postMessage({ command: "setSpeedConfig", config: frozenConfig }, "*");
       }
       refreshCheckActive = false;
       return;
