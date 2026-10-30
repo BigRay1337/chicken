@@ -37,7 +37,14 @@
     // Keep the pending marker until a config exists, so a fast page load
     // cannot consume the marker before the RAF=false message can be sent.
     if (!rafRefreshPending || !refreshPageLoaded || !latestConfig) return;
-    setRequestAnimationFrameEnabled(false);
+    // Date.now uses the original checkbox behavior: false freezes its value.
+    // Keep it frozen during the refresh, then restore normal Date.now after load.
+    const restoredConfig = Object.assign({}, latestConfig, {
+      cbDateNowChecked: true,
+      cbRequestAnimationFrameChecked: false
+    });
+    latestConfig = restoredConfig;
+    window.postMessage({ command: "setSpeedConfig", config: restoredConfig }, "*");
     rafRefreshPending = false;
   }
 
@@ -162,7 +169,12 @@
         if (refreshPageLoaded) {
           finishRafRefreshIfReady();
         } else {
-          setRequestAnimationFrameEnabled(true);
+          const refreshingConfig = Object.assign({}, latestConfig, {
+            cbDateNowChecked: false,
+            cbRequestAnimationFrameChecked: true
+          });
+          latestConfig = refreshingConfig;
+          window.postMessage({ command: "setSpeedConfig", config: refreshingConfig }, "*");
         }
       }
     }
@@ -208,7 +220,7 @@
 
     if (latestConfig) {
       const swipeConfig = Object.assign({}, latestConfig, {
-        cbDateNowChecked: true,
+        cbDateNowChecked: false,
         cbRequestAnimationFrameChecked: true
       });
       latestConfig = swipeConfig;
