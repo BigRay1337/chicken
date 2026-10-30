@@ -14,7 +14,7 @@
   const NativeXHR = window.XMLHttpRequest;
 
   let latestConfig = null;
-  let touchStartY = null;
+  let touchStarted = false;
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
   let pendingRequests = 0;
@@ -134,30 +134,22 @@
     }
   });
 
+  // A single tap now replaces the old upward-swipe refresh gesture.
+  // Bubble phase lets the game's touchend handler run before the refresh starts.
   window.addEventListener("touchstart", function (event) {
-    if (!event.touches || event.touches.length !== 1) {
-      touchStartY = null;
-      return;
-    }
-    touchStartY = event.touches[0].clientY;
+    touchStarted = !!(event.touches && event.touches.length === 1);
   }, { capture: true, passive: true });
 
-  // Bubble phase lets the game's touchend handler initiate its refresh first.
   window.addEventListener("touchend", function (event) {
-    if (touchStartY === null || !event.changedTouches || !event.changedTouches.length) {
-      touchStartY = null;
+    if (!touchStarted || !event.changedTouches || event.changedTouches.length !== 1) {
+      touchStarted = false;
       return;
     }
+    touchStarted = false;
 
-    const swipeUpDistance = touchStartY - event.changedTouches[0].clientY;
-    touchStartY = null;
+    if (refreshCheckActive) return;
 
-    if (swipeUpDistance < SWIPE_UP_THRESHOLD_PX || refreshCheckActive) {
-      return;
-    }
-
-    // Disable Date.now before initiating the website refresh.
-    // The config message is handled by pageScript before the reload timer runs.
+    // Disable Date.now before initiating the game refresh.
     if (latestConfig) {
       const disabledConfig = Object.assign({}, latestConfig, {
         cbDateNowChecked: false
@@ -166,7 +158,6 @@
       window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
     }
 
-    // A swipe of at least 30 px refreshes the website after Date.now is disabled.
     refreshCheckActive = true;
     nativeSetTimeout(function () {
       window.location.reload();
@@ -176,8 +167,6 @@
     refreshStartedAt = nativeDateNow();
     lastActivityAt = refreshStartedAt;
 
-    // Let the current touch event dispatch finish before checking for refresh
-    // activity. If the document is still loading, wait for its load event too.
     nativeSetTimeout(checkRefreshCompletion, 0);
   }, { capture: false, passive: true });
 
