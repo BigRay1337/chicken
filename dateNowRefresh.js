@@ -17,6 +17,15 @@
   let rafRefreshPending = false;
   let refreshPageLoaded = document.readyState === "complete";
   const RAF_REFRESH_SESSION_KEY = "__chicken_raf_refresh_pending";
+  const RAF_REFRESH_CONFIG_KEY = "__chicken_raf_saved_config";
+  let savedRefreshConfig = null;
+
+  try {
+    const saved = sessionStorage.getItem(RAF_REFRESH_CONFIG_KEY);
+    if (saved) savedRefreshConfig = JSON.parse(saved);
+  } catch (error) {
+    savedRefreshConfig = null;
+  }
 
   try {
     rafRefreshPending = sessionStorage.getItem(RAF_REFRESH_SESSION_KEY) === "1";
@@ -152,8 +161,13 @@
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
       if (rafRefreshPending) {
-        // Keep RAF unfrozen during document initialization. Enable it only
-        // after load, including when the config arrives after the load event.
+        // Use the exact pre-refresh settings when the refreshed document
+        // receives its initial configuration. Keep all hooks disabled while
+        // the page initializes; RAF is the one exception after load so the
+        // game can finish rendering.
+        if (savedRefreshConfig) {
+          latestConfig = Object.assign({}, savedRefreshConfig);
+        }
         setRequestAnimationFrameEnabled(refreshPageLoaded);
       }
     }
@@ -207,12 +221,29 @@
     }
 
     if (latestConfig) {
-      const swipeConfig = Object.assign({}, latestConfig, {
+      // Save the user's exact settings so the simulated disable/enable cycle
+      // does not overwrite their chosen speed or checkbox preferences.
+      savedRefreshConfig = Object.assign({}, latestConfig);
+      try {
+        sessionStorage.setItem(
+          RAF_REFRESH_CONFIG_KEY,
+          JSON.stringify(savedRefreshConfig)
+        );
+      } catch (error) {
+        // Continue with the in-memory copy if storage is unavailable.
+      }
+
+      // Spoof extension-disabled state: turn off every game hook during the
+      // refresh. RAF is enabled again only after the new document has loaded.
+      const disabledConfig = Object.assign({}, latestConfig, {
+        cbSetIntervalChecked: false,
+        cbSetTimeoutChecked: false,
+        cbPerformanceNowChecked: false,
         cbDateNowChecked: false,
         cbRequestAnimationFrameChecked: false
       });
-      latestConfig = swipeConfig;
-      window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
+      latestConfig = disabledConfig;
+      window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
     }
 
     // A swipe of at least 30 px refreshes the website after the config is set.
@@ -245,25 +276,23 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      // At the end of the game refresh, briefly disable RAF and immediately
-      // re-enable it so the final state is enabled.
-      setRequestAnimationFrameEnabled(false);
-      setRequestAnimationFrameEnabled(true);
-      rafRefreshPending = false;
-
-      if (latestConfig) {
-        const disabledConfig = Object.assign({}, latestConfig, {
-          cbDateNowChecked: false
-        });
-        latestConfig = disabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
-
-        const enabledConfig = Object.assign({}, disabledConfig, {
-          cbDateNowChecked: true
-        });
-        latestConfig = enabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
+      // Spoof extension re-enabled after the refreshed game is fully settled.
+      // Restore the complete pre-swipe configuration, not hard-coded defaults.
+      if (savedRefreshConfig) {
+        latestConfig = Object.assign({}, savedRefreshConfig);
+        window.postMessage({
+          command: "setSpeedConfig",
+          config: latestConfig
+        }, "*");
       }
+      rafRefreshPending = false;
+      try {
+        sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
+        sessionStorage.removeItem(RAF_REFRESH_CONFIG_KEY);
+      } catch (error) {
+        // Storage cleanup is best-effort.
+      }
+      savedRefreshConfig = null;
       refreshCheckActive = false;
       return;
     }
