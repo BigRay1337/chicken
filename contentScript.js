@@ -17,10 +17,21 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 window.addEventListener("message", (e) => {
-  if (e.data.command === "getSpeedConfig") {
+  const data = e && e.data;
+  if (!data || typeof data !== "object") return;
+
+  if (data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
+    return;
   }
-});;
+
+  // Keep the isolated-world copy in sync with the MAIN-world refresh
+  // controller. During a swipe refresh this reflects the suspended hooks;
+  // when the page finishes loading it reflects the restored user settings.
+  if (data.command === "setSpeedConfig" && data.config && typeof data.config === "object") {
+    speedConfig = Object.assign({}, speedConfig, data.config);
+  }
+});
