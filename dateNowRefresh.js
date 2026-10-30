@@ -35,11 +35,11 @@
   }
 
   let touchStartY = null;
-  let refreshCheckActive = false;
-  let refreshActivitySeen = false;
+  let refreshCheckActive = rafRefreshPending;
+  let refreshActivitySeen = rafRefreshPending;
   let pendingRequests = 0;
-  let refreshStartedAt = 0;
-  let lastActivityAt = 0;
+  let refreshStartedAt = rafRefreshPending ? nativeDateNow() : 0;
+  let lastActivityAt = refreshStartedAt;
   let domObserver = null;
   let pageLoadSeen = document.readyState === "complete";
 
@@ -151,13 +151,10 @@
     const data = event && event.data;
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
-      if (rafRefreshPending) {
-        if (refreshPageLoaded) {
-          setRequestAnimationFrameEnabled(false);
-          rafRefreshPending = false;
-        } else {
-          setRequestAnimationFrameEnabled(true);
-        }
+      if (rafRefreshPending && !refreshPageLoaded) {
+        // Keep RAF unfrozen during document initialization. It is enabled
+        // by the load handler below, then disabled after refresh activity ends.
+        setRequestAnimationFrameEnabled(false);
       }
     }
   });
@@ -165,8 +162,14 @@
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
     if (rafRefreshPending) {
-      setRequestAnimationFrameEnabled(false);
-      rafRefreshPending = false;
+      setRequestAnimationFrameEnabled(true);
+      // Begin checking on the refreshed document, not the document that
+      // received the swipe (which is replaced by location.reload()).
+      refreshCheckActive = true;
+      refreshActivitySeen = true;
+      refreshStartedAt = nativeDateNow();
+      lastActivityAt = refreshStartedAt;
+      nativeSetTimeout(checkRefreshCompletion, CHECK_INTERVAL_MS);
     }
   }, { once: true });
 
@@ -192,9 +195,9 @@
       return;
     }
 
-    // Enable requestAnimationFrame immediately after the 30 px swipe, then
-    // carry a one-time marker across the page reload so it can be disabled
-    // when the refreshed document finishes loading.
+    // Record the 30 px swipe. RAF stays unfrozen during document loading,
+    // is enabled after the refreshed document's load event, and is disabled
+    // when refresh activity has settled.
     rafRefreshPending = true;
     refreshPageLoaded = false;
     try {
@@ -206,7 +209,7 @@
     if (latestConfig) {
       const swipeConfig = Object.assign({}, latestConfig, {
         cbDateNowChecked: false,
-        cbRequestAnimationFrameChecked: true
+        cbRequestAnimationFrameChecked: false
       });
       latestConfig = swipeConfig;
       window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
@@ -242,6 +245,9 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
+      setRequestAnimationFrameEnabled(false);
+      rafRefreshPending = false;
+
       if (latestConfig) {
         const disabledConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: false
