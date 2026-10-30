@@ -12,7 +12,7 @@
     return;
   }
 
-  let freezeRafTimestamp = true;
+  let freezeRafTimestamp = false;
   let frozenRafTimestamp = null;
 
   window.__chickenRafTimestampPatch = true;
