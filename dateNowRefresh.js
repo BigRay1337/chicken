@@ -34,6 +34,14 @@
     window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
   }
 
+  function finishRafRefreshIfReady() {
+    // Keep the pending marker until a config exists, so a fast page load
+    // cannot consume the marker before the RAF=false message can be sent.
+    if (!rafRefreshPending || !refreshPageLoaded || !latestConfig) return;
+    setRequestAnimationFrameEnabled(false);
+    rafRefreshPending = false;
+  }
+
   let touchStartY = null;
   let refreshCheckActive = false;
   let refreshActivitySeen = false;
@@ -153,8 +161,7 @@
       latestConfig = data.config;
       if (rafRefreshPending) {
         if (refreshPageLoaded) {
-          setRequestAnimationFrameEnabled(false);
-          rafRefreshPending = false;
+          finishRafRefreshIfReady();
         } else {
           setRequestAnimationFrameEnabled(true);
         }
@@ -164,10 +171,7 @@
 
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
-    if (rafRefreshPending) {
-      setRequestAnimationFrameEnabled(false);
-      rafRefreshPending = false;
-    }
+    finishRafRefreshIfReady();
   }, { once: true });
 
   window.addEventListener("touchstart", function (event) {
