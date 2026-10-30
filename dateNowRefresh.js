@@ -1,5 +1,6 @@
-// Detect the game's upward-swipe refresh gesture. Keep the original Date.now
-// freeze enabled throughout the refresh. This does not reload the browser tab.
+// Detect the game's upward-swipe refresh gesture. Keep Date.now enabled while
+// the refresh produces network/DOM activity, then disable it after requests
+// finish and the page has been quiet. This does not reload the browser tab.
 (function () {
   const SWIPE_UP_THRESHOLD_PX = 30;
   const QUIET_WINDOW_MS = 750;
@@ -31,21 +32,6 @@
     });
     latestConfig = nextConfig;
     window.postMessage({ command: "setSpeedConfig", config: nextConfig }, "*");
-  }
-
-  function finishRafRefreshIfReady() {
-    // Keep the pending marker until a config exists, so a fast page load
-    // cannot consume the marker before the RAF=false message can be sent.
-    if (!rafRefreshPending || !refreshPageLoaded || !latestConfig) return;
-    // Date.now uses the original checkbox behavior: false freezes its value.
-    // Keep it frozen during the refresh, then restore normal Date.now after load.
-    const restoredConfig = Object.assign({}, latestConfig, {
-      cbDateNowChecked: true,
-      cbRequestAnimationFrameChecked: false
-    });
-    latestConfig = restoredConfig;
-    window.postMessage({ command: "setSpeedConfig", config: restoredConfig }, "*");
-    rafRefreshPending = false;
   }
 
   let touchStartY = null;
@@ -167,14 +153,10 @@
       latestConfig = data.config;
       if (rafRefreshPending) {
         if (refreshPageLoaded) {
-          finishRafRefreshIfReady();
+          setRequestAnimationFrameEnabled(false);
+          rafRefreshPending = false;
         } else {
-          const refreshingConfig = Object.assign({}, latestConfig, {
-            cbDateNowChecked: false,
-            cbRequestAnimationFrameChecked: true
-          });
-          latestConfig = refreshingConfig;
-          window.postMessage({ command: "setSpeedConfig", config: refreshingConfig }, "*");
+          setRequestAnimationFrameEnabled(true);
         }
       }
     }
@@ -182,7 +164,10 @@
 
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
-    finishRafRefreshIfReady();
+    if (rafRefreshPending) {
+      setRequestAnimationFrameEnabled(false);
+      rafRefreshPending = false;
+    }
   }, { once: true });
 
   window.addEventListener("touchstart", function (event) {
@@ -257,12 +242,18 @@
       pendingRequests === 0 &&
       quietLongEnough
     ) {
-      if (latestConfig && latestConfig.cbDateNowChecked !== true) {
-        const frozenConfig = Object.assign({}, latestConfig, {
+      if (latestConfig) {
+        const disabledConfig = Object.assign({}, latestConfig, {
+          cbDateNowChecked: false
+        });
+        latestConfig = disabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
           cbDateNowChecked: true
         });
-        latestConfig = frozenConfig;
-        window.postMessage({ command: "setSpeedConfig", config: frozenConfig }, "*");
+        latestConfig = enabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
       return;
