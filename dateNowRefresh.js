@@ -2,7 +2,6 @@
 // the refresh produces network/DOM activity, then disable it after requests
 // finish and the page has been quiet. This does not reload the browser tab.
 (function () {
-  const SWIPE_UP_THRESHOLD_PX = 30;
   const QUIET_WINDOW_MS = 750;
   const MIN_REFRESH_WINDOW_MS = 750;
   const CHECK_INTERVAL_MS = 50;
