@@ -196,6 +196,7 @@
     // carry a one-time marker across the page reload so it can be disabled
     // when the refreshed document finishes loading.
     rafRefreshPending = true;
+    refreshPageLoaded = false;
     try {
       sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
     } catch (error) {
