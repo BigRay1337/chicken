@@ -35,11 +35,11 @@
   }
 
   let touchStartY = null;
-  let refreshCheckActive = false;
-  let refreshActivitySeen = false;
+  let refreshCheckActive = rafRefreshPending;
+  let refreshActivitySeen = rafRefreshPending;
   let pendingRequests = 0;
-  let refreshStartedAt = 0;
-  let lastActivityAt = 0;
+  let refreshStartedAt = rafRefreshPending ? nativeDateNow() : 0;
+  let lastActivityAt = refreshStartedAt;
   let domObserver = null;
   let pageLoadSeen = document.readyState === "complete";
 
@@ -152,12 +152,12 @@
     if (data && data.command === "setSpeedConfig" && data.config) {
       latestConfig = data.config;
       if (rafRefreshPending) {
-        if (refreshPageLoaded) {
-          setRequestAnimationFrameEnabled(false);
-          rafRefreshPending = false;
-        } else {
-          setRequestAnimationFrameEnabled(true);
-        }
+        setRequestAnimationFrameEnabled(true);
+        refreshCheckActive = true;
+        nativeSetTimeout(checkRefreshCompletion, 0);
+      } else {
+        // RAF spoofing is reserved for the temporary post-swipe load window.
+        setRequestAnimationFrameEnabled(false);
       }
     }
   });
@@ -165,8 +165,9 @@
   window.addEventListener("load", function () {
     refreshPageLoaded = true;
     if (rafRefreshPending) {
-      setRequestAnimationFrameEnabled(false);
-      rafRefreshPending = false;
+      markActivity();
+      refreshActivitySeen = true;
+      nativeSetTimeout(checkRefreshCompletion, 0);
     }
   }, { once: true });
 
@@ -244,16 +245,24 @@
     ) {
       if (latestConfig) {
         const disabledConfig = Object.assign({}, latestConfig, {
-          cbDateNowChecked: false
+          cbDateNowChecked: false,
+          cbRequestAnimationFrameChecked: false
         });
         latestConfig = disabledConfig;
         window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
 
         const enabledConfig = Object.assign({}, disabledConfig, {
-          cbDateNowChecked: true
+          cbDateNowChecked: true,
+          cbRequestAnimationFrameChecked: false
         });
         latestConfig = enabledConfig;
         window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
+      }
+      rafRefreshPending = false;
+      try {
+        sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
+      } catch (error) {
+        // The refresh session is also cleared in memory if storage is unavailable.
       }
       refreshCheckActive = false;
       return;
