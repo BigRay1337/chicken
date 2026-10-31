@@ -35,7 +35,7 @@
     if (dateNowValue === null) {
       dateNowValue = realNow;
       previousDateNowValue = realNow;
-      return Math.floor(0 + dateNowValue);
+      return originalDateNow();
     }
 
     const elapsed = Math.max(0, realNow - previousDateNowValue);
@@ -45,6 +45,6 @@
     const delayedElapsed = Math.min(elapsed, LONG_DELAY);
     dateNowValue += delayedElapsed;
 
-    return Math.floor(0 + dateNowValue);
+    return originalDateNow();
   };
 })();
