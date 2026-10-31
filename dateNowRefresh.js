@@ -252,13 +252,8 @@
       rafRefreshPending = false;
 
       if (latestConfig) {
-        const disabledConfig = Object.assign({}, latestConfig, {
-          cbDateNowChecked: false
-        });
-        latestConfig = disabledConfig;
-        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
-
-        const enabledConfig = Object.assign({}, disabledConfig, {
+        // Unfreeze Date.now once the refreshed game has finished loading.
+        const enabledConfig = Object.assign({}, latestConfig, {
           cbDateNowChecked: true
         });
         latestConfig = enabledConfig;
