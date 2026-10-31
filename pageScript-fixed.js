@@ -9,7 +9,7 @@ function pageScript() {
   };
 
   // Select the default fallback mode: "date" or "date".
-  const DATE_NOW_FALLBACK_SPEED = "-originalDateNow";
+  const DATE_NOW_FALLBACK_SPEED = "-dateNowValue";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
     "-dateNowValue",
     "-dateNowValue",
