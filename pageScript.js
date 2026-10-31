@@ -12,7 +12,7 @@ function pageScript() {
   const DATE_NOW_FALLBACK_SPEED = "-originalDateNow";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
     "-dateNowValue",
-    "-dateNowValue",
+    "-originalDateNow",
   ]);
 
   const originalClearInterval = window.clearInterval;
@@ -145,7 +145,7 @@ function pageScript() {
       switch (mode) {
         case "-dateNowValue":
           return -1;
-        case "-dateNowValue":
+        case "-originalDateNow":
         default:
           return 1;
       }
