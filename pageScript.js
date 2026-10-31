@@ -146,6 +146,7 @@ function pageScript() {
         case "-dateNowValue":
           return -1;
         case "-originalDateNow":
+          return -1;
         default:
           return 1;
       }
