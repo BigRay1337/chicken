@@ -9,10 +9,10 @@ function pageScript() {
   };
 
   // Select the default fallback mode: "date" or "date".
-  const DATE_NOW_FALLBACK_SPEED = "-originalDateNow";
+  const DATE_NOW_FALLBACK_SPEED = "-dateNowValue";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
-    "-originalDateNow",
-    "-originalDateNow",
+    "-dateNowValue",
+    "-dateNowValue",
   ]);
 
   const originalClearInterval = window.clearInterval;
@@ -140,12 +140,12 @@ function pageScript() {
     const getDateNowFallbackRate = () => {
       const mode = DATE_NOW_FALLBACK_SPEEDS.includes(DATE_NOW_FALLBACK_SPEED)
         ? DATE_NOW_FALLBACK_SPEED
-        : "-originalDateNow";
+        : "-dateNowValue";
 
       switch (mode) {
-        case "-originalDateNow":
+        case "-dateNowValue":
           return -1;
-        case "-originalDateNow":
+        case "-dateNowValue":
           return -1;
         default:
           return 1;
