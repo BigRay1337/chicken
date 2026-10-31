@@ -1,39 +1,50 @@
 (function () {
   "use strict";
 
-  // Capture the browser's native Date.now before pageScript.js replaces it.
-  const nativeDateNow = Date.now.bind(Date);
-  let dateNowEnabled = true;
-  let frozenDateNow = nativeDateNow();
+  const originalDateNow = Date.now;
+  let cbDateNowChecked = true;
+  let dateNowValue = null;
+  let previousDateNowValue = null;
 
-  function applyDateNowConfig(config) {
-    const nextEnabled = config?.cbDateNowChecked !== false;
+  // Numeric Infinity is the safe equivalent for an unbounded limit.
+  // "9".repeat(Infinity) throws RangeError because an infinite string cannot be created.
+  const LONG_DELAY = Number.POSITIVE_INFINITY;
 
-    if (dateNowEnabled && !nextEnabled) {
-      frozenDateNow = nativeDateNow();
-    } else if (!dateNowEnabled && nextEnabled) {
-      frozenDateNow = nativeDateNow();
+  window.addEventListener("message", (e) => {
+    if (!e.data || e.data.command !== "setSpeedConfig") return;
+
+    cbDateNowChecked = e.data.config?.cbDateNowChecked !== false;
+
+    if (cbDateNowChecked) {
+      const now = originalDateNow();
+      dateNowValue = now;
+      previousDateNowValue = now;
+    }
+  });
+
+  Date.now = function () {
+    const realNow = originalDateNow();
+
+    // Only apply this override when cbDateNowChecked is disabled.
+    if (cbDateNowChecked) {
+      dateNowValue = realNow;
+      previousDateNowValue = realNow;
+      return realNow;
     }
 
-    dateNowEnabled = nextEnabled;
-  }
+    if (dateNowValue === null) {
+      dateNowValue = realNow;
+      previousDateNowValue = realNow;
+      return Math.floor(0 + dateNowValue);
+    }
 
-  function fixedDateNow() {
-    return dateNowEnabled ? nativeDateNow() : frozenDateNow;
-  }
+    const elapsed = Math.max(0, realNow - previousDateNowValue);
+    previousDateNowValue = realNow;
 
-  window.addEventListener("message", function (event) {
-    if (!event.data || event.data.command !== "setSpeedConfig") return;
-    applyDateNowConfig(event.data.config || {});
-    // pageScript.js may have replaced Date.now earlier in this same startup
-    // sequence, so restore this wrapper after its synchronous initialization.
-    Date.now = fixedDateNow;
-  });
+    // Infinity means there is no finite cap on elapsed time.
+    const delayedElapsed = Math.min(elapsed, LONG_DELAY);
+    dateNowValue += delayedElapsed;
 
-  Date.now = fixedDateNow;
-
-  // Restore after pageScript.js finishes executing, without editing that file.
-  Promise.resolve().then(function () {
-    Date.now = fixedDateNow;
-  });
+    return Math.floor(0 + dateNowValue);
+  };
 })();

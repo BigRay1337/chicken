@@ -200,12 +200,8 @@
     // when refresh activity has settled.
     rafRefreshPending = true;
     refreshPageLoaded = false;
-    try {
-      sessionStorage.setItem(RAF_REFRESH_SESSION_KEY, "1");
-    } catch (error) {
-      // The current-page enable still works if session storage is unavailable.
-    }
-
+    // Do not reload the browser here. Let the game's swipe-up refresh finish
+    // first; the browser reload is scheduled by checkRefreshCompletion().
     if (latestConfig) {
       const swipeConfig = Object.assign({}, latestConfig, {
         cbDateNowChecked: false,
@@ -215,13 +211,10 @@
       window.postMessage({ command: "setSpeedConfig", config: swipeConfig }, "*");
     }
 
-    // A swipe of at least 30 px refreshes the website after the config is set.
+    // Start tracking the in-game refresh. The browser tab is deliberately
+    // left alone until its requests/DOM activity have settled.
     refreshCheckActive = true;
-    nativeSetTimeout(function () {
-      window.location.reload();
-    }, 50);
-
-    refreshActivitySeen = false;
+    refreshActivitySeen = true;
     refreshStartedAt = nativeDateNow();
     lastActivityAt = refreshStartedAt;
 
@@ -252,14 +245,29 @@
       rafRefreshPending = false;
 
       if (latestConfig) {
-        // Unfreeze Date.now once the refreshed game has finished loading.
-        const enabledConfig = Object.assign({}, latestConfig, {
+        const disabledConfig = Object.assign({}, latestConfig, {
+          cbDateNowChecked: false
+        });
+        latestConfig = disabledConfig;
+        window.postMessage({ command: "setSpeedConfig", config: disabledConfig }, "*");
+
+        const enabledConfig = Object.assign({}, disabledConfig, {
           cbDateNowChecked: true
         });
         latestConfig = enabledConfig;
         window.postMessage({ command: "setSpeedConfig", config: enabledConfig }, "*");
       }
       refreshCheckActive = false;
+      // Reload the browser only after the game refresh has completed.
+      // Remove any stale hand-off flag so the new document does not reload again.
+      try {
+        sessionStorage.removeItem(RAF_REFRESH_SESSION_KEY);
+      } catch (error) {
+        // Session storage may be unavailable in restricted browsing contexts.
+      }
+      nativeSetTimeout(function () {
+        window.location.reload();
+      }, 50);
       return;
     }
 
