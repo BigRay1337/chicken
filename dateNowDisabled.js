@@ -1,50 +1,32 @@
 (function () {
   "use strict";
 
-  const originalDateNow = Date.now;
-  let cbDateNowChecked = true;
-  let dateNowValue = null;
-  let previousDateNowValue = null;
+  // Capture the browser's native Date.now before pageScript.js replaces it.
+  const nativeDateNow = Date.now.bind(Date);
+  let dateNowEnabled = true;
+  let frozenDateNow = nativeDateNow();
 
-  // Numeric Infinity is the safe equivalent for an unbounded limit.
-  // "9".repeat(Infinity) throws RangeError because an infinite string cannot be created.
-  const LONG_DELAY = Number.POSITIVE_INFINITY;
+  function applyDateNowConfig(config) {
+    const nextEnabled = config?.cbDateNowChecked !== false;
 
-  window.addEventListener("message", (e) => {
-    if (!e.data || e.data.command !== "setSpeedConfig") return;
-
-    cbDateNowChecked = e.data.config?.cbDateNowChecked !== false;
-
-    if (cbDateNowChecked) {
-      const now = originalDateNow();
-      dateNowValue = now;
-      previousDateNowValue = now;
+    if (dateNowEnabled && !nextEnabled) {
+      // Freeze the exact timestamp at the moment Date.now is disabled.
+      frozenDateNow = nativeDateNow();
+    } else if (!dateNowEnabled && nextEnabled) {
+      // Resume from the real clock when Date.now is enabled again.
+      frozenDateNow = nativeDateNow();
     }
+
+    dateNowEnabled = nextEnabled;
+  }
+
+  // Re-apply after pageScript.js initializes its own Date.now wrapper.
+  window.addEventListener("message", function (event) {
+    if (!event.data || event.data.command !== "setSpeedConfig") return;
+    applyDateNowConfig(event.data.config || {});
   });
 
   Date.now = function () {
-    const realNow = originalDateNow();
-
-    // Only apply this override when cbDateNowChecked is disabled.
-    if (cbDateNowChecked) {
-      dateNowValue = realNow;
-      previousDateNowValue = realNow;
-      return realNow;
-    }
-
-    if (dateNowValue === null) {
-      dateNowValue = realNow;
-      previousDateNowValue = realNow;
-      return Math.floor(0 + dateNowValue);
-    }
-
-    const elapsed = Math.max(0, realNow - previousDateNowValue);
-    previousDateNowValue = realNow;
-
-    // Infinity means there is no finite cap on elapsed time.
-    const delayedElapsed = Math.min(elapsed, LONG_DELAY);
-    dateNowValue += delayedElapsed;
-
-    return Math.floor(0 + dateNowValue);
+    return dateNowEnabled ? nativeDateNow() : frozenDateNow;
   };
 })();
