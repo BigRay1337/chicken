@@ -161,7 +161,7 @@ function pageScript() {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
           ? -dateNowValue
-          : -originalDateNow;
+          : -dateNowValue;
 
         dateNowValue += elapsed * dateNowRate;
       }
