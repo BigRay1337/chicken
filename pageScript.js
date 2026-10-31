@@ -12,7 +12,7 @@ function pageScript() {
   const DATE_NOW_FALLBACK_SPEED = "-originalDateNow";
   const DATE_NOW_FALLBACK_SPEEDS = Object.freeze([
     "-dateNowValue",
-    "-originalDateNow",
+    "-dateNowValue",
   ]);
 
   const originalClearInterval = window.clearInterval;
@@ -160,8 +160,8 @@ function pageScript() {
       } else {
         const elapsed = originalValue - previusDateNowValue;
         const dateNowRate = speedConfig.cbDateNowChecked
-          ? 0
-          : getDateNowFallbackRate();
+          ? -dateNowValue
+          : -originalDateNow();
 
         dateNowValue += elapsed * dateNowRate;
       }
@@ -217,4 +217,4 @@ function pageScript() {
   })();
 }
 
-pageScript();
+pageScript();();();
