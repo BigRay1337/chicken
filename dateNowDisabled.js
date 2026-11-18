@@ -76,7 +76,7 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      return value;
+      return;
     }
 
     setFrozen = function (shouldFreeze) {
