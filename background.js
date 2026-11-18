@@ -4,9 +4,7 @@ chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install" || details.reason === "update") {
     // Abre o link do PayPal em uma nova aba
     chrome.tabs.create({
-    });
-  }
-});://www.paypal.com/donate/?hosted_button_id=WBGKBJ73EDAW2"
+      url: "https://www.paypal.com/donate/?hosted_button_id=WBGKBJ73EDAW2"
     });
   }
 });

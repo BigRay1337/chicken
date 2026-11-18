@@ -76,7 +76,7 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      return;
+      return Number.isFinite(value) ? value : 0.270;
     }
 
     setFrozen = function (shouldFreeze) {
@@ -114,4 +114,3 @@
     window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();
-;
