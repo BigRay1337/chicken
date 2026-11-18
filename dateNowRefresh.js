@@ -1,6 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const SWIPE_DELAY_MS = 2431;
+  const SWIPE_DELAY_MS = 6789;
 
   let cbDateNowChecked = true;
 
@@ -67,3 +67,4 @@
     }, SWIPE_DELAY_MS);
   }, { passive: true });
 })();
+

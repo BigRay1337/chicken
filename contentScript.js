@@ -4,38 +4,31 @@ let speedConfig = {
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
   cbDateNowChecked: true,
-  cbRequestAnimationFrameChecked: false,
+  cbRequestAnimationFrameChecked: true,
 };
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.command === "setSpeedConfig") {
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+  if (request.command == "setSpeedConfig") {
+    // Merge partial updates so changing Date.now does not erase other settings.
     speedConfig = {
-      speed: Number(request.config?.speed) || 0,
-      cbSetIntervalChecked: !!request.config?.cbSetIntervalChecked,
-      cbSetTimeoutChecked: !!request.config?.cbSetTimeoutChecked,
-      cbPerformanceNowChecked: !!request.config?.cbPerformanceNowChecked,
-      cbDateNowChecked: request.config?.cbDateNowChecked !== false,
-      cbRequestAnimationFrameChecked: !!request.config?.cbRequestAnimationFrameChecked,
+      ...speedConfig,
+      ...(request.config || {}),
     };
 
+    window.postMessage({
+      ...request,
+      config: speedConfig,
+    });
+  } else if (request.command == "getSpeedConfig") {
+    sendResponse(speedConfig);
+  }
+});
+
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
-
-    sendResponse({ ok: true });
-  } else if (request.command === "getSpeedConfig") {
-    sendResponse(speedConfig);
   }
-
-  return true;
-});
-
-window.addEventListener("message", (e) => {
-  if (!e.data || e.data.command !== "getSpeedConfig") return;
-
-  window.postMessage({
-    command: "setSpeedConfig",
-    config: speedConfig,
-  });
 });
