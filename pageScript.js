@@ -156,20 +156,16 @@ function pageScript() {
   (function () {
     let dateNowValue = null;
     let previousDateNowValue = null;
-    const DATE_NOW_FALLBACK_DELAY_MS = Infinity;
-    const dateNowFallbackStart = originalDateNow();
 
     Date.now = () => {
       const originalValue = originalDateNow();
-      const dateNowFallbackReady =
-        originalValue - dateNowFallbackStart >= DATE_NOW_FALLBACK_DELAY_MS;
 
       if (dateNowValue !== null) {
         const multiplier = speedConfig.cbDateNowChecked
           ? speedConfig.speed
-          : dateNowFallbackReady
+          : speedConfig.speed === DATE_NOW_ZERO_SPEED_FALLBACK
             ? DATE_NOW_ZERO_SPEED_FALLBACK
-            : 0;
+            : DATE_NOW_ZERO_SPEED_FALLBACK;
         dateNowValue += (originalValue - previousDateNowValue) * multiplier;
       } else {
         dateNowValue = originalValue;
