@@ -99,12 +99,14 @@
     checkReady();
   }
 
-  function installDateNowControl() {
+  function installDateNowControl(startUnfrozen = false) {
     if (installed) return;
     installed = true;
 
     const baseDateNow = Date.now.bind(Date);
-    let frozen = requestedFrozen;
+    // A swipe refresh keeps the game clock running even though the
+    // Date.now option is restored to its checked (true) state.
+    let frozen = startUnfrozen ? false : requestedFrozen;
     let frozenValue = baseDateNow();
     let runningValue = frozenValue;
     let runningStart = baseDateNow();
@@ -134,15 +136,14 @@
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    setFrozen(requestedFrozen);
+    if (!startUnfrozen) setFrozen(requestedFrozen);
   }
 
-  // A swipe refresh unfreezes Date.now in the old document, then freezes
-  // it again immediately at document_start in the refreshed document.
+  // After a swipe refresh, restore the option state to true without
+  // freezing the game clock again.
   if (refreshPending) {
     requestedFrozen = true;
-    installDateNowControl();
-    setFrozen(true);
+    installDateNowControl(true);
     clearRefreshFlag();
   } else if (document.readyState === "complete") {
     waitForFinishedGameLoad();
