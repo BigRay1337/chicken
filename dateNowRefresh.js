@@ -1,38 +1,9 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const SWIPE_DELAY_MS = 6789;
-  const DATE_NOW_FALLBACK_SPEED = 0.25;
-
-  let cbDateNowChecked = true;
-
-  function setDateNowChecked(enabled) {
-    cbDateNowChecked = enabled;
-
-    // Unfreeze Date.now at the fixed quarter-speed fallback.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: {
-        cbDateNowChecked: enabled,
-        speed: DATE_NOW_FALLBACK_SPEED,
-      },
-    });
-  }
-
-  window.addEventListener("message", (event) => {
-    if (!event.data) return;
-
-    if (
-      event.data.command === "setSpeedConfig" &&
-      typeof event.data.config?.cbDateNowChecked === "boolean"
-    ) {
-      cbDateNowChecked = event.data.config.cbDateNowChecked;
-    }
-  });
-
-  window.postMessage({ command: "getSpeedConfig" });
 
   let swipeStartX = null;
   let swipeStartY = null;
+  let refreshRequested = false;
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
@@ -55,14 +26,15 @@
 
     if (
       deltaY > -SWIPE_THRESHOLD_PX ||
-      Math.abs(deltaX) > Math.abs(deltaY)
+      Math.abs(deltaX) > Math.abs(deltaY) ||
+      refreshRequested
     ) {
       return;
     }
 
-    // Swipe up unfreezes the game; do not reload and re-freeze it.
-    window.setTimeout(() => {
-      setDateNowChecked(false);
-    }, SWIPE_DELAY_MS);
+    // Refresh first. dateNowDisabled.js keeps Date.now frozen while the
+    // game reloads and installs its control only after the game surface settles.
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();
