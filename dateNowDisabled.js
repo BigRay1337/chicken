@@ -67,7 +67,7 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      return Number.isFinite(value) ? value : -elapsed-elapsed;
+      return Number.isFinite(value) ? value : "";
     }
 
     setFrozen = function (shouldFreeze) {
