@@ -64,7 +64,9 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Wait for a visible game canvas to settle before enabling Date.now control.
+      // Do not use document.readyState === "complete" or a timeout fallback.
+      // Wait until the game has a visible canvas whose dimensions remain
+      // unchanged across several checks, after the browser load event.
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
@@ -125,12 +127,10 @@
 
     // Apply the latest toggle received during refresh/loading.
     setFrozen(requestedFrozen);
-
-    // Notify dateNowRefresh.js only after the game canvas is stable and
-    // the Date.now control is installed. It may then safely apply "false".
-    window.postMessage({ command: "gameRefreshReady" }, "*");
   }
 
+  // The load event is necessary but not sufficient: the game canvas must
+  // also appear and settle before the Date.now fallback/control is installed.
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
