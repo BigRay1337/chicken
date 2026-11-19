@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const toggleAtStableCheck = 1;
+    const toggleAtStableCheck = 2;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -72,14 +72,13 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // At 2 of 4 stable game-surface checks, briefly switch Date.now
-      // to false and immediately restore it to true.
+      // Only after a swipe-up refresh, unfreeze Date.now at 2 of 4
+      // stable game-surface checks.
       if (refreshPending && !refreshToggled &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= toggleAtStableCheck) {
         if (!installed) installDateNowControl();
         setFrozen(false);
-        setFrozen(true);
         refreshToggled = true;
         clearRefreshFlag();
       }
@@ -134,15 +133,6 @@
     };
 
     setFrozen(requestedFrozen);
-  }
-
-  // At 0/4 refresh progress, unfreeze Date.now immediately on the
-  // refreshed document, before waiting for the game surface checks.
-  if (refreshPending) {
-    requestedFrozen = false;
-    installDateNowControl();
-    setFrozen(false);
-    clearRefreshFlag();
   }
 
   if (document.readyState === "complete") {
