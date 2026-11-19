@@ -25,19 +25,15 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    refreshRequested = true;
-
-    // Remember that this reload came from swipe-up.
+    // Carry a one-time marker through the page reload. The Date.now hook
+    // remains frozen until the refreshed game reaches its 3/4 readiness point.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
+    } catch (_) {
+      // If storage is unavailable, still perform the requested refresh.
+    }
 
-    // Unfreeze Date.now before reloading so the game can resume.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false }
-    }, "*");
-
-    window.setTimeout(() => window.location.reload(), 50);
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();

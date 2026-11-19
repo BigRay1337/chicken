@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 1;
+    const unfreezeAtStableCheck = 3;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -72,22 +72,28 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Unfreeze at the first of four stable game-surface checks.
-      // Keep Date.now running after the refresh completes.
+      // Only a swipe-triggered refresh gets the temporary Date.now=false
+      // phase. Install the hook at 3 of 4 stable checks so false is effective.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= unfreezeAtStableCheck) {
-        requestedFrozen = false;
-        installDateNowControl(true);
+        installDateNowControl();
+        setFrozen(false);
         refreshUnfrozen = true;
-        clearRefreshFlag();
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
-        // Leave Date.now running after the refresh completes.
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
@@ -98,14 +104,12 @@
     checkReady();
   }
 
-  function installDateNowControl(startUnfrozen = false) {
+  function installDateNowControl() {
     if (installed) return;
     installed = true;
 
     const baseDateNow = Date.now.bind(Date);
-    // A swipe refresh keeps the game clock running even though the
-    // Date.now option is restored to its checked (true) state.
-    let frozen = startUnfrozen ? false : requestedFrozen;
+    let frozen = requestedFrozen;
     let frozenValue = baseDateNow();
     let runningValue = frozenValue;
     let runningStart = baseDateNow();
@@ -135,10 +139,9 @@
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    if (!startUnfrozen) setFrozen(requestedFrozen);
+    setFrozen(requestedFrozen);
   }
 
-  // Wait until the refreshed game reaches the one-quarter checkpoint.
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
