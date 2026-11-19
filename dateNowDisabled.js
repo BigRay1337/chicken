@@ -28,8 +28,8 @@
 
   function waitForFinishedGameLoad() {
     const loadStartedAt = Date.now();
-    const minimumWaitMs = 2500;
-    const maximumWaitMs = 12000;
+    const minimumWaitMs = Infinity;
+    const maximumWaitMs = Infinity;
 
     function checkReady() {
       const elapsed = Date.now() - loadStartedAt;
