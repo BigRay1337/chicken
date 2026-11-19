@@ -83,7 +83,7 @@
         : runningValue + Math.max(0, realNow - runningStart);
 
       if (Number.isFinite(value)) return value;
-      return refreshComplete ? 0.1 : realNow;
+      return;
     }
 
     setFrozen = function (shouldFreeze) {
@@ -104,8 +104,9 @@
 
     Date.now = function () {
       const value = currentValue(baseDateNow());
-      // Preserve the 0.1 fallback after refresh instead of flooring it to 0.
-      return value === 0.1 ? 0.1 : Math.floor(value);
+      // Keep the fallback undefined; only floor valid numeric timestamps.
+      if (value === undefined) return;
+      return Math.floor(value);
     };
 
     // Apply the latest toggle state received while the game was loading.
