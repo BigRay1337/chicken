@@ -3,7 +3,7 @@
 
   // Do not replace Date.now while the page is still refreshing or while the
   // game is initializing. Keep the requested toggle state until the game is
-  // ready, then install the freeze/fallback behavior.
+  // ready, then install the freeze behavior.
   let requestedFrozen = true;
   let installed = false;
   let refreshComplete = false;
@@ -35,7 +35,7 @@
 
       if (document.readyState === "complete" && gameSurfaceReady) {
         // Confirm the page and visible game canvas are still ready after two
-        // paint cycles before enabling the Date.now fallback.
+        // paint cycles before enabling Date.now control.
         if (typeof window.requestAnimationFrame === "function") {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -78,12 +78,9 @@
     let runningStart = baseDateNow();
 
     function currentValue(realNow) {
-      const value = frozen
+      return frozen
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
-
-      if (Number.isFinite(value)) return value;
-      return refreshComplete ? "." : realNow;
     }
 
     setFrozen = function (shouldFreeze) {
@@ -103,9 +100,7 @@
     };
 
     Date.now = function () {
-      const value = currentValue(baseDateNow());
-      // Preserve the 0.1 fallback after refresh instead of flooring it to 0.
-      return value === "." ? "." : Math.floor(value);
+      return Math.floor(currentValue(baseDateNow()));
     };
 
     // Apply the latest toggle state received while the game was loading.
