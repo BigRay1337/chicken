@@ -1,5 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
+  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -26,18 +27,18 @@
 
     refreshRequested = true;
 
-    // Briefly turn Date.now off, then immediately turn it back on.
+    // Save the one-time marker before briefly disabling Date.now.
+    try {
+      window.sessionStorage.setItem(REFRESH_FLAG, "1");
+    } catch (_) {}
+
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
 
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: true }
-    }, "*");
-
-    // Reload only after the false-then-true messages have been queued.
+    // Reload after the false state has been applied. The new document
+    // restores Date.now=true immediately at document_start.
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
