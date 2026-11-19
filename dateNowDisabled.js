@@ -1,7 +1,12 @@
 (function () {
   "use strict";
 
-  // Keep Date.now native while the refreshed game is still initializing.
+  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  let refreshPending = false;
+  try {
+    refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
+  } catch (_) {}
+
   let requestedFrozen = true;
   let installed = false;
   let setFrozen = function (shouldFreeze) {
@@ -11,7 +16,6 @@
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
-
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
       if (installed) setFrozen(requestedFrozen);
@@ -25,12 +29,7 @@
       if (rect.width > 0 && rect.height > 0) {
         return {
           canvas,
-          signature: [
-            rect.width,
-            rect.height,
-            canvas.width,
-            canvas.height
-          ].join(":")
+          signature: [rect.width, rect.height, canvas.width, canvas.height].join(":")
         };
       }
     }
@@ -38,16 +37,17 @@
   }
 
   function waitForFinishedGameLoad() {
-    // Use the native clock so this wait is not affected by the Date.now hook.
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
+    const unfreezeAtStableCheck = 3;
 
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
+    let refreshUnfrozen = false;
 
     function checkReady() {
       if (installed) return;
@@ -64,9 +64,18 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Do not use document.readyState === "complete" or a timeout fallback.
-      // Wait until the game has a visible canvas whose dimensions remain
-      // unchanged across several checks, after the browser load event.
+      // On a swipe-triggered refresh, release Date.now at 3 of 4 stable
+      // game-surface checks (the 75% readiness point), not after full settling.
+      if (refreshPending && !refreshUnfrozen &&
+          elapsed >= minimumWaitMs &&
+          surface && stableChecks >= unfreezeAtStableCheck) {
+        requestedFrozen = false;
+        refreshUnfrozen = true;
+        try {
+          window.sessionStorage.removeItem(REFRESH_FLAG);
+        } catch (_) {}
+      }
+
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
@@ -90,7 +99,6 @@
     if (installed) return;
     installed = true;
 
-    // Capture the native clock only after the refreshed game surface settles.
     const baseDateNow = Date.now.bind(Date);
     let frozen = requestedFrozen;
     let frozenValue = baseDateNow();
@@ -101,16 +109,13 @@
       const value = frozen
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
-
       return Number.isFinite(value) ? value : 0.25;
     }
 
     setFrozen = function (shouldFreeze) {
       if (typeof shouldFreeze !== "boolean" || shouldFreeze === frozen) return;
-
       const realNow = baseDateNow();
       const current = currentValue(realNow);
-
       if (shouldFreeze) {
         frozenValue = current;
         frozen = true;
@@ -125,12 +130,9 @@
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    // Apply the latest toggle received during refresh/loading.
     setFrozen(requestedFrozen);
   }
 
-  // The load event is necessary but not sufficient: the game canvas must
-  // also appear and settle before the Date.now fallback/control is installed.
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
