@@ -72,16 +72,13 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Only a swipe-triggered refresh gets the temporary Date.now=false
-      // phase. Install the hook at 3 of 4 stable checks so false is effective.
+      // Unfreeze at the first of four stable game-surface checks.
+      // Keep Date.now running after the refresh completes.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= unfreezeAtStableCheck) {
-        installDateNowControl();
-        setFrozen(false);
-        // Keep the game clock running for the rest of this refresh.
-        // Restore the option's checked state without freezing Date.now.
-        requestedFrozen = true;
+        requestedFrozen = false;
+        installDateNowControl(true);
         refreshUnfrozen = true;
         clearRefreshFlag();
       }
@@ -90,10 +87,7 @@
           surface &&
           stableChecks >= stableChecksRequired) {
         if (!installed) installDateNowControl();
-        // The refresh is complete: leave Date.now running, while the
-        // option state remains true for the next explicit user toggle.
-        if (refreshUnfrozen) requestedFrozen = true;
-
+        // Leave Date.now running after the refresh completes.
         finished = true;
         return;
       }
@@ -144,13 +138,8 @@
     if (!startUnfrozen) setFrozen(requestedFrozen);
   }
 
-  // After a swipe refresh, restore the option state to true without
-  // freezing the game clock again.
-  if (refreshPending) {
-    requestedFrozen = true;
-    installDateNowControl(true);
-    clearRefreshFlag();
-  } else if (document.readyState === "complete") {
+  // Wait until the refreshed game reaches the one-quarter checkpoint.
+  if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
     window.addEventListener("load", waitForFinishedGameLoad, { once: true });
