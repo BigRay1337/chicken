@@ -136,6 +136,15 @@
     setFrozen(requestedFrozen);
   }
 
+  // At 0/4 refresh progress, unfreeze Date.now immediately on the
+  // refreshed document, before waiting for the game surface checks.
+  if (refreshPending) {
+    requestedFrozen = false;
+    installDateNowControl();
+    setFrozen(false);
+    clearRefreshFlag();
+  }
+
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
