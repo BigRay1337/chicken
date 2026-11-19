@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 2;
+    const unfreezeAtStableCheck = 1;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -79,7 +79,9 @@
           surface && stableChecks >= unfreezeAtStableCheck) {
         installDateNowControl();
         setFrozen(false);
-        setFrozen(true);
+        // Keep the game clock running for the rest of this refresh.
+        // Restore the option's checked state without freezing Date.now.
+        requestedFrozen = true;
         refreshUnfrozen = true;
         clearRefreshFlag();
       }
@@ -88,6 +90,9 @@
           surface &&
           stableChecks >= stableChecksRequired) {
         if (!installed) installDateNowControl();
+        // The refresh is complete: leave Date.now running, while the
+        // option state remains true for the next explicit user toggle.
+        if (refreshUnfrozen) requestedFrozen = true;
 
         finished = true;
         return;
