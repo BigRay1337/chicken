@@ -36,6 +36,13 @@
     return null;
   }
 
+  function clearRefreshFlag() {
+    try {
+      window.sessionStorage.removeItem(REFRESH_FLAG);
+    } catch (_) {}
+    refreshPending = false;
+  }
+
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
@@ -48,9 +55,10 @@
     let lastSignature = null;
     let stableChecks = 0;
     let refreshUnfrozen = false;
+    let finished = false;
 
     function checkReady() {
-      if (installed) return;
+      if (finished) return;
 
       const elapsed = nativeNow() - waitStartedAt;
       const surface = getGameSurfaceSignature();
@@ -64,28 +72,29 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // On a swipe-triggered refresh, release Date.now at 3 of 4 stable
-      // game-surface checks (the 75% readiness point), not after full settling.
+      // Only a swipe-triggered refresh gets the temporary Date.now=false
+      // phase. Install the hook at 3 of 4 stable checks so false is effective.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= unfreezeAtStableCheck) {
-        requestedFrozen = false;
+        installDateNowControl();
+        setFrozen(false);
         refreshUnfrozen = true;
-        try {
-          window.sessionStorage.removeItem(REFRESH_FLAG);
-        } catch (_) {}
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (typeof window.requestAnimationFrame === "function") {
-          window.requestAnimationFrame(function () {
-            window.requestAnimationFrame(installDateNowControl);
-          });
-        } else {
-          window.setTimeout(installDateNowControl, 100);
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
         }
+
+        finished = true;
         return;
       }
 
