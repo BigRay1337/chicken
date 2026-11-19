@@ -27,18 +27,20 @@
 
     refreshRequested = true;
 
-    // Save the one-time marker before briefly disabling Date.now.
-    try {
-      window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
-
+    // This is the only path that turns Date.now off: a recognized swipe up.
+    // Notify the Date.now controller before starting the page refresh.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
 
-    // Reload after the false state has been applied. The new document
-    // restores Date.now=true immediately at document_start.
+    // Carry the one-time state through reload so the new page starts with
+    // Date.now=false and switches it back to true once the game has settled.
+    try {
+      window.sessionStorage.setItem(REFRESH_FLAG, "1");
+    } catch (_) {}
+
+    // Allow the same-document message handler to apply false before reload.
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
