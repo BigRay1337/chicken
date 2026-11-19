@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const toggleAtStableCheck = 1.5;
+    const toggleAtStableCheck = 1.1;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -72,7 +72,7 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // At 1.5 of 4 stable checks during a swipe-triggered refresh,
+      // At 1.1 of 4 stable checks during a swipe-triggered refresh,
       // briefly switch Date.now=false, then immediately restore true.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
