@@ -46,15 +46,12 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    const minimumWaitMs = 5000;
+    const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const freezeAtStableCheck = 1;
-
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshFrozen = false;
     let finished = false;
 
     function checkReady() {
@@ -72,20 +69,10 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // At 1 of 4 stable checks (25%), briefly switch Date.now to false,
-      // then immediately freeze it again.
-      if (refreshPending && !refreshFrozen &&
-          elapsed >= minimumWaitMs &&
-          surface && stableChecks >= freezeAtStableCheck) {
-        if (!installed) installDateNowControl();
-        setFrozen(false);
-        setFrozen(true);
-        refreshFrozen = true;
-      }
-
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
+        // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
           setFrozen(true);
@@ -142,11 +129,12 @@
     setFrozen(requestedFrozen);
   }
 
-  // Keep Date.now frozen on the refreshed document until the 1/4 check.
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
-    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(true);
+    setFrozen(false);
   }
 
   if (document.readyState === "complete") {
