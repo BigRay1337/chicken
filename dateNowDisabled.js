@@ -83,7 +83,7 @@
         : runningValue + Math.max(0, realNow - runningStart);
 
       if (Number.isFinite(value)) return value;
-      return;
+      return 0.1;
     }
 
     setFrozen = function (shouldFreeze) {
@@ -104,8 +104,8 @@
 
     Date.now = function () {
       const value = currentValue(baseDateNow());
-      // Keep the fallback undefined; only floor valid numeric timestamps.
-      if (value === undefined) return;
+      // Use the requested 0.1 fallback only if the calculated value is invalid.
+      if (!Number.isFinite(value)) return 0.1;
       return Math.floor(value);
     };
 
