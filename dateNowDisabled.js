@@ -28,8 +28,8 @@
 
   function waitForFinishedGameLoad() {
     const loadStartedAt = Date.now();
-    const minimumWaitMs = Infinity;
-    const maximumWaitMs = Infinity;
+    const minimumWaitMs = 5999;
+    const maximumWaitMs = 59999;
 
     function checkReady() {
       const elapsed = Date.now() - loadStartedAt;
@@ -76,7 +76,7 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      return Number.isFinite(value) ? value : 0.0;
+      return Number.isFinite(value) ? value : -elapsed-elapsed;
     }
 
     setFrozen = function (shouldFreeze) {
@@ -114,4 +114,4 @@
     window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();
-;
+
