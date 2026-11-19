@@ -72,14 +72,14 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // At the 1.5/4 refresh point (the second stable-surface check),
-      // unfreeze Date.now and leave it running after the refresh.
-      // It will freeze again only when the user explicitly sets Date.now=true.
+      // At 2 of 4 stable checks during a swipe-triggered refresh,
+      // briefly switch Date.now=false, then immediately restore true.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= toggleAtStableCheck) {
         if (!installed) installDateNowControl();
         setFrozen(false);
+        setFrozen(true);
         refreshUnfrozen = true;
         clearRefreshFlag();
       }
