@@ -1,12 +1,10 @@
 (function () {
   "use strict";
 
-  // Do not replace Date.now while the page is still refreshing or while the
-  // game is initializing. Keep the requested toggle state until the game is
-  // ready, then install the freeze behavior.
+  // Date.now speed multiplier: 1 = normal time, 0.25 = quarter speed.
   let requestedFrozen = true;
+  let requestedSpeed = 0.25;
   let installed = false;
-  let refreshComplete = false;
 
   window.addEventListener("message", function (event) {
     const data = event.data;
@@ -15,6 +13,13 @@
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
       if (installed) setFrozen(requestedFrozen);
+    }
+
+    if (typeof data.config.speed === "number" &&
+        Number.isFinite(data.config.speed) &&
+        data.config.speed >= 0) {
+      requestedSpeed = data.config.speed;
+      if (installed) setSpeed(requestedSpeed);
     }
   });
 
@@ -28,14 +33,8 @@
   }
 
   function waitForFinishedGameLoad() {
-    // There is intentionally no timed minimum and no maximum timeout.
-    // Wait indefinitely for the page and visible game canvas to be ready.
     function checkReady() {
-      const gameSurfaceReady = gameSurfaceIsReady();
-
-      if (document.readyState === "complete" && gameSurfaceReady) {
-        // Confirm the page and visible game canvas are still ready after two
-        // paint cycles before enabling Date.now control.
+      if (document.readyState === "complete" && gameSurfaceIsReady()) {
         if (typeof window.requestAnimationFrame === "function") {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -57,22 +56,18 @@
         }
         return;
       }
-
       window.setTimeout(checkReady, 250);
     }
-
     checkReady();
   }
 
   function installDateNowControl() {
     if (installed || document.readyState !== "complete") return;
     installed = true;
-    refreshComplete = true;
 
-    // Capture Date.now only after the page/game refresh has completed, so
-    // startup scripts receive normal timestamps during loading.
     const baseDateNow = Date.now.bind(Date);
     let frozen = requestedFrozen;
+    let speed = requestedSpeed;
     let frozenValue = baseDateNow();
     let runningValue = frozenValue;
     let runningStart = baseDateNow();
@@ -80,12 +75,11 @@
     function currentValue(realNow) {
       return frozen
         ? frozenValue
-        : runningValue + Math.max(0, realNow - runningStart);
+        : runningValue + Math.max(0, realNow - runningStart) * speed;
     }
 
     setFrozen = function (shouldFreeze) {
       if (typeof shouldFreeze !== "boolean" || shouldFreeze === frozen) return;
-
       const realNow = baseDateNow();
       const current = currentValue(realNow);
 
@@ -99,17 +93,35 @@
       }
     };
 
+    setSpeed = function (nextSpeed) {
+      if (typeof nextSpeed !== "number" ||
+          !Number.isFinite(nextSpeed) || nextSpeed < 0 ||
+          nextSpeed === speed) return;
+
+      const realNow = baseDateNow();
+      const current = currentValue(realNow);
+      if (frozen) {
+        frozenValue = current;
+      } else {
+        runningValue = current;
+        runningStart = realNow;
+      }
+      speed = nextSpeed;
+    };
+
     Date.now = function () {
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    // Apply the latest toggle state received while the game was loading.
+    setSpeed(requestedSpeed);
     setFrozen(requestedFrozen);
   }
 
-  // Declared before the load callback so early messages can be safely queued.
   let setFrozen = function (shouldFreeze) {
     requestedFrozen = shouldFreeze;
+  };
+  let setSpeed = function (nextSpeed) {
+    requestedSpeed = nextSpeed;
   };
 
   if (document.readyState === "complete") {
