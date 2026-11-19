@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const toggleAtStableCheck = 0.4 / 4;
+    const toggleAtStableCheck = 0.09 / 4;
 
     let lastCanvas = null;
     let lastSignature = null;
