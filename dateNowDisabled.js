@@ -72,6 +72,8 @@
     // Capture Date.now only after the page/game refresh has completed, so
     // startup scripts receive normal timestamps during loading.
     const baseDateNow = Date.now.bind(Date);
+    const fallbackDelayMs = 9999;
+    const fallbackEligibleAt = baseDateNow() + fallbackDelayMs;
     let frozen = requestedFrozen;
     let frozenValue = baseDateNow();
     let runningValue = frozenValue;
@@ -83,7 +85,7 @@
         : runningValue + Math.max(0, realNow - runningStart);
 
       if (Number.isFinite(value)) return value;
-      return refreshComplete ? 0.1 : realNow;
+      return refreshComplete && realNow >= fallbackEligibleAt ? 0.1 : realNow;
     }
 
     setFrozen = function (shouldFreeze) {
