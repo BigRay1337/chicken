@@ -1,16 +1,19 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const SWIPE_DELAY_MS = 6789;
+  const DATE_NOW_FALLBACK_SPEED = 0.25;
 
   let cbDateNowChecked = true;
 
   function setDateNowChecked(enabled) {
     cbDateNowChecked = enabled;
 
+    // Unfreeze Date.now at the fixed quarter-speed fallback.
     window.postMessage({
       command: "setSpeedConfig",
       config: {
         cbDateNowChecked: enabled,
+        speed: DATE_NOW_FALLBACK_SPEED,
       },
     });
   }
@@ -57,14 +60,9 @@
       return;
     }
 
-    // Wait 1432 ms before the swipe can interact with the extension.
-    setTimeout(() => {
-      // 1. Disable Date.now.
+    // Swipe up unfreezes the game; do not reload and re-freeze it.
+    window.setTimeout(() => {
       setDateNowChecked(false);
-
-      // 2. Refresh the game afterward.
-      window.location.reload();
     }, SWIPE_DELAY_MS);
   }, { passive: true });
 })();
-
