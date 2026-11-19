@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 3;
+    const unfreezeAtStableCheck = 2;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -73,7 +73,7 @@
       }
 
       // Only a swipe-triggered refresh gets the temporary Date.now=false
-      // phase. Install the hook at 3 of 4 stable checks so false is effective.
+      // phase. Install the hook at 2 of 4 stable checks so false is effective.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
           surface && stableChecks >= unfreezeAtStableCheck) {
