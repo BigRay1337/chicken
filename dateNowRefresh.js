@@ -25,15 +25,22 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    // Carry a one-time marker through the page reload. The Date.now hook
-    // remains frozen until the refreshed game reaches its 3/4 readiness point.
+    refreshRequested = true;
+
+    // This is the only path that turns Date.now off: a recognized swipe up.
+    // Notify the Date.now controller before starting the page refresh.
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: false }
+    }, "*");
+
+    // Carry the one-time state through reload so the new page starts with
+    // Date.now=false and switches it back to true once the game has settled.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {
-      // If storage is unavailable, still perform the requested refresh.
-    }
+    } catch (_) {}
 
-    refreshRequested = true;
-    window.location.reload();
+    // Allow the same-document message handler to apply false before reload.
+    window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
