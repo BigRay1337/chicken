@@ -49,12 +49,9 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 2;
-
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshUnfrozen = false;
     let finished = false;
 
     function checkReady() {
@@ -70,16 +67,6 @@
         lastCanvas = surface ? surface.canvas : null;
         lastSignature = surface ? surface.signature : null;
         stableChecks = surface ? 1 : 0;
-      }
-
-      // Only a swipe-triggered refresh gets the temporary Date.now=false
-      // phase. Install the hook at 2 of 4 stable checks so false is effective.
-      if (refreshPending && !refreshUnfrozen &&
-          elapsed >= minimumWaitMs &&
-          surface && stableChecks >= unfreezeAtStableCheck) {
-        installDateNowControl();
-        setFrozen(false);
-        refreshUnfrozen = true;
       }
 
       if (elapsed >= minimumWaitMs &&
@@ -140,6 +127,14 @@
     };
 
     setFrozen(requestedFrozen);
+  }
+
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
+  if (refreshPending) {
+    installDateNowControl();
+    setFrozen(false);
   }
 
   if (document.readyState === "complete") {
