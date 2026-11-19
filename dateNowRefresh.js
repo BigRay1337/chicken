@@ -1,5 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
+  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -26,21 +27,16 @@
 
     refreshRequested = true;
 
-    // Briefly set Date.now false, then immediately set it true.
+    // Remember that this reload came from swipe-up.
+    try {
+      window.sessionStorage.setItem(REFRESH_FLAG, "1");
+    } catch (_) {}
+
+    // Unfreeze Date.now before reloading so the game can resume.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
-
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: true }
-    }, "*");
-
-    // Do not carry a refresh marker or change Date.now again after reload.
-    try {
-      window.sessionStorage.removeItem("__chickenDateNowRefreshPending");
-    } catch (_) {}
 
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
