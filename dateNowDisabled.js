@@ -49,13 +49,11 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAfterStableCheck = 1;
-    const halfwayToNextCheckMs = checkIntervalMs / 2;
+    const toggleAtStableCheck = 2;
 
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshUnfreezeScheduled = false;
     let refreshUnfrozen = false;
     let finished = false;
 
@@ -74,38 +72,30 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // For swipe-triggered refreshes, unfreeze halfway between stable
-      // checks 1 and 2 (1.5 of 4). Keep it running after refresh completes.
-      if (refreshPending && !refreshUnfreezeScheduled &&
+      // At 2 of 4 stable checks during a swipe-triggered refresh,
+      // briefly switch Date.now=false, then immediately restore true.
+      if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
-          surface && stableChecks >= unfreezeAfterStableCheck) {
-        refreshUnfreezeScheduled = true;
-        const expectedCanvas = surface.canvas;
-        const expectedSignature = surface.signature;
-
-        window.setTimeout(function () {
-          if (!refreshPending || refreshUnfrozen) return;
-
-          const currentSurface = getGameSurfaceSignature();
-          if (!currentSurface ||
-              currentSurface.canvas !== expectedCanvas ||
-              currentSurface.signature !== expectedSignature) {
-            refreshUnfreezeScheduled = false;
-            return;
-          }
-
-          if (!installed) installDateNowControl();
-          requestedFrozen = false;
-          setFrozen(false);
-          refreshUnfrozen = true;
-          clearRefreshFlag();
-        }, halfwayToNextCheckMs);
+          surface && stableChecks >= toggleAtStableCheck) {
+        if (!installed) installDateNowControl();
+        setFrozen(false);
+        setFrozen(true);
+        refreshUnfrozen = true;
+        clearRefreshFlag();
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
