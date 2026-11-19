@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtRefreshProgress = 0.5;
+    const toggleAtStableCheck = 2;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -72,14 +72,14 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Unfreeze Date.now at 0.5/4 refresh progress: the first
-      // stable game-surface detection. Keep it running afterward.
+      // At 2 of 4 stable checks during a swipe-triggered refresh,
+      // briefly switch Date.now=false, then immediately restore true.
       if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
-          surface && stableChecks >= 1 &&
-          unfreezeAtRefreshProgress === 0.5) {
+          surface && stableChecks >= toggleAtStableCheck) {
         if (!installed) installDateNowControl();
         setFrozen(false);
+        setFrozen(true);
         refreshUnfrozen = true;
         clearRefreshFlag();
       }
