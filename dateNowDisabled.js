@@ -1,11 +1,12 @@
 (function () {
   "use strict";
 
-  // Do not replace Date.now while the page is still refreshing or while the
-  // game is initializing. Keep the requested toggle state until the game is
-  // ready, then install the freeze/fallback behavior.
+  // Keep Date.now native while the refreshed game is still initializing.
   let requestedFrozen = true;
   let installed = false;
+  let setFrozen = function (shouldFreeze) {
+    requestedFrozen = shouldFreeze;
+  };
 
   window.addEventListener("message", function (event) {
     const data = event.data;
@@ -17,34 +18,60 @@
     }
   });
 
-  function gameSurfaceIsReady() {
+  function getGameSurfaceSignature() {
     const canvases = document.querySelectorAll("canvas");
     for (const canvas of canvases) {
       const rect = canvas.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) return true;
+      if (rect.width > 0 && rect.height > 0) {
+        return {
+          canvas,
+          signature: [
+            rect.width,
+            rect.height,
+            canvas.width,
+            canvas.height
+          ].join(":")
+        };
+      }
     }
-    return false;
+    return null;
   }
 
   function waitForFinishedGameLoad() {
-    const loadStartedAt = Date.now();
+    // Use the native clock so this wait is not affected by the Date.now hook.
+    const nativeNow = Date.now.bind(Date);
+    const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
-    const maximumWaitMs = 12000;
+    const stableChecksRequired = 4;
+    const checkIntervalMs = 300;
+
+    let lastCanvas = null;
+    let lastSignature = null;
+    let stableChecks = 0;
 
     function checkReady() {
-      const elapsed = Date.now() - loadStartedAt;
-      const gameSurfaceReady = gameSurfaceIsReady();
+      if (installed) return;
 
-      // Prefer waiting for the visible game canvas. The maximum wait is a
-      // safety net for games that render without a canvas element.
-      if (
-        document.readyState === "complete" &&
-        elapsed >= minimumWaitMs &&
-        (gameSurfaceReady || elapsed >= maximumWaitMs)
-      ) {
-        // Let the browser finish two more paint cycles before installing.
+      const elapsed = nativeNow() - waitStartedAt;
+      const surface = getGameSurfaceSignature();
+
+      if (surface && surface.canvas === lastCanvas &&
+          surface.signature === lastSignature) {
+        stableChecks += 1;
+      } else {
+        lastCanvas = surface ? surface.canvas : null;
+        lastSignature = surface ? surface.signature : null;
+        stableChecks = surface ? 1 : 0;
+      }
+
+      // Do not use document.readyState === "complete" or a timeout fallback.
+      // Wait until the game has a visible canvas whose dimensions remain
+      // unchanged across several checks, after the browser load event.
+      if (elapsed >= minimumWaitMs &&
+          surface &&
+          stableChecks >= stableChecksRequired) {
         if (typeof window.requestAnimationFrame === "function") {
-          window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(function () {
             window.requestAnimationFrame(installDateNowControl);
           });
         } else {
@@ -53,18 +80,17 @@
         return;
       }
 
-      window.setTimeout(checkReady, 250);
+      window.setTimeout(checkReady, checkIntervalMs);
     }
 
     checkReady();
   }
 
   function installDateNowControl() {
-    if (installed || document.readyState !== "complete") return;
+    if (installed) return;
     installed = true;
 
-    // Capture Date.now only after the page/game refresh has completed, so
-    // startup scripts receive normal timestamps during loading.
+    // Capture the native clock only after the refreshed game surface settles.
     const baseDateNow = Date.now.bind(Date);
     let frozen = requestedFrozen;
     let frozenValue = baseDateNow();
@@ -76,8 +102,6 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      // The zero fallback is deliberately available only after installation,
-      // which happens after the refreshed game page has loaded.
       return Number.isFinite(value) ? value : 0.25;
     }
 
@@ -101,15 +125,12 @@
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    // Apply the latest toggle state received while the game was loading.
+    // Apply the latest toggle received during refresh/loading.
     setFrozen(requestedFrozen);
   }
 
-  // Declared before the load callback so early messages can be safely queued.
-  let setFrozen = function (shouldFreeze) {
-    requestedFrozen = shouldFreeze;
-  };
-
+  // The load event is necessary but not sufficient: the game canvas must
+  // also appear and settle before the Date.now fallback/control is installed.
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
