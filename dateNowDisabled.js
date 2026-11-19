@@ -1,25 +1,28 @@
 (function () {
   "use strict";
 
-  // Date.now speed multiplier: 1 = normal time, 0.25 = quarter speed.
+  // Date.now multiplier: 1 = real time, 0.25 = quarter speed.
   let requestedFrozen = true;
   let requestedSpeed = 0.25;
   let installed = false;
+  let applyConfig = function (config) {
+    if (typeof config.cbDateNowChecked === "boolean") {
+      requestedFrozen = config.cbDateNowChecked;
+    }
+    if (typeof config.speed === "number" &&
+        Number.isFinite(config.speed) && config.speed >= 0) {
+      requestedSpeed = config.speed;
+    }
+  };
 
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
 
-    if (typeof data.config.cbDateNowChecked === "boolean") {
-      requestedFrozen = data.config.cbDateNowChecked;
-      if (installed) setFrozen(requestedFrozen);
-    }
-
-    if (typeof data.config.speed === "number" &&
-        Number.isFinite(data.config.speed) &&
-        data.config.speed >= 0) {
-      requestedSpeed = data.config.speed;
-      if (installed) setSpeed(requestedSpeed);
+    if (installed) {
+      applyConfig(data.config);
+    } else {
+      applyConfig(data.config);
     }
   });
 
@@ -68,61 +71,44 @@
     const baseDateNow = Date.now.bind(Date);
     let frozen = requestedFrozen;
     let speed = requestedSpeed;
-    let frozenValue = baseDateNow();
-    let runningValue = frozenValue;
-    let runningStart = baseDateNow();
+    let anchorReal = baseDateNow();
+    let anchorVirtual = anchorReal;
 
     function currentValue(realNow) {
-      return frozen
-        ? frozenValue
-        : runningValue + Math.max(0, realNow - runningStart) * speed;
+      if (frozen) return anchorVirtual;
+      return anchorVirtual + Math.max(0, realNow - anchorReal) * speed;
     }
 
-    setFrozen = function (shouldFreeze) {
-      if (typeof shouldFreeze !== "boolean" || shouldFreeze === frozen) return;
+    applyConfig = function (config) {
       const realNow = baseDateNow();
       const current = currentValue(realNow);
 
-      if (shouldFreeze) {
-        frozenValue = current;
-        frozen = true;
-      } else {
-        runningValue = current;
-        runningStart = realNow;
-        frozen = false;
+      if (typeof config.speed === "number" &&
+          Number.isFinite(config.speed) && config.speed >= 0) {
+        speed = config.speed;
+        requestedSpeed = config.speed;
       }
-    };
 
-    setSpeed = function (nextSpeed) {
-      if (typeof nextSpeed !== "number" ||
-          !Number.isFinite(nextSpeed) || nextSpeed < 0 ||
-          nextSpeed === speed) return;
-
-      const realNow = baseDateNow();
-      const current = currentValue(realNow);
-      if (frozen) {
-        frozenValue = current;
-      } else {
-        runningValue = current;
-        runningStart = realNow;
+      if (typeof config.cbDateNowChecked === "boolean") {
+        frozen = config.cbDateNowChecked;
+        requestedFrozen = config.cbDateNowChecked;
       }
-      speed = nextSpeed;
+
+      // Re-anchor before changing state so toggling never jumps Date.now.
+      anchorVirtual = current;
+      anchorReal = realNow;
     };
 
     Date.now = function () {
       return Math.floor(currentValue(baseDateNow()));
     };
 
-    setSpeed(requestedSpeed);
-    setFrozen(requestedFrozen);
+    // Apply the latest settings received before the game finished loading.
+    applyConfig({
+      speed: requestedSpeed,
+      cbDateNowChecked: requestedFrozen
+    });
   }
-
-  let setFrozen = function (shouldFreeze) {
-    requestedFrozen = shouldFreeze;
-  };
-  let setSpeed = function (nextSpeed) {
-    requestedSpeed = nextSpeed;
-  };
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
