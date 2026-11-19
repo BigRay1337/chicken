@@ -22,13 +22,6 @@
     }
   });
 
-  function clearRefreshFlag() {
-    try {
-      window.sessionStorage.removeItem(REFRESH_FLAG);
-    } catch (_) {}
-    refreshPending = false;
-  }
-
   function getGameSurfaceSignature() {
     const canvases = document.querySelectorAll("canvas");
     for (const canvas of canvases) {
@@ -41,6 +34,13 @@
       }
     }
     return null;
+  }
+
+  function clearRefreshFlag() {
+    try {
+      window.sessionStorage.removeItem(REFRESH_FLAG);
+    } catch (_) {}
+    refreshPending = false;
   }
 
   function waitForFinishedGameLoad() {
@@ -72,7 +72,15 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
@@ -121,20 +129,17 @@
     setFrozen(requestedFrozen);
   }
 
-  // On the refreshed document, restore Date.now=true immediately rather
-  // than waiting for the game canvas/load checks.
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
-    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(true);
-    clearRefreshFlag();
+    setFrozen(false);
   }
 
-  if (!refreshPending) {
-    if (document.readyState === "complete") {
-      waitForFinishedGameLoad();
-    } else {
-      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
-    }
+  if (document.readyState === "complete") {
+    waitForFinishedGameLoad();
+  } else {
+    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();
