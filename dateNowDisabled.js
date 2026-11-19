@@ -79,6 +79,7 @@
           surface && stableChecks >= unfreezeAtStableCheck) {
         installDateNowControl();
         setFrozen(false);
+        setFrozen(true);
         refreshUnfrozen = true;
         clearRefreshFlag();
       }
