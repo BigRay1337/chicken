@@ -1,5 +1,5 @@
 let speedConfig = {
-  speed: 0,
+  speed: 0.25,
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
