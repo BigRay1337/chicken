@@ -27,21 +27,12 @@
   }
 
   function waitForFinishedGameLoad() {
-    const loadStartedAt = Date.now();
-    const minimumWaitMs = 5999;
-    const maximumWaitMs = 59999;
-
+    // There is intentionally no timed minimum and no maximum timeout.
+    // Wait indefinitely for the page and visible game canvas to be ready.
     function checkReady() {
-      const elapsed = Date.now() - loadStartedAt;
       const gameSurfaceReady = gameSurfaceIsReady();
 
-      // Prefer waiting for the visible game canvas. The maximum wait is a
-      // safety net for games that render without a canvas element.
-      if (
-        document.readyState === "complete" &&
-        elapsed >= minimumWaitMs &&
-        (gameSurfaceReady || elapsed >= maximumWaitMs)
-      ) {
+      if (document.readyState === "complete" && gameSurfaceReady) {
         // Let the browser finish two more paint cycles before installing.
         if (typeof window.requestAnimationFrame === "function") {
           window.requestAnimationFrame(() => {
@@ -114,4 +105,3 @@
     window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();
-
