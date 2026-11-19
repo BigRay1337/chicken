@@ -22,6 +22,13 @@
     }
   });
 
+  function clearRefreshFlag() {
+    try {
+      window.sessionStorage.removeItem(REFRESH_FLAG);
+    } catch (_) {}
+    refreshPending = false;
+  }
+
   function getGameSurfaceSignature() {
     const canvases = document.querySelectorAll("canvas");
     for (const canvas of canvases) {
@@ -36,19 +43,11 @@
     return null;
   }
 
-  function clearRefreshFlag() {
-    try {
-      window.sessionStorage.removeItem(REFRESH_FLAG);
-    } catch (_) {}
-    refreshPending = false;
-  }
-
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
-    const refreshToggleCheck = 1; // 1 of 4 stable checks = 25%.
     const checkIntervalMs = 300;
     let lastCanvas = null;
     let lastSignature = null;
@@ -70,17 +69,6 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // After a swipe-up refresh, restore Date.now=true at the first
-      // stable game-surface check (1/4), not after all four checks.
-      if (refreshPending &&
-          elapsed >= minimumWaitMs &&
-          surface &&
-          stableChecks >= refreshToggleCheck) {
-        setFrozen(true);
-        clearRefreshFlag();
-      }
-
-      // Continue the normal load check to 4/4 without delaying the toggle.
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
@@ -133,16 +121,20 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up sets the marker before reload. Start Date.now=false on the
-  // refreshed document, then switch to true at the 1/4 refresh checkpoint.
+  // On the refreshed document, restore Date.now=true immediately rather
+  // than waiting for the game canvas/load checks.
   if (refreshPending) {
+    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(false);
+    setFrozen(true);
+    clearRefreshFlag();
   }
 
-  if (document.readyState === "complete") {
-    waitForFinishedGameLoad();
-  } else {
-    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+  if (!refreshPending) {
+    if (document.readyState === "complete") {
+      waitForFinishedGameLoad();
+    } else {
+      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+    }
   }
 })();
