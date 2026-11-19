@@ -1,6 +1,5 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -27,20 +26,18 @@
 
     refreshRequested = true;
 
-    // This is the only path that turns Date.now off: a recognized swipe up.
-    // Notify the Date.now controller before starting the page refresh.
+    // Briefly turn Date.now off, then immediately turn it back on.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
 
-    // Carry the one-time state through reload so the new page starts with
-    // Date.now=false and switches it back to true once the game has settled.
-    try {
-      window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: true }
+    }, "*");
 
-    // Allow the same-document message handler to apply false before reload.
+    // Reload only after the false-then-true messages have been queued.
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
