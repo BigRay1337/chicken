@@ -49,12 +49,12 @@
     const minimumWaitMs = 5000;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 1;
+    const freezeAtStableCheck = 1;
 
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshUnfrozen = false;
+    let refreshFrozen = false;
     let finished = false;
 
     function checkReady() {
@@ -72,23 +72,23 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // At 1 of 4 stable checks (25%), keep Date.now running so the
-      // refreshed game can continue loading instead of remaining frozen.
-      if (refreshPending && !refreshUnfrozen &&
+      // At 1 of 4 stable checks (25%), briefly switch Date.now to false,
+      // then immediately freeze it again.
+      if (refreshPending && !refreshFrozen &&
           elapsed >= minimumWaitMs &&
-          surface && stableChecks >= unfreezeAtStableCheck) {
+          surface && stableChecks >= freezeAtStableCheck) {
         if (!installed) installDateNowControl();
         setFrozen(false);
-        refreshUnfrozen = true;
+        setFrozen(true);
+        refreshFrozen = true;
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
         if (refreshPending) {
-          // Leave Date.now running after refresh; do not re-freeze the game.
           if (!installed) installDateNowControl();
-          setFrozen(false);
+          setFrozen(true);
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
@@ -142,12 +142,11 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up sets the one-time refresh flag before reloading. On the
-  // refreshed document, Date.now is set to running mode at the 1/4 point.
+  // Keep Date.now frozen on the refreshed document until the 1/4 check.
   if (refreshPending) {
-    requestedFrozen = false;
+    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(false);
+    setFrozen(true);
   }
 
   if (document.readyState === "complete") {
