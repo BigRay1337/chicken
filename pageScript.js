@@ -14,10 +14,7 @@ function pageScript() {
   const originalSetTimeout = window.setTimeout;
   const originalPerformanceNow = window.performance.now.bind(window.performance);
   const originalRequestAnimationFrame = window.requestAnimationFrame;
-  const originalDateNow = Date.now;
-  let previousDateNowChecked = null;
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_ZERO_SPEED_FALLBACK = 0.27;
   let pageInitializing = true;
 
   let timers = [];
@@ -152,29 +149,7 @@ function pageScript() {
     };
   })();
 
-  // Date.now
-  (function () {
-    let dateNowValue = null;
-    let previousDateNowValue = null;
-
-    Date.now = () => {
-      const originalValue = originalDateNow();
-
-      if (dateNowValue !== null) {
-        const multiplier = speedConfig.cbDateNowChecked
-          ? speedConfig.speed
-          : speedConfig.speed === DATE_NOW_ZERO_SPEED_FALLBACK
-            ? DATE_NOW_ZERO_SPEED_FALLBACK
-            : DATE_NOW_ZERO_SPEED_FALLBACK;
-        dateNowValue += (originalValue - previousDateNowValue) * multiplier;
-      } else {
-        dateNowValue = originalValue;
-      }
-
-      previousDateNowValue = originalValue;
-      return Math.floor(0 + dateNowValue);
-    };
-  })();
+  // Date.now is controlled by dateNowDisabled.js so the freeze has one owner.
 
   // requestAnimationFrame
   (function () {
