@@ -48,10 +48,12 @@
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
+    const refreshToggleCheck = 2;
     const checkIntervalMs = 300;
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
+    let refreshToggleApplied = false;
     let finished = false;
 
     function checkReady() {
@@ -67,6 +69,19 @@
         lastCanvas = surface ? surface.canvas : null;
         lastSignature = surface ? surface.signature : null;
         stableChecks = surface ? 1 : 0;
+      }
+
+      if (refreshPending &&
+          !refreshToggleApplied &&
+          elapsed >= minimumWaitMs &&
+          surface &&
+          stableChecks >= refreshToggleCheck) {
+        // Briefly release the freeze at the 2-of-4 refresh checkpoint,
+        // then restore Date.now=true immediately.
+        setFrozen(false);
+        setFrozen(true);
+        refreshToggleApplied = true;
+        clearRefreshFlag();
       }
 
       if (elapsed >= minimumWaitMs &&
@@ -121,20 +136,17 @@
     setFrozen(requestedFrozen);
   }
 
-  // On the refreshed document, restore Date.now=true immediately rather
-  // than waiting for the game canvas/load checks.
+  // Install the Date.now controller at document start. During a refresh,
+  // keep the refresh marker until the 2-of-4 stable-load checkpoint.
   if (refreshPending) {
     requestedFrozen = true;
     installDateNowControl();
     setFrozen(true);
-    clearRefreshFlag();
   }
 
-  if (!refreshPending) {
-    if (document.readyState === "complete") {
-      waitForFinishedGameLoad();
-    } else {
-      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
-    }
+  if (document.readyState === "complete") {
+    waitForFinishedGameLoad();
+  } else {
+    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();
