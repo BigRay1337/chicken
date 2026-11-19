@@ -1,6 +1,12 @@
 (function () {
   "use strict";
 
+  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  let refreshPending = false;
+  try {
+    refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
+  } catch (_) {}
+
   let requestedFrozen = true;
   let installed = false;
   let setFrozen = function (shouldFreeze) {
@@ -15,6 +21,13 @@
       if (installed) setFrozen(requestedFrozen);
     }
   });
+
+  function clearRefreshFlag() {
+    try {
+      window.sessionStorage.removeItem(REFRESH_FLAG);
+    } catch (_) {}
+    refreshPending = false;
+  }
 
   function getGameSurfaceSignature() {
     const canvases = document.querySelectorAll("canvas");
@@ -108,9 +121,20 @@
     setFrozen(requestedFrozen);
   }
 
-  if (document.readyState === "complete") {
-    waitForFinishedGameLoad();
-  } else {
-    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+  // On the refreshed document, restore Date.now=true immediately rather
+  // than waiting for the game canvas/load checks.
+  if (refreshPending) {
+    requestedFrozen = true;
+    installDateNowControl();
+    setFrozen(true);
+    clearRefreshFlag();
+  }
+
+  if (!refreshPending) {
+    if (document.readyState === "complete") {
+      waitForFinishedGameLoad();
+    } else {
+      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+    }
   }
 })();
