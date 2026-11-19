@@ -137,7 +137,14 @@
     setFrozen(requestedFrozen);
   }
 
-  if (document.readyState === "complete") {
+  // A swipe refresh unfreezes Date.now in the old document, then freezes
+  // it again immediately at document_start in the refreshed document.
+  if (refreshPending) {
+    requestedFrozen = true;
+    installDateNowControl();
+    setFrozen(true);
+    clearRefreshFlag();
+  } else if (document.readyState === "complete") {
     waitForFinishedGameLoad();
   } else {
     window.addEventListener("load", waitForFinishedGameLoad, { once: true });
