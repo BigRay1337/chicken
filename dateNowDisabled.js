@@ -22,13 +22,6 @@
     }
   });
 
-  function clearRefreshFlag() {
-    try {
-      window.sessionStorage.removeItem(REFRESH_FLAG);
-    } catch (_) {}
-    refreshPending = false;
-  }
-
   function getGameSurfaceSignature() {
     const canvases = document.querySelectorAll("canvas");
     for (const canvas of canvases) {
@@ -43,17 +36,25 @@
     return null;
   }
 
+  function clearRefreshFlag() {
+    try {
+      window.sessionStorage.removeItem(REFRESH_FLAG);
+    } catch (_) {}
+    refreshPending = false;
+  }
+
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
-    const refreshToggleCheck = 2;
     const checkIntervalMs = 300;
+    const unfreezeAtStableCheck = 3;
+
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshToggleApplied = false;
+    let refreshUnfrozen = false;
     let finished = false;
 
     function checkReady() {
@@ -71,23 +72,28 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      if (refreshPending &&
-          !refreshToggleApplied &&
+      // Only a swipe-triggered refresh gets the temporary Date.now=false
+      // phase. Install the hook at 3 of 4 stable checks so false is effective.
+      if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
-          surface &&
-          stableChecks >= refreshToggleCheck) {
-        // Briefly release the freeze at the 2-of-4 refresh checkpoint,
-        // then restore Date.now=true immediately.
+          surface && stableChecks >= unfreezeAtStableCheck) {
+        installDateNowControl();
         setFrozen(false);
-        setFrozen(true);
-        refreshToggleApplied = true;
-        clearRefreshFlag();
+        refreshUnfrozen = true;
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
@@ -134,14 +140,6 @@
     };
 
     setFrozen(requestedFrozen);
-  }
-
-  // Install the Date.now controller at document start. During a refresh,
-  // keep the refresh marker until the 2-of-4 stable-load checkpoint.
-  if (refreshPending) {
-    requestedFrozen = true;
-    installDateNowControl();
-    setFrozen(true);
   }
 
   if (document.readyState === "complete") {

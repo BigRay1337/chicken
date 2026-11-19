@@ -25,20 +25,15 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    refreshRequested = true;
-
-    // Save the one-time marker before briefly disabling Date.now.
+    // Carry a one-time marker through the page reload. The Date.now hook
+    // remains frozen until the refreshed game reaches its 3/4 readiness point.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
+    } catch (_) {
+      // If storage is unavailable, still perform the requested refresh.
+    }
 
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false }
-    }, "*");
-
-    // Reload after the false state has been applied. The new document
-    // restores Date.now=true immediately at document_start.
-    window.setTimeout(() => window.location.reload(), 50);
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();
