@@ -1,12 +1,6 @@
 (function () {
   "use strict";
 
-  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
-  let refreshPending = false;
-  try {
-    refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
-  } catch (_) {}
-
   let requestedFrozen = true;
   let installed = false;
   let setFrozen = function (shouldFreeze) {
@@ -34,13 +28,6 @@
       }
     }
     return null;
-  }
-
-  function clearRefreshFlag() {
-    try {
-      window.sessionStorage.removeItem(REFRESH_FLAG);
-    } catch (_) {}
-    refreshPending = false;
   }
 
   function waitForFinishedGameLoad() {
@@ -72,15 +59,7 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // At full game-surface stability, restore Date.now=true.
-        if (refreshPending) {
-          if (!installed) installDateNowControl();
-          setFrozen(true);
-          clearRefreshFlag();
-        } else if (!installed) {
-          installDateNowControl();
-        }
-
+        if (!installed) installDateNowControl();
         finished = true;
         return;
       }
@@ -127,14 +106,6 @@
     };
 
     setFrozen(requestedFrozen);
-  }
-
-  // A swipe-up sets the one-time refresh flag before reloading. On the
-  // refreshed document, start Date.now=false immediately (0/4 checks).
-  // The readiness loop below restores Date.now=true at 4/4 stable checks.
-  if (refreshPending) {
-    installDateNowControl();
-    setFrozen(false);
   }
 
   if (document.readyState === "complete") {
