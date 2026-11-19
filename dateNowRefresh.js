@@ -1,21 +1,30 @@
 (function () {
+  "use strict";
+
   const SWIPE_THRESHOLD_PX = 30;
-  const SWIPE_DELAY_MS = 6789;
   const DATE_NOW_FALLBACK_SPEED = 0.25;
+  const PENDING_REFRESH_KEY = "__chickenDateNowRefreshPending";
 
   let cbDateNowChecked = true;
+  let refreshRequested = false;
+  let pendingRefresh = false;
+
+  try {
+    pendingRefresh = sessionStorage.getItem(PENDING_REFRESH_KEY) === "1";
+  } catch (error) {
+    pendingRefresh = false;
+  }
 
   function setDateNowChecked(enabled) {
     cbDateNowChecked = enabled;
 
-    // Unfreeze Date.now at the fixed quarter-speed fallback.
     window.postMessage({
       command: "setSpeedConfig",
       config: {
         cbDateNowChecked: enabled,
         speed: DATE_NOW_FALLBACK_SPEED,
       },
-    });
+    }, "*");
   }
 
   window.addEventListener("message", (event) => {
@@ -26,10 +35,25 @@
       typeof event.data.config?.cbDateNowChecked === "boolean"
     ) {
       cbDateNowChecked = event.data.config.cbDateNowChecked;
+      return;
+    }
+
+    // dateNowDisabled.js sends this only after the refreshed game's canvas
+    // has appeared, remained stable, and the Date.now controller is installed.
+    if (event.data.command === "gameRefreshReady" && pendingRefresh) {
+      pendingRefresh = false;
+
+      try {
+        sessionStorage.removeItem(PENDING_REFRESH_KEY);
+      } catch (error) {
+        // The pending flag is only a reload handoff; continue with this load.
+      }
+
+      setDateNowChecked(false);
     }
   });
 
-  window.postMessage({ command: "getSpeedConfig" });
+  window.postMessage({ command: "getSpeedConfig" }, "*");
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -55,14 +79,21 @@
 
     if (
       deltaY > -SWIPE_THRESHOLD_PX ||
-      Math.abs(deltaX) > Math.abs(deltaY)
+      Math.abs(deltaX) > Math.abs(deltaY) ||
+      refreshRequested
     ) {
       return;
     }
 
-    // Swipe up unfreezes the game; do not reload and re-freeze it.
-    window.setTimeout(() => {
-      setDateNowChecked(false);
-    }, SWIPE_DELAY_MS);
+    // Persist the handoff before reloading. Date.now remains unchanged until
+    // the new game load signals that its canvas is fully initialized.
+    try {
+      sessionStorage.setItem(PENDING_REFRESH_KEY, "1");
+    } catch (error) {
+      return;
+    }
+
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();
