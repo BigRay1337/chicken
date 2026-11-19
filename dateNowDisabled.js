@@ -49,7 +49,7 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const unfreezeAtStableCheck = 3;
+    const unfreezeAtStableCheck = 2;
 
     let lastCanvas = null;
     let lastSignature = null;
@@ -80,19 +80,13 @@
         installDateNowControl();
         setFrozen(false);
         refreshUnfrozen = true;
+        clearRefreshFlag();
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // At full game-surface stability, restore Date.now=true.
-        if (refreshPending) {
-          if (!installed) installDateNowControl();
-          setFrozen(true);
-          clearRefreshFlag();
-        } else if (!installed) {
-          installDateNowControl();
-        }
+        if (!installed) installDateNowControl();
 
         finished = true;
         return;
