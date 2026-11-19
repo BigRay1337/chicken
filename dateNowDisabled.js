@@ -6,6 +6,7 @@
   // ready, then install the freeze/fallback behavior.
   let requestedFrozen = true;
   let installed = false;
+  let refreshComplete = false;
 
   window.addEventListener("message", function (event) {
     const data = event.data;
@@ -33,13 +34,26 @@
       const gameSurfaceReady = gameSurfaceIsReady();
 
       if (document.readyState === "complete" && gameSurfaceReady) {
-        // Let the browser finish two more paint cycles before installing.
+        // Confirm the page and visible game canvas are still ready after two
+        // paint cycles before enabling the Date.now fallback.
         if (typeof window.requestAnimationFrame === "function") {
           window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(installDateNowControl);
+            window.requestAnimationFrame(() => {
+              if (document.readyState === "complete" && gameSurfaceIsReady()) {
+                installDateNowControl();
+              } else {
+                window.setTimeout(checkReady, 250);
+              }
+            });
           });
         } else {
-          window.setTimeout(installDateNowControl, 100);
+          window.setTimeout(() => {
+            if (document.readyState === "complete" && gameSurfaceIsReady()) {
+              installDateNowControl();
+            } else {
+              window.setTimeout(checkReady, 250);
+            }
+          }, 100);
         }
         return;
       }
@@ -53,6 +67,7 @@
   function installDateNowControl() {
     if (installed || document.readyState !== "complete") return;
     installed = true;
+    refreshComplete = true;
 
     // Capture Date.now only after the page/game refresh has completed, so
     // startup scripts receive normal timestamps during loading.
@@ -67,7 +82,7 @@
         ? frozenValue
         : runningValue + Math.max(0, realNow - runningStart);
 
-      return Number.isFinite(value) ? value : 0.1;
+      return Number.isFinite(value) ? value : (refreshComplete ? 0.1 : realNow);
     }
 
     setFrozen = function (shouldFreeze) {
