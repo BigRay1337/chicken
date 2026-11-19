@@ -2,8 +2,9 @@
   "use strict";
 
   // Date.now multiplier: 1 = real time, 0.25 = quarter speed.
+  const DATE_NOW_FALLBACK_SPEED = 0.25;
   let requestedFrozen = true;
-  let requestedSpeed = 0.25;
+  let requestedSpeed = DATE_NOW_FALLBACK_SPEED;
   let installed = false;
   let applyConfig = function (config) {
     if (typeof config.cbDateNowChecked === "boolean") {
