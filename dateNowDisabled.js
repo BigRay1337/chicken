@@ -49,12 +49,12 @@
     const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
-    const toggleAtStableCheck = 2;
+    const unfreezeAtStableCheck = 3;
 
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
-    let refreshToggled = false;
+    let refreshUnfrozen = false;
     let finished = false;
 
     function checkReady() {
@@ -72,21 +72,28 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // Only after a swipe-up refresh, unfreeze Date.now at 2 of 4
-      // stable game-surface checks.
-      if (refreshPending && !refreshToggled &&
+      // Only a swipe-triggered refresh gets the temporary Date.now=false
+      // phase. Install the hook at 3 of 4 stable checks so false is effective.
+      if (refreshPending && !refreshUnfrozen &&
           elapsed >= minimumWaitMs &&
-          surface && stableChecks >= toggleAtStableCheck) {
-        if (!installed) installDateNowControl();
+          surface && stableChecks >= unfreezeAtStableCheck) {
+        installDateNowControl();
         setFrozen(false);
-        refreshToggled = true;
-        clearRefreshFlag();
+        refreshUnfrozen = true;
       }
 
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
