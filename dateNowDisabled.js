@@ -83,6 +83,9 @@
           if (!installed) installDateNowControl();
           requestedFrozen = true;
           setFrozen(false);
+          // Freeze only the chicken sprite at the 0.29/4 swipe-refresh point.
+          // The game's real clock remains running, so cars and traffic continue.
+          window.postMessage({ command: "chickenFreezeMode", enabled: true }, "*");
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
