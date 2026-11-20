@@ -75,6 +75,7 @@
         // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
+          setFrozen(false);
           setFrozen(true);
           clearRefreshFlag();
         } else if (!installed) {
@@ -132,10 +133,7 @@
   // A swipe-up sets the one-time refresh flag before reloading. On the
   // refreshed document, start Date.now=false immediately (0/4 checks).
   // The readiness loop below restores Date.now=true at 4/4 stable checks.
-  if (refreshPending) {
-    installDateNowControl();
-    setFrozen(false);
-  }
+  // Date.now is toggled only after the refreshed game surface is stable.
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
