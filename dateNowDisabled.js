@@ -43,6 +43,54 @@
     refreshPending = false;
   }
 
+  function waitForFinishedGameLoad() {
+    const nativeNow = Date.now.bind(Date);
+    const waitStartedAt = nativeNow();
+    const minimumWaitMs = 2500;
+    const stableChecksRequired = 4;
+    const checkIntervalMs = 300;
+    let lastCanvas = null;
+    let lastSignature = null;
+    let stableChecks = 0;
+    let finished = false;
+
+    function checkReady() {
+      if (finished) return;
+
+      const elapsed = nativeNow() - waitStartedAt;
+      const surface = getGameSurfaceSignature();
+
+      if (surface && surface.canvas === lastCanvas &&
+          surface.signature === lastSignature) {
+        stableChecks += 1;
+      } else {
+        lastCanvas = surface ? surface.canvas : null;
+        lastSignature = surface ? surface.signature : null;
+        stableChecks = surface ? 1 : 0;
+      }
+
+      if (elapsed >= minimumWaitMs &&
+          surface &&
+          stableChecks >= stableChecksRequired) {
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
+        finished = true;
+        return;
+      }
+
+      window.setTimeout(checkReady, checkIntervalMs);
+    }
+
+    checkReady();
+  }
+
   function installDateNowControl() {
     if (installed) return;
     installed = true;
@@ -81,77 +129,12 @@
     setFrozen(requestedFrozen);
   }
 
-  // Called only by the swipe-up refresh handler. Chicken is unfrozen and
-  // Date.now is disabled, then both are frozen/enabled again after 2 ms.
-  // The callback performs the actual game reload only after that pulse.
-  window.__chickenPulseDateNowBeforeRefresh = function (onComplete) {
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
+  if (refreshPending) {
     installDateNowControl();
-    requestedFrozen = false;
     setFrozen(false);
-    // Also unfreeze the Chicken sprite controller for this swipe pulse.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false }
-    }, "*");
-
-    window.setTimeout(function () {
-      requestedFrozen = true;
-      setFrozen(true);
-      // Re-freeze Chicken immediately after the 9 ms unfreeze window.
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: { cbDateNowChecked: true }
-      }, "*");
-      if (typeof onComplete === "function") onComplete();
-    }, 9);
-  };
-
-  function waitForFinishedGameLoad() {
-    const nativeNow = Date.now.bind(Date);
-    const waitStartedAt = nativeNow();
-    const minimumWaitMs = 1200;
-    const stableChecksRequired = 2;
-    const checkIntervalMs = 100;
-    let lastCanvas = null;
-    let lastSignature = null;
-    let stableChecks = 0;
-    let finished = false;
-
-    function checkReady() {
-      if (finished) return;
-
-      const elapsed = nativeNow() - waitStartedAt;
-      const surface = getGameSurfaceSignature();
-
-      if (surface && surface.canvas === lastCanvas &&
-          surface.signature === lastSignature) {
-        stableChecks += 1;
-      } else {
-        lastCanvas = surface ? surface.canvas : null;
-        lastSignature = surface ? surface.signature : null;
-        stableChecks = surface ? 1 : 0;
-      }
-
-      if (elapsed >= minimumWaitMs &&
-          surface &&
-          stableChecks >= stableChecksRequired) {
-        if (refreshPending) {
-          if (!installed) installDateNowControl();
-          requestedFrozen = true;
-          setFrozen(true);
-          clearRefreshFlag();
-        } else if (!installed) {
-          installDateNowControl();
-        }
-
-        finished = true;
-        return;
-      }
-
-      window.setTimeout(checkReady, checkIntervalMs);
-    }
-
-    checkReady();
   }
 
   if (document.readyState === "complete") {

@@ -1,21 +1,18 @@
 (function () {
   "use strict";
 
-  // Only run on the supported Dodge Bob game.
-  if (!/spinquest\.com\/casino\/games\/iconic21_launch_spq_dodge_bob/i.test(location.href)) return;
+  // Experimental Dodge Bob canvas heuristic. Only runs on the target game.
+  if (!/spinquest\\.com\\/casino\\/games\\/iconic21_launch_spq_dodge_bob/i.test(location.href)) return;
 
-  // Keep the Chicken sprite moving; Date.now settings must not freeze it.
-  let freezeChicken = false;
+  let freezeChicken = true;
   const lastPlayerDraw = new WeakMap();
   const proto = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
   if (!proto || !proto.drawImage) return;
 
   window.addEventListener("message", function (event) {
-    if (!event.data || event.data.command !== "setSpeedConfig" || !event.data.config) return;
-    // TRUE freezes the player; FALSE allows normal player movement.
-    if (typeof event.data.config.cbDateNowChecked === "boolean") {
-      freezeChicken = false;
-    }
+    if (!event.data || event.data.command !== "setSpeedConfig") return;
+    // TRUE freezes the player; FALSE restores normal player movement.
+    freezeChicken = event.data.config && event.data.config.cbDateNowChecked !== false;
   });
 
   const originalDrawImage = proto.drawImage;
@@ -37,8 +34,12 @@
     }
 
     const cw = this.canvas.width || 1;
+    const ch = this.canvas.height || 1;
     const centerX = x + w / 2;
     const aspect = h ? w / h : 0;
+
+    // Guess the chicken is a roughly square sprite near the center/player lane.
+    // Ignore wide vehicle sprites to reduce the chance of freezing cars.
     const isLikelyChicken = w > 0 && h > 0 &&
       centerX > cw * 0.28 && centerX < cw * 0.72 &&
       aspect > 0.55 && aspect < 1.55;

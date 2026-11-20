@@ -25,22 +25,15 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    refreshRequested = true;
-
-    // Run the one-time unfreeze/Date.now=false -> freeze/Date.now=true
-    // pulse BEFORE reloading the game. The reload only happens after 9 ms.
-    const refreshGame = function () {
-      try {
-        window.sessionStorage.setItem(REFRESH_FLAG, "1");
-      } catch (_) {}
-      window.location.reload();
-    };
-
-    if (typeof window.__chickenPulseDateNowBeforeRefresh === "function") {
-      window.__chickenPulseDateNowBeforeRefresh(refreshGame);
-    } else {
-      // Preserve the swipe refresh if the Date.now controller is unavailable.
-      refreshGame();
+    // Carry a one-time marker through the page reload. The Date.now hook
+    // remains frozen until the refreshed game reaches its 3/4 readiness point.
+    try {
+      window.sessionStorage.setItem(REFRESH_FLAG, "1");
+    } catch (_) {
+      // If storage is unavailable, still perform the requested refresh.
     }
+
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();
