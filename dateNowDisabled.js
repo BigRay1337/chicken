@@ -7,7 +7,8 @@
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
   } catch (_) {}
 
-  let requestedFrozen = true;
+  // A swipe-triggered reload must begin with the clock running.
+  let requestedFrozen = refreshPending ? false : true;
   let installed = false;
   let setFrozen = function (shouldFreeze) {
     requestedFrozen = shouldFreeze;
@@ -17,14 +18,11 @@
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
     if (typeof data.config.cbDateNowChecked === "boolean") {
-      requestedFrozen = data.config.cbDateNowChecked;
-      // The refresh-only restore can set the option back to true while
-      // explicitly keeping the Date.now clock running.
-      if (installed) {
-        setFrozen(data.config.preserveRunning === true
-          ? false
-          : requestedFrozen);
-      }
+      // "true" restores the checked option; preserveRunning deliberately
+      // keeps the Date.now clock advancing so the game cannot freeze.
+      const preserveRunning = data.config.preserveRunning === true;
+      requestedFrozen = preserveRunning ? false : data.config.cbDateNowChecked;
+      if (installed) setFrozen(requestedFrozen);
     }
   });
 
@@ -143,8 +141,7 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up sends Date.now=false before reload. Restore the checked/true
-  // option only when the refreshed game surface reaches 100% stability.
-  // preserveRunning keeps Date.now advancing so the game remains unfrozen.
-
+  // Start the load watcher. After a swipe refresh, the clock starts running
+  // immediately and the checked/true option is restored without freezing it.
+  waitForFinishedGameLoad();
 })();
