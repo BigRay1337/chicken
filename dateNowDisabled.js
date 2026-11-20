@@ -46,13 +46,8 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    // 0.29/4 of the four-check refresh trigger rounds up to its first
-    // stable game-surface check. This is swipe-refresh-only.
-    const refreshTriggerProgress = 0.29 / 4;
-    const minimumWaitMs = refreshPending ? 0 : 2500;
-    const stableChecksRequired = refreshPending
-      ? Math.max(1, Math.ceil(4 * refreshTriggerProgress))
-      : 4;
+    const minimumWaitMs = 2500;
+    const stableChecksRequired = 4;
     const checkIntervalMs = 300;
     let lastCanvas = null;
     let lastSignature = null;
@@ -77,15 +72,10 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
+        // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
-          // Restore the Date.now option to true at 0.29/4, but keep the
-          // underlying clock running so the game remains unfrozen.
           if (!installed) installDateNowControl();
-          requestedFrozen = true;
-          setFrozen(false);
-          // Freeze only the chicken sprite at the 0.29/4 swipe-refresh point.
-          // The game's real clock remains running, so cars and traffic continue.
-          window.postMessage({ command: "chickenFreezeMode", enabled: true }, "*");
+          setFrozen(true);
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
@@ -141,8 +131,7 @@
 
   // A swipe-up sets the one-time refresh flag before reloading. On the
   // refreshed document, start Date.now=false immediately (0/4 checks).
-  // At 0.29/4, restore the option to true while leaving the clock running.
-  // Normal loads retain the original 4/4 check.
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
     installDateNowControl();
     setFrozen(false);

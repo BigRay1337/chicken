@@ -1,113 +1,63 @@
 (function () {
   "use strict";
 
-  // Dodge Bob only. Freeze the player sprite's draw position, not the
-  // canvas/game clock, so traffic and the rest of the game keep moving.
-  let targetGame = false;
-  try {
-    const url = new URL(location.href);
-    targetGame = url.hostname.endsWith("spinquest.com") &&
-      url.pathname.includes("/casino/games/iconic21_launch_spq_dodge_bob");
-  } catch (_) {}
-  if (!targetGame) return;
+  // Experimental Dodge Bob canvas heuristic. Only runs on the target game.
+  if (!/spinquest\\.com\\/casino\\/games\\/iconic21_launch_spq_dodge_bob/i.test(location.href)) return;
 
-  const proto = window.CanvasRenderingContext2D &&
-    window.CanvasRenderingContext2D.prototype;
-  if (!proto || typeof proto.drawImage !== "function") return;
-
-  let freezeEnabled = false;
-  let lockedSprite = null;
+  let freezeChicken = true;
+  const lastPlayerDraw = new WeakMap();
+  const proto = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
+  if (!proto || !proto.drawImage) return;
 
   window.addEventListener("message", function (event) {
-    const data = event.data;
-    if (!data || data.command !== "chickenFreezeMode") return;
-    freezeEnabled = data.enabled === true;
-    if (!freezeEnabled) lockedSprite = null;
+    if (!event.data || event.data.command !== "setSpeedConfig") return;
+    // TRUE freezes the player; FALSE restores normal player movement.
+    freezeChicken = event.data.config && event.data.config.cbDateNowChecked !== false;
   });
 
   const originalDrawImage = proto.drawImage;
+  proto.drawImage = function (image) {
+    if (!freezeChicken || !this.canvas) return originalDrawImage.apply(this, arguments);
 
-  function getDrawInfo(args) {
-    const image = args[0];
-    if (!image) return null;
-
-    let sx = 0, sy = 0, sw = 0, sh = 0;
-    let dx = 0, dy = 0, dw = 0, dh = 0;
+    const args = Array.prototype.slice.call(arguments);
+    let x, y, w, h, xIndex, yIndex;
     if (args.length === 3) {
-      dx = Number(args[1]); dy = Number(args[2]);
-      dw = Number(image.width || image.videoWidth || 0);
-      dh = Number(image.height || image.videoHeight || 0);
-      sw = dw; sh = dh;
+      xIndex = 1; yIndex = 2; x = args[1]; y = args[2];
+      w = image && (image.width || image.videoWidth) || 0;
+      h = image && (image.height || image.videoHeight) || 0;
     } else if (args.length === 5) {
-      dx = Number(args[1]); dy = Number(args[2]);
-      dw = Number(args[3]); dh = Number(args[4]);
-      sw = Number(image.width || image.videoWidth || 0);
-      sh = Number(image.height || image.videoHeight || 0);
+      xIndex = 1; yIndex = 2; x = args[1]; y = args[2]; w = args[3]; h = args[4];
     } else if (args.length >= 9) {
-      sx = Number(args[1]); sy = Number(args[2]);
-      sw = Number(args[3]); sh = Number(args[4]);
-      dx = Number(args[5]); dy = Number(args[6]);
-      dw = Number(args[7]); dh = Number(args[8]);
-    } else return null;
-
-    if (![sx, sy, sw, sh, dx, dy, dw, dh].every(Number.isFinite) ||
-        sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return null;
-
-    return { image, sourceKey: [sx, sy, sw, sh].join(":"), dx, dy, dw, dh };
-  }
-
-  proto.drawImage = function () {
-    if (!freezeEnabled || !this.canvas) {
+      xIndex = 5; yIndex = 6; x = args[5]; y = args[6]; w = args[7]; h = args[8];
+    } else {
       return originalDrawImage.apply(this, arguments);
     }
 
-    const args = Array.prototype.slice.call(arguments);
-    const info = getDrawInfo(args);
-    if (!info) return originalDrawImage.apply(this, arguments);
-
     const cw = this.canvas.width || 1;
     const ch = this.canvas.height || 1;
-    const aspect = info.dw / info.dh;
+    const centerX = x + w / 2;
+    const aspect = h ? w / h : 0;
 
-    // Lock one compact sprite drawn in the lower player lane. Matching both
-    // the image and source crop avoids pinning other frames in a shared atlas.
-    const candidate =
-      info.dy + info.dh >= ch * 0.72 &&
-      info.dw <= cw * 0.22 &&
-      info.dh <= ch * 0.22 &&
-      aspect >= 0.65 && aspect <= 1.35;
+    // Guess the chicken is a roughly square sprite near the center/player lane.
+    // Ignore wide vehicle sprites to reduce the chance of freezing cars.
+    const isLikelyChicken = w > 0 && h > 0 &&
+      centerX > cw * 0.28 && centerX < cw * 0.72 &&
+      aspect > 0.55 && aspect < 1.55;
 
-    if (!lockedSprite && candidate) {
-      lockedSprite = {
-        canvas: this.canvas,
-        image: info.image,
-        sourceKey: info.sourceKey,
-        x: info.dx,
-        y: info.dy,
-        width: info.dw,
-        height: info.dh
-      };
-    }
-
-    if (lockedSprite &&
-        lockedSprite.canvas === this.canvas &&
-        lockedSprite.image === info.image &&
-        lockedSprite.sourceKey === info.sourceKey) {
-      if (args.length === 3) {
-        args[1] = lockedSprite.x;
-        args[2] = lockedSprite.y;
-      } else if (args.length === 5) {
-        args[1] = lockedSprite.x;
-        args[2] = lockedSprite.y;
-        args[3] = lockedSprite.width;
-        args[4] = lockedSprite.height;
-      } else {
-        args[5] = lockedSprite.x;
-        args[6] = lockedSprite.y;
-        args[7] = lockedSprite.width;
-        args[8] = lockedSprite.height;
+    if (isLikelyChicken) {
+      let saved = lastPlayerDraw.get(this.canvas);
+      if (!saved) {
+        saved = { x, y, w, h };
+        lastPlayerDraw.set(this.canvas, saved);
+      }
+      args[xIndex] = saved.x;
+      args[yIndex] = saved.y;
+      if (args.length !== 3) {
+        args[xIndex + 2] = saved.w;
+        args[yIndex + 2] = saved.h;
       }
     }
+
     return originalDrawImage.apply(this, args);
   };
 })();
