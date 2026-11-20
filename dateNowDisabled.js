@@ -17,6 +17,13 @@
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
+    if (data.config.keepDateNowRunning === true) {
+      // The swipe sequence may send false then true, but keep the game clock
+      // running so the refresh does not leave gameplay frozen.
+      requestedFrozen = false;
+      if (installed) setFrozen(false);
+      return;
+    }
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
       if (installed) setFrozen(requestedFrozen);
