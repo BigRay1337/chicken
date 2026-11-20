@@ -2,6 +2,7 @@
   "use strict";
 
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  const WAITING_FOR_RESUME_FLAG = "__chickenDateNowWaitingForResume";
   let refreshPending = false;
   try {
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
@@ -20,8 +21,8 @@
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
 
-      // Swipe-triggered false/true toggles update the option value, but must
-      // not freeze the live game clock during the refresh handoff.
+      // The resume gesture sends false to unfreeze, then true only to
+      // restore the option state while explicitly keeping the clock running.
       if (installed && data.config.keepDateNowRunning !== true) {
         setFrozen(requestedFrozen);
       }
@@ -127,11 +128,15 @@
     setFrozen(requestedFrozen);
   }
 
-  // After a swipe refresh, force the clock to remain running immediately.
+  // A refresh leaves the game clock frozen and arms the next upward swipe
+  // to send Date.now false, then true while keeping the clock running.
   if (refreshPending) {
-    requestedFrozen = false;
+    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(false);
+    setFrozen(true);
+    try {
+      window.sessionStorage.setItem(WAITING_FOR_RESUME_FLAG, "1");
+    } catch (_) {}
     clearRefreshFlag();
   }
 
