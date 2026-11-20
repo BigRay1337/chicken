@@ -81,23 +81,16 @@
           surface &&
           stableChecks >= 1) {
         if (!installed) installDateNowControl();
-        // Let the game run for one rendered frame while Date.now is
-        // unfrozen. Re-freeze on the next frame so the false -> true
-        // transition is observable by the game's update loop.
+        // Briefly unfreeze only during this swipe-triggered refresh,
+        // then restore the frozen state after the requested 2 ms pulse.
         refreshToggleStarted = true;
         requestedFrozen = false;
         setFrozen(false);
 
-        const refreeze = function () {
+        window.setTimeout(function () {
           requestedFrozen = true;
           setFrozen(true);
-        };
-
-        if (typeof window.requestAnimationFrame === "function") {
-          window.requestAnimationFrame(refreeze);
-        } else {
-          window.setTimeout(refreeze, 16);
-        }
+        }, 2);
       }
 
       if (elapsed >= minimumWaitMs &&
