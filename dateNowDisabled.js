@@ -130,14 +130,13 @@
   }
 
   // A swipe-up sends Date.now=false before reload. On the refreshed
-  // document, keep it running briefly, then restore true at 0.67/4
-  // (16.75%) of the four-check refresh trigger and leave it frozen.
+  // document, restore true at 1.6/4 (40%) of the four-check refresh trigger.
   if (refreshPending) {
     installDateNowControl();
     setFrozen(false);
 
     const refreshTriggerIntervalMs = 300;
-    const refreshTriggerFraction = 0.67 / 4;
+    const refreshTriggerFraction = 1.6 / 4;
     const freezeAfterMs = refreshTriggerIntervalMs * 4 * refreshTriggerFraction;
 
     window.setTimeout(function () {
