@@ -21,34 +21,19 @@
     swipeStartX = null;
     swipeStartY = null;
 
-    // The trigger is 100% reached only when the completed gesture
-    // crosses the full swipe threshold and is predominantly upward.
     if (deltaY > -SWIPE_THRESHOLD_PX ||
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    refreshRequested = true;
-
-    // Apply false, then immediately restore the checked/true option.
-    // preserveRunning keeps Date.now advancing rather than freezing it.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false }
-    }, "*");
-
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: {
-        cbDateNowChecked: true,
-        preserveRunning: true
-      }
-    }, "*");
-
-    // Carry the refresh handoff through reload.
+    // Carry a one-time marker through the page reload. The Date.now hook
+    // remains frozen until the refreshed game reaches its 3/4 readiness point.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
+    } catch (_) {
+      // If storage is unavailable, still perform the requested refresh.
+    }
 
-    window.setTimeout(() => window.location.reload(), 50);
+    refreshRequested = true;
+    window.location.reload();
   }, { passive: true });
 })();

@@ -7,8 +7,7 @@
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
   } catch (_) {}
 
-  // A swipe-triggered reload must begin with the clock running.
-  let requestedFrozen = refreshPending ? false : true;
+  let requestedFrozen = true;
   let installed = false;
   let setFrozen = function (shouldFreeze) {
     requestedFrozen = shouldFreeze;
@@ -18,10 +17,7 @@
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
     if (typeof data.config.cbDateNowChecked === "boolean") {
-      // "true" restores the checked option; preserveRunning deliberately
-      // keeps the Date.now clock advancing so the game cannot freeze.
-      const preserveRunning = data.config.preserveRunning === true;
-      requestedFrozen = preserveRunning ? false : data.config.cbDateNowChecked;
+      requestedFrozen = data.config.cbDateNowChecked;
       if (installed) setFrozen(requestedFrozen);
     }
   });
@@ -79,15 +75,7 @@
         // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
-          window.postMessage({
-            command: "setSpeedConfig",
-            config: {
-              cbDateNowChecked: true,
-              preserveRunning: true
-            }
-          }, "*");
-          requestedFrozen = true;
-          setFrozen(false);
+          setFrozen(true);
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
@@ -141,7 +129,17 @@
     setFrozen(requestedFrozen);
   }
 
-  // Start the load watcher. After a swipe refresh, the clock starts running
-  // immediately and the checked/true option is restored without freezing it.
-  waitForFinishedGameLoad();
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
+  if (refreshPending) {
+    installDateNowControl();
+    setFrozen(false);
+  }
+
+  if (document.readyState === "complete") {
+    waitForFinishedGameLoad();
+  } else {
+    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+  }
 })();
