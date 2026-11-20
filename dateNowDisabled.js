@@ -13,6 +13,15 @@
     requestedFrozen = shouldFreeze;
   };
 
+  // Expose a synchronous control so the swipe handler can unfreeze Date.now
+  // before it calls location.reload().
+  window.__chickenSetDateNowFrozen = function (shouldFreeze) {
+    if (typeof shouldFreeze !== "boolean") return;
+    requestedFrozen = shouldFreeze;
+    if (!installed) installDateNowControl();
+    setFrozen(shouldFreeze);
+  };
+
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
