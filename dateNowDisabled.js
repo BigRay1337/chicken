@@ -70,16 +70,19 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // On a swipe-triggered reload, briefly run Date.now near the end of
-      // loading: switch it off at the penultimate stable check (3/4).
+      // During a swipe-triggered refresh, briefly unfreeze Date.now
+      // around the middle of the stable-load checks, then refreeze it
+      // immediately in the same refresh check.
       if (refreshPending &&
           !refreshToggleStarted &&
           elapsed >= minimumWaitMs &&
           surface &&
-          stableChecks >= stableChecksRequired - 1) {
-        requestedFrozen = false;
+          stableChecks >= Math.ceil(stableChecksRequired / 2)) {
         if (!installed) installDateNowControl();
+        requestedFrozen = false;
         setFrozen(false);
+        requestedFrozen = true;
+        setFrozen(true);
         refreshToggleStarted = true;
       }
 
@@ -145,8 +148,8 @@
   }
 
   // The swipe refresh marker is carried into the reloaded document.
-  // Date.now changes to false at 3/4 stable checks, then back to true
-  // at 4/4, keeping the brief toggle close to the end of the game refresh.
+  // Date.now changes to false and immediately back to true at the
+  // midpoint of the stable-load checks during the swipe-triggered refresh.
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
