@@ -52,6 +52,7 @@
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
+    let refreshToggleStarted = false;
     let finished = false;
 
     function checkReady() {
@@ -69,13 +70,26 @@
         stableChecks = surface ? 1 : 0;
       }
 
+      // On a swipe-triggered reload, briefly run Date.now near the end of
+      // loading: switch it off at the penultimate stable check (3/4).
+      if (refreshPending &&
+          !refreshToggleStarted &&
+          elapsed >= minimumWaitMs &&
+          surface &&
+          stableChecks >= stableChecksRequired - 1) {
+        requestedFrozen = false;
+        if (!installed) installDateNowControl();
+        setFrozen(false);
+        refreshToggleStarted = true;
+      }
+
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // At full game-surface stability, restore Date.now=true.
+        // Restore the frozen Date.now state only at the final stable check.
         if (refreshPending) {
           if (!installed) installDateNowControl();
-          setFrozen(false);
+          if (!refreshToggleStarted) setFrozen(false);
           setFrozen(true);
           clearRefreshFlag();
         } else if (!installed) {
@@ -130,10 +144,9 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up sets the one-time refresh flag before reloading. On the
-  // refreshed document, start Date.now=false immediately (0/4 checks).
-  // The readiness loop below restores Date.now=true at 4/4 stable checks.
-  // Date.now is toggled only after the refreshed game surface is stable.
+  // The swipe refresh marker is carried into the reloaded document.
+  // Date.now changes to false at 3/4 stable checks, then back to true
+  // at 4/4, keeping the brief toggle close to the end of the game refresh.
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
