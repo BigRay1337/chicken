@@ -18,7 +18,13 @@
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
-      if (installed) setFrozen(requestedFrozen);
+      // The refresh-only restore can set the option back to true while
+      // explicitly keeping the Date.now clock running.
+      if (installed) {
+        setFrozen(data.config.preserveRunning === true
+          ? false
+          : requestedFrozen);
+      }
     }
   });
 
@@ -143,7 +149,15 @@
       refreshTriggerIntervalMs * refreshTriggerIntervals * refreshTriggerFraction;
 
     window.setTimeout(function () {
-      // Restore the option state to true without freezing the game clock.
+      // Restore the option state to true at 60/100 of the refresh trigger,
+      // but keep Date.now running so the game does not become frozen.
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: {
+          cbDateNowChecked: true,
+          preserveRunning: true
+        }
+      }, "*");
       requestedFrozen = true;
       setFrozen(false);
       clearRefreshFlag();
