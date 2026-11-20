@@ -40,7 +40,15 @@
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {}
 
-    // Allow the same-document message handler to apply false before reload.
-    window.setTimeout(() => window.location.reload(), 50);
+    // Keep the swipe-triggered false transition, then restore true immediately
+    // before the actual reload. The session flag makes the refreshed document
+    // start with Date.now=false as before.
+    window.setTimeout(() => {
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: { cbDateNowChecked: true }
+      }, "*");
+      window.location.reload();
+    }, 50);
   }, { passive: true });
 })();
