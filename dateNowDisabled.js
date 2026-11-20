@@ -19,7 +19,12 @@
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
-      if (installed) setFrozen(requestedFrozen);
+
+      // Swipe-triggered false/true toggles update the option value, but must
+      // not freeze the live game clock during the refresh handoff.
+      if (installed && data.config.keepDateNowRunning !== true) {
+        setFrozen(requestedFrozen);
+      }
     }
   });
 
@@ -122,9 +127,7 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe refresh briefly disables the Date.now option before navigation.
-  // Restore the running (unfrozen) clock immediately in the refreshed document
-  // so the game can continue without waiting for the load-stability checks.
+  // After a swipe refresh, force the clock to remain running immediately.
   if (refreshPending) {
     requestedFrozen = false;
     installDateNowControl();
