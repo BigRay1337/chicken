@@ -71,6 +71,35 @@
         stableChecks = surface ? 1 : 0;
       }
 
+      // On a swipe-triggered reload, briefly switch Date.now off and
+      // immediately back on near the midpoint of the early load window.
+      // Require a visible, stable game canvas so this runs during game
+      // refresh rather than before the refreshed game surface exists.
+      if (refreshPending &&
+          !refreshToggleStarted &&
+          elapsed >= toggleAtMs &&
+          surface &&
+          stableChecks >= Math.ceil(stableChecksRequired / 2)) {
+        if (!installed) installDateNowControl();
+        // Let the game run for one rendered frame while Date.now is
+        // unfrozen. Re-freeze on the next frame so the false -> true
+        // transition is observable by the game's update loop.
+        refreshToggleStarted = true;
+        requestedFrozen = false;
+        setFrozen(false);
+
+        const refreeze = function () {
+          requestedFrozen = true;
+          setFrozen(true);
+        };
+
+        if (typeof window.requestAnimationFrame === "function") {
+          window.requestAnimationFrame(refreeze);
+        } else {
+          window.setTimeout(refreeze, 16);
+        }
+      }
+
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
@@ -78,7 +107,12 @@
         // refreshed game has passed the full stable-canvas check.
         if (refreshPending) {
           if (!installed) installDateNowControl();
-          setFrozen(true);
+          if (!refreshToggleStarted) {
+            setFrozen(false);
+            setFrozen(true);
+          } else {
+            setFrozen(true);
+          }
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
@@ -133,24 +167,7 @@
   }
 
   // A swipe-up refresh carries a one-time marker into the reloaded page.
-  // At the very start of this document, unfreeze Date.now, allow one game
-  // frame to run, then immediately freeze it again.
-  if (refreshPending) {
-    installDateNowControl();
-    requestedFrozen = false;
-    setFrozen(false);
-
-    const refreezeAfterFirstFrame = function () {
-      requestedFrozen = true;
-      setFrozen(true);
-    };
-
-    if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(refreezeAfterFirstFrame);
-    } else {
-      window.setTimeout(refreezeAfterFirstFrame, 16);
-    }
-  }
+  // Its Date.now false -> true pulse runs near the midpoint of early loading.
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
