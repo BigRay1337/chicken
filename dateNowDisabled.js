@@ -46,10 +46,10 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    const minimumWaitMs = 2500;
-    const toggleAtMs = Math.floor(minimumWaitMs / 2);
-    const stableChecksRequired = 4;
-    const checkIntervalMs = 300;
+    const minimumWaitMs = 1200;
+    const toggleAtMs = 300;
+    const stableChecksRequired = 2;
+    const checkIntervalMs = 100;
     let lastCanvas = null;
     let lastSignature = null;
     let stableChecks = 0;
@@ -72,14 +72,14 @@
       }
 
       // On a swipe-triggered reload, briefly switch Date.now off and
-      // immediately back on near the midpoint of the early load window.
+      // immediately back on near the beginning of the early load window.
       // Require a visible, stable game canvas so this runs during game
       // refresh rather than before the refreshed game surface exists.
       if (refreshPending &&
           !refreshToggleStarted &&
           elapsed >= toggleAtMs &&
           surface &&
-          stableChecks >= Math.ceil(stableChecksRequired / 2)) {
+          stableChecks >= 1) {
         if (!installed) installDateNowControl();
         // Let the game run for one rendered frame while Date.now is
         // unfrozen. Re-freeze on the next frame so the false -> true
