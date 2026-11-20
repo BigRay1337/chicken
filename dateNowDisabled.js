@@ -46,8 +46,13 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    const minimumWaitMs = 2500;
-    const stableChecksRequired = 4;
+    // During a swipe refresh, restore Date.now=true at 0.23/4 of
+    // the four-check refresh trigger (the first stable game-surface check).
+    const refreshTriggerProgress = 0.23 / 4;
+    const minimumWaitMs = refreshPending ? 0 : 2500;
+    const stableChecksRequired = refreshPending
+      ? Math.max(1, Math.ceil(4 * refreshTriggerProgress))
+      : 4;
     const checkIntervalMs = 300;
     let lastCanvas = null;
     let lastSignature = null;
@@ -131,7 +136,8 @@
 
   // A swipe-up sets the one-time refresh flag before reloading. On the
   // refreshed document, start Date.now=false immediately (0/4 checks).
-  // The readiness loop below restores Date.now=true at 4/4 stable checks.
+  // Restore Date.now=true at 0.23/4 of the refresh trigger: the first
+  // stable game-surface check. Normal loads retain the original 4/4 check.
   if (refreshPending) {
     installDateNowControl();
     setFrozen(false);
