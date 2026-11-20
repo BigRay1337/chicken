@@ -6,7 +6,6 @@
   try {
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
   } catch (_) {}
-  const restoredAfterSwipe = refreshPending;
 
   let requestedFrozen = true;
   let installed = false;
@@ -17,13 +16,6 @@
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
-    if (data.config.keepDateNowRunning === true) {
-      // The swipe sequence may send false then true, but keep the game clock
-      // running so the refresh does not leave gameplay frozen.
-      requestedFrozen = false;
-      if (installed) setFrozen(false);
-      return;
-    }
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
       if (installed) setFrozen(requestedFrozen);
@@ -80,7 +72,15 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        if (!installed) installDateNowControl();
+        // At full game-surface stability, restore Date.now=true.
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
         finished = true;
         return;
       }
@@ -129,21 +129,17 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe refresh briefly disables the Date.now option before navigation.
-  // Restore the running (unfrozen) clock immediately in the refreshed document
-  // so the game can continue without waiting for the load-stability checks.
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
-    requestedFrozen = false;
     installDateNowControl();
     setFrozen(false);
-    clearRefreshFlag();
   }
 
-  if (!restoredAfterSwipe) {
-    if (document.readyState === "complete") {
-      waitForFinishedGameLoad();
-    } else {
-      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
-    }
+  if (document.readyState === "complete") {
+    waitForFinishedGameLoad();
+  } else {
+    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
   }
 })();

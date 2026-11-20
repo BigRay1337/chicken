@@ -1,49 +1,15 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const DATE_NOW_TOGGLE_PROGRESS = 0.2 / 4; // 0.2/4 of the refresh trigger.
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
   let swipeStartY = null;
   let refreshRequested = false;
-  let dateNowToggledForSwipe = false;
-
-  function toggleDateNowAtSwipeProgress() {
-    if (dateNowToggledForSwipe) return;
-    dateNowToggledForSwipe = true;
-
-    // Send false, then true immediately at the requested swipe progress.
-    // Keep the clock running so the game does not freeze.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false, keepDateNowRunning: true }
-    }, "*");
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: true, keepDateNowRunning: true }
-    }, "*");
-  }
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
     swipeStartX = event.touches[0].clientX;
     swipeStartY = event.touches[0].clientY;
-    dateNowToggledForSwipe = false;
-  }, { passive: true });
-
-  window.addEventListener("touchmove", (event) => {
-    if (swipeStartX === null || swipeStartY === null ||
-        !event.touches || event.touches.length !== 1 ||
-        refreshRequested || dateNowToggledForSwipe) return;
-
-    const deltaX = event.touches[0].clientX - swipeStartX;
-    const deltaY = event.touches[0].clientY - swipeStartY;
-    const requiredProgress = SWIPE_THRESHOLD_PX * DATE_NOW_TOGGLE_PROGRESS;
-
-    if (deltaY <= -requiredProgress &&
-        Math.abs(deltaY) > Math.abs(deltaX)) {
-      toggleDateNowAtSwipeProgress();
-    }
   }, { passive: true });
 
   window.addEventListener("touchend", (event) => {
@@ -61,19 +27,20 @@
 
     refreshRequested = true;
 
-    // Cover short/fast swipes that reach refresh without a touchmove event.
-    if (!dateNowToggledForSwipe) toggleDateNowAtSwipeProgress();
+    // This is the only path that turns Date.now off: a recognized swipe up.
+    // Notify the Date.now controller before starting the page refresh.
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: false }
+    }, "*");
 
+    // Carry the one-time state through reload so the new page starts with
+    // Date.now=false and switches it back to true once the game has settled.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {}
 
+    // Allow the same-document message handler to apply false before reload.
     window.setTimeout(() => window.location.reload(), 50);
-  }, { passive: true });
-
-  window.addEventListener("touchcancel", () => {
-    swipeStartX = null;
-    swipeStartY = null;
-    dateNowToggledForSwipe = false;
   }, { passive: true });
 })();
