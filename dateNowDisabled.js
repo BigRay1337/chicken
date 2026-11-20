@@ -190,8 +190,11 @@
   }
 
   if (preserveRunningAfterBrowserRefresh) {
+    // After the browser's follow-up refresh, restore Date.now and freeze
+    // the game only once the new document's controller is installed.
+    requestedFrozen = true;
     installDateNowControl();
-    setFrozen(false);
+    setFrozen(true);
     try {
       window.sessionStorage.removeItem(PRESERVE_RUNNING_FLAG);
     } catch (_) {}
