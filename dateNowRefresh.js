@@ -1,6 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const DATE_NOW_TOGGLE_PROGRESS = 0.25 / 4; // 0.25/4 of the refresh trigger.
+  const DATE_NOW_TOGGLE_PROGRESS = 0.2 / 4; // 0.2/4 of the refresh trigger.
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
