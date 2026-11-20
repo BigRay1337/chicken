@@ -48,7 +48,8 @@
         command: "setSpeedConfig",
         config: { cbDateNowChecked: true }
       }, "*");
-      window.location.reload();
+      // Let the message event apply true before starting the reload.
+      window.setTimeout(() => window.location.reload(), 0);
     }, 50);
   }, { passive: true });
 })();
