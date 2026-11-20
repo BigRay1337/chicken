@@ -13,15 +13,6 @@
     requestedFrozen = shouldFreeze;
   };
 
-  // Expose a synchronous control so the swipe handler or options can
-  // change the Date.now freeze state when needed.
-  window.__chickenSetDateNowFrozen = function (shouldFreeze) {
-    if (typeof shouldFreeze !== "boolean") return;
-    requestedFrozen = shouldFreeze;
-    if (!installed) installDateNowControl();
-    setFrozen(shouldFreeze);
-  };
-
   window.addEventListener("message", function (event) {
     const data = event.data;
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
@@ -53,7 +44,6 @@
   }
 
   function waitForFinishedGameLoad() {
-    // Capture the native clock before Date.now is overridden.
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
@@ -82,8 +72,7 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // Restore Date.now=true only after the refreshed game surface
-        // has appeared and remained stable across the required checks.
+        // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
           setFrozen(true);
@@ -140,14 +129,12 @@
     setFrozen(requestedFrozen);
   }
 
-  // After swipe-up starts the reload, allow the new game document to
-  // begin initializing. Then temporarily unfreeze Date.now. Keep it
-  // running until the game surface is fully loaded and stable.
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
     installDateNowControl();
-    window.setTimeout(function () {
-      setFrozen(false);
-    }, 625);
+    setFrozen(false);
   }
 
   if (document.readyState === "complete") {

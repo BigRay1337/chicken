@@ -25,8 +25,8 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    // Mark this as a swipe-triggered refresh. Do not unfreeze here:
-    // the refreshed document will unfreeze after its initial load begins.
+    // Carry a one-time marker through the page reload. The Date.now hook
+    // remains frozen until the refreshed game reaches its 3/4 readiness point.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {
