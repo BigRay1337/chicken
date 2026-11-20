@@ -25,8 +25,13 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    // Carry a one-time marker through the page reload. The Date.now hook
-    // remains frozen until the refreshed game reaches its 3/4 readiness point.
+    // Unfreeze Date.now synchronously on the swipe, before requesting refresh.
+    // The refreshed document keeps it running until the game surface is stable.
+    if (typeof window.__chickenSetDateNowFrozen === "function") {
+      window.__chickenSetDateNowFrozen(false);
+    }
+
+    // Carry a one-time marker through the page reload.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {
