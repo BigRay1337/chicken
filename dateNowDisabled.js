@@ -72,7 +72,7 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // Keep Date.now frozen after the refreshed game surface is stable.
+        // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
           setFrozen(true);
@@ -129,11 +129,12 @@
     setFrozen(requestedFrozen);
   }
 
-  // The swipe handler sets Date.now=true before reload. Preserve that frozen
-  // state on the refreshed document; do not briefly unfreeze it on startup.
+  // A swipe-up sets the one-time refresh flag before reloading. On the
+  // refreshed document, start Date.now=false immediately (0/4 checks).
+  // The readiness loop below restores Date.now=true at 4/4 stable checks.
   if (refreshPending) {
     installDateNowControl();
-    setFrozen(true);
+    setFrozen(false);
   }
 
   if (document.readyState === "complete") {

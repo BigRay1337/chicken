@@ -27,18 +27,20 @@
 
     refreshRequested = true;
 
-    // Freeze Date.now immediately before starting the game refresh.
+    // This is the only path that turns Date.now off: a recognized swipe up.
+    // Notify the Date.now controller before starting the page refresh.
     window.postMessage({
       command: "setSpeedConfig",
-      config: { cbDateNowChecked: true }
+      config: { cbDateNowChecked: false }
     }, "*");
 
-    // Carry the frozen state through the reload.
+    // Carry the one-time state through reload so the new page starts with
+    // Date.now=false and switches it back to true once the game has settled.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {}
 
-    // Give the message handler a moment to apply the freeze before reload.
+    // Allow the same-document message handler to apply false before reload.
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
