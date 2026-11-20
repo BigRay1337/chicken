@@ -97,13 +97,13 @@
     window.setTimeout(function () {
       requestedFrozen = true;
       setFrozen(true);
-      // Re-freeze Chicken immediately after the 2 ms unfreeze window.
+      // Re-freeze Chicken immediately after the 9 ms unfreeze window.
       window.postMessage({
         command: "setSpeedConfig",
         config: { cbDateNowChecked: true }
       }, "*");
       if (typeof onComplete === "function") onComplete();
-    }, 2);
+    }, 9);
   };
 
   function waitForFinishedGameLoad() {
