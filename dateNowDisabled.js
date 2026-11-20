@@ -2,7 +2,6 @@
   "use strict";
 
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
-  const WAITING_FOR_RESUME_FLAG = "__chickenDateNowWaitingForResume";
   let refreshPending = false;
   try {
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
@@ -20,12 +19,7 @@
     if (!data || data.command !== "setSpeedConfig" || !data.config) return;
     if (typeof data.config.cbDateNowChecked === "boolean") {
       requestedFrozen = data.config.cbDateNowChecked;
-
-      // The resume gesture sends false to unfreeze, then true only to
-      // restore the option state while explicitly keeping the clock running.
-      if (installed && data.config.keepDateNowRunning !== true) {
-        setFrozen(requestedFrozen);
-      }
+      if (installed) setFrozen(requestedFrozen);
     }
   });
 
@@ -128,15 +122,13 @@
     setFrozen(requestedFrozen);
   }
 
-  // A refresh leaves the game clock frozen and arms the next upward swipe
-  // to send Date.now false, then true while keeping the clock running.
+  // A swipe refresh briefly disables the Date.now option before navigation.
+  // Restore the running (unfrozen) clock immediately in the refreshed document
+  // so the game can continue without waiting for the load-stability checks.
   if (refreshPending) {
-    requestedFrozen = true;
+    requestedFrozen = false;
     installDateNowControl();
-    setFrozen(true);
-    try {
-      window.sessionStorage.setItem(WAITING_FOR_RESUME_FLAG, "1");
-    } catch (_) {}
+    setFrozen(false);
     clearRefreshFlag();
   }
 
