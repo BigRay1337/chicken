@@ -21,26 +21,34 @@
     swipeStartX = null;
     swipeStartY = null;
 
+    // The trigger is 100% reached only when the completed gesture
+    // crosses the full swipe threshold and is predominantly upward.
     if (deltaY > -SWIPE_THRESHOLD_PX ||
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
     refreshRequested = true;
 
-    // This is the only path that turns Date.now off: a recognized swipe up.
-    // Notify the Date.now controller before starting the page refresh.
+    // Apply false, then immediately restore the checked/true option.
+    // preserveRunning keeps Date.now advancing rather than freezing it.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
 
-    // Carry the one-time state through reload so the new page starts with
-    // Date.now=false and switches it back to true once the game has settled.
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: {
+        cbDateNowChecked: true,
+        preserveRunning: true
+      }
+    }, "*");
+
+    // Carry the refresh handoff through reload.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {}
 
-    // Allow the same-document message handler to apply false before reload.
     window.setTimeout(() => window.location.reload(), 50);
   }, { passive: true });
 })();
