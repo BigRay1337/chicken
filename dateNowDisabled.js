@@ -81,6 +81,14 @@
         // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
+          window.postMessage({
+            command: "setSpeedConfig",
+            config: {
+              cbDateNowChecked: true,
+              preserveRunning: true
+            }
+          }, "*");
+          requestedFrozen = true;
           setFrozen(false);
           clearRefreshFlag();
         } else if (!installed) {
@@ -135,39 +143,8 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up sends Date.now=false before reload. On the refreshed
-  // document, restore the checked/true option at 100% of the
-  // four-interval refresh trigger, while keeping Date.now running.
-  if (refreshPending) {
-    installDateNowControl();
-    setFrozen(false);
+  // A swipe-up sends Date.now=false before reload. Restore the checked/true
+  // option only when the refreshed game surface reaches 100% stability.
+  // preserveRunning keeps Date.now advancing so the game remains unfrozen.
 
-    const refreshTriggerIntervalMs = 300;
-    const refreshTriggerIntervals = 4;
-    const refreshTriggerFraction = 1.0;
-    const restoreTrueAfterMs =
-      refreshTriggerIntervalMs * refreshTriggerIntervals * refreshTriggerFraction;
-
-    window.setTimeout(function () {
-      // Restore the option state to true at 100/100 of the refresh trigger,
-      // but keep Date.now running so the game does not become frozen.
-      window.postMessage({
-        command: "setSpeedConfig",
-        config: {
-          cbDateNowChecked: true,
-          preserveRunning: true
-        }
-      }, "*");
-      requestedFrozen = true;
-      setFrozen(false);
-      // Keep REFRESH_FLAG until the game canvas is stable; then the
-      // load watcher freezes the game exactly once.
-    }, restoreTrueAfterMs);
-  }
-
-  if (document.readyState === "complete") {
-    waitForFinishedGameLoad();
-  } else {
-    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
-  }
 })();
