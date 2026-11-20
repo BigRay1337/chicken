@@ -130,7 +130,7 @@
   }
 
   // A swipe-up sends Date.now=false before reload. On the refreshed
-  // document, restore the checked/true option at 99.4% of the
+  // document, restore the checked/true option at 60% of the
   // four-interval refresh trigger, while keeping Date.now running.
   if (refreshPending) {
     installDateNowControl();
@@ -138,7 +138,7 @@
 
     const refreshTriggerIntervalMs = 300;
     const refreshTriggerIntervals = 4;
-    const refreshTriggerFraction = 0.994;
+    const refreshTriggerFraction = 0.60;
     const restoreTrueAfterMs =
       refreshTriggerIntervalMs * refreshTriggerIntervals * refreshTriggerFraction;
 
