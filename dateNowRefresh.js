@@ -1,10 +1,17 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  const UNFREEZE_DELAY_MS = 625;
 
   let swipeStartX = null;
   let swipeStartY = null;
   let refreshRequested = false;
+
+  function setDateNowFrozen(frozen) {
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: frozen }
+    }, "*");
+  }
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
@@ -25,15 +32,19 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    // Carry a one-time marker through the page reload. The Date.now hook
-    // remains frozen until the refreshed game reaches its 3/4 readiness point.
-    try {
-      window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {
-      // If storage is unavailable, still perform the requested refresh.
-    }
-
     refreshRequested = true;
-    window.location.reload();
+
+    // Let the swipe gesture finish, then briefly unfreeze Date.now.
+    window.setTimeout(() => {
+      setDateNowFrozen(false);
+
+      // Re-freeze immediately before starting the game refresh.
+      window.requestAnimationFrame(() => {
+        setDateNowFrozen(true);
+        window.requestAnimationFrame(() => {
+          window.location.reload();
+        });
+      });
+    }, UNFREEZE_DELAY_MS);
   }, { passive: true });
 })();
