@@ -28,7 +28,7 @@
     refreshRequested = true;
 
     // Run the one-time unfreeze/Date.now=false -> freeze/Date.now=true
-    // pulse BEFORE reloading the game. The reload only happens after 2 ms.
+    // pulse BEFORE reloading the game. The reload only happens after 9 ms.
     const refreshGame = function () {
       try {
         window.sessionStorage.setItem(REFRESH_FLAG, "1");
