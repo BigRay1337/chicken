@@ -130,19 +130,24 @@
   }
 
   // A swipe-up sends Date.now=false before reload. On the refreshed
-  // document, restore true at 3.7/4 (92.5%) of the four-check refresh trigger.
+  // document, restore the checked/true option at 99.4% of the
+  // four-interval refresh trigger, while keeping Date.now running.
   if (refreshPending) {
     installDateNowControl();
     setFrozen(false);
 
     const refreshTriggerIntervalMs = 300;
-    const refreshTriggerFraction = 3.7 / 4;
-    const freezeAfterMs = refreshTriggerIntervalMs * 4 * refreshTriggerFraction;
+    const refreshTriggerIntervals = 4;
+    const refreshTriggerFraction = 0.994;
+    const restoreTrueAfterMs =
+      refreshTriggerIntervalMs * refreshTriggerIntervals * refreshTriggerFraction;
 
     window.setTimeout(function () {
-      setFrozen(true);
+      // Restore the option state to true without freezing the game clock.
+      requestedFrozen = true;
+      setFrozen(false);
       clearRefreshFlag();
-    }, freezeAfterMs);
+    }, restoreTrueAfterMs);
   }
 
   if (document.readyState === "complete") {
