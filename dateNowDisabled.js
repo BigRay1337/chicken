@@ -122,12 +122,13 @@
     setFrozen(requestedFrozen);
   }
 
-  // The swipe handler turns Date.now off immediately before reload.
-  // On the refreshed document, restore Date.now=true at document_start.
-  // This one-time branch runs only for a swipe-triggered game refresh.
+  // A swipe refresh briefly disables the Date.now option before navigation.
+  // Restore the running (unfrozen) clock immediately in the refreshed document
+  // so the game can continue without waiting for the load-stability checks.
   if (refreshPending) {
+    requestedFrozen = false;
     installDateNowControl();
-    setFrozen(true);
+    setFrozen(false);
     clearRefreshFlag();
   }
 
