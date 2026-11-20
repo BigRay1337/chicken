@@ -2,6 +2,13 @@
   "use strict";
 
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  const BROWSER_REFRESH_FLAG = "__chickenBrowserRefreshAfterGame";
+  const PRESERVE_RUNNING_FLAG = "__chickenPreserveRunningAfterBrowserRefresh";
+  let preserveRunningAfterBrowserRefresh = false;
+  try {
+    preserveRunningAfterBrowserRefresh =
+      window.sessionStorage.getItem(PRESERVE_RUNNING_FLAG) === "1";
+  } catch (_) {}
   let refreshPending = false;
   try {
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
@@ -78,6 +85,24 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
+        // Once the first game refresh has fully settled, perform one
+        // additional browser reload. Clear the trigger before reloading so
+        // the second load cannot create a reload loop.
+        let browserRefreshPending = false;
+        try {
+          browserRefreshPending =
+            window.sessionStorage.getItem(BROWSER_REFRESH_FLAG) === "1";
+        } catch (_) {}
+
+        if (browserRefreshPending) {
+          try {
+            window.sessionStorage.removeItem(BROWSER_REFRESH_FLAG);
+            window.sessionStorage.setItem(PRESERVE_RUNNING_FLAG, "1");
+          } catch (_) {}
+          window.location.reload();
+          return;
+        }
+
         // At full game-surface stability, restore Date.now=true.
         if (refreshPending) {
           if (!installed) installDateNowControl();
@@ -162,6 +187,14 @@
       setFrozen(false);
       clearRefreshFlag();
     }, restoreTrueAfterMs);
+  }
+
+  if (preserveRunningAfterBrowserRefresh) {
+    installDateNowControl();
+    setFrozen(false);
+    try {
+      window.sessionStorage.removeItem(PRESERVE_RUNNING_FLAG);
+    } catch (_) {}
   }
 
   if (document.readyState === "complete") {
