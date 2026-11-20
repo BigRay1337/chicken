@@ -81,11 +81,23 @@
           surface &&
           stableChecks >= Math.ceil(stableChecksRequired / 2)) {
         if (!installed) installDateNowControl();
+        // Let the game run for one rendered frame while Date.now is
+        // unfrozen. Re-freeze on the next frame so the false -> true
+        // transition is observable by the game's update loop.
+        refreshToggleStarted = true;
         requestedFrozen = false;
         setFrozen(false);
-        requestedFrozen = true;
-        setFrozen(true);
-        refreshToggleStarted = true;
+
+        const refreeze = function () {
+          requestedFrozen = true;
+          setFrozen(true);
+        };
+
+        if (typeof window.requestAnimationFrame === "function") {
+          window.requestAnimationFrame(refreeze);
+        } else {
+          window.setTimeout(refreeze, 16);
+        }
       }
 
       if (elapsed >= minimumWaitMs &&
