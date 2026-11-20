@@ -43,84 +43,6 @@
     refreshPending = false;
   }
 
-  function waitForFinishedGameLoad() {
-    const nativeNow = Date.now.bind(Date);
-    const waitStartedAt = nativeNow();
-    const minimumWaitMs = 1200;
-    const toggleAtMs = 300;
-    const stableChecksRequired = 2;
-    const checkIntervalMs = 100;
-    let lastCanvas = null;
-    let lastSignature = null;
-    let stableChecks = 0;
-    let refreshToggleStarted = false;
-    let finished = false;
-
-    function checkReady() {
-      if (finished) return;
-
-      const elapsed = nativeNow() - waitStartedAt;
-      const surface = getGameSurfaceSignature();
-
-      if (surface && surface.canvas === lastCanvas &&
-          surface.signature === lastSignature) {
-        stableChecks += 1;
-      } else {
-        lastCanvas = surface ? surface.canvas : null;
-        lastSignature = surface ? surface.signature : null;
-        stableChecks = surface ? 1 : 0;
-      }
-
-      // On a swipe-triggered reload, briefly switch Date.now off and
-      // immediately back on near the beginning of the early load window.
-      // Require a visible, stable game canvas so this runs during game
-      // refresh rather than before the refreshed game surface exists.
-      if (refreshPending &&
-          !refreshToggleStarted &&
-          elapsed >= toggleAtMs &&
-          surface &&
-          stableChecks >= 1) {
-        if (!installed) installDateNowControl();
-        // Briefly unfreeze only during this swipe-triggered refresh,
-        // then restore the frozen state after the requested 2 ms pulse.
-        refreshToggleStarted = true;
-        requestedFrozen = false;
-        setFrozen(false);
-
-        window.setTimeout(function () {
-          requestedFrozen = true;
-          setFrozen(true);
-        }, 2);
-      }
-
-      if (elapsed >= minimumWaitMs &&
-          surface &&
-          stableChecks >= stableChecksRequired) {
-        // Keep Date.now frozen after the midpoint toggle until the
-        // refreshed game has passed the full stable-canvas check.
-        if (refreshPending) {
-          if (!installed) installDateNowControl();
-          if (!refreshToggleStarted) {
-            setFrozen(false);
-            setFrozen(true);
-          } else {
-            setFrozen(true);
-          }
-          clearRefreshFlag();
-        } else if (!installed) {
-          installDateNowControl();
-        }
-
-        finished = true;
-        return;
-      }
-
-      window.setTimeout(checkReady, checkIntervalMs);
-    }
-
-    checkReady();
-  }
-
   function installDateNowControl() {
     if (installed) return;
     installed = true;
@@ -159,8 +81,68 @@
     setFrozen(requestedFrozen);
   }
 
-  // A swipe-up refresh carries a one-time marker into the reloaded page.
-  // Its Date.now false -> true pulse runs near the midpoint of early loading.
+  // Called only by the swipe-up refresh handler. Chicken is unfrozen and
+  // Date.now is disabled, then both are frozen/enabled again after 2 ms.
+  // The callback performs the actual game reload only after that pulse.
+  window.__chickenPulseDateNowBeforeRefresh = function (onComplete) {
+    installDateNowControl();
+    requestedFrozen = false;
+    setFrozen(false);
+
+    window.setTimeout(function () {
+      requestedFrozen = true;
+      setFrozen(true);
+      if (typeof onComplete === "function") onComplete();
+    }, 2);
+  };
+
+  function waitForFinishedGameLoad() {
+    const nativeNow = Date.now.bind(Date);
+    const waitStartedAt = nativeNow();
+    const minimumWaitMs = 1200;
+    const stableChecksRequired = 2;
+    const checkIntervalMs = 100;
+    let lastCanvas = null;
+    let lastSignature = null;
+    let stableChecks = 0;
+    let finished = false;
+
+    function checkReady() {
+      if (finished) return;
+
+      const elapsed = nativeNow() - waitStartedAt;
+      const surface = getGameSurfaceSignature();
+
+      if (surface && surface.canvas === lastCanvas &&
+          surface.signature === lastSignature) {
+        stableChecks += 1;
+      } else {
+        lastCanvas = surface ? surface.canvas : null;
+        lastSignature = surface ? surface.signature : null;
+        stableChecks = surface ? 1 : 0;
+      }
+
+      if (elapsed >= minimumWaitMs &&
+          surface &&
+          stableChecks >= stableChecksRequired) {
+        if (refreshPending) {
+          if (!installed) installDateNowControl();
+          requestedFrozen = true;
+          setFrozen(true);
+          clearRefreshFlag();
+        } else if (!installed) {
+          installDateNowControl();
+        }
+
+        finished = true;
+        return;
+      }
+
+      window.setTimeout(checkReady, checkIntervalMs);
+    }
+
+    checkReady();
+  }
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
