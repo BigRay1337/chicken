@@ -1,6 +1,6 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const DATE_NOW_TOGGLE_PROGRESS = 0.5; // 2/4 of the refresh swipe threshold.
+  const DATE_NOW_TOGGLE_PROGRESS = 0.25 / 4; // 0.25/4 of the refresh trigger.
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
 
   let swipeStartX = null;
@@ -12,8 +12,8 @@
     if (dateNowToggledForSwipe) return;
     dateNowToggledForSwipe = true;
 
-    // Send false, then true immediately at the halfway point.
-    // The special flag updates the option state without freezing the game clock.
+    // Send false, then true immediately at the requested swipe progress.
+    // Keep the clock running so the game does not freeze.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false, keepDateNowRunning: true }
@@ -61,7 +61,7 @@
 
     refreshRequested = true;
 
-    // Cover short/fast swipes that reach refresh without a halfway touchmove.
+    // Cover short/fast swipes that reach refresh without a touchmove event.
     if (!dateNowToggledForSwipe) toggleDateNowAtSwipeProgress();
 
     try {
