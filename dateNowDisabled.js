@@ -88,10 +88,20 @@
     installDateNowControl();
     requestedFrozen = false;
     setFrozen(false);
+    // Also unfreeze the Chicken sprite controller for this swipe pulse.
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: { cbDateNowChecked: false }
+    }, "*");
 
     window.setTimeout(function () {
       requestedFrozen = true;
       setFrozen(true);
+      // Re-freeze Chicken immediately after the 2 ms unfreeze window.
+      window.postMessage({
+        command: "setSpeedConfig",
+        config: { cbDateNowChecked: true }
+      }, "*");
       if (typeof onComplete === "function") onComplete();
     }, 2);
   };
