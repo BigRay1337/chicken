@@ -136,7 +136,7 @@
     setFrozen(false);
 
     const refreshTriggerIntervalMs = 300;
-    const refreshTriggerFraction = 1.6 / 4;
+    const refreshTriggerFraction = 2.7 / 4;
     const freezeAfterMs = refreshTriggerIntervalMs * 4 * refreshTriggerFraction;
 
     window.setTimeout(function () {
