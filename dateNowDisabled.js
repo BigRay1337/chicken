@@ -6,6 +6,7 @@
   try {
     refreshPending = window.sessionStorage.getItem(REFRESH_FLAG) === "1";
   } catch (_) {}
+  const restoredAfterSwipe = refreshPending;
 
   let requestedFrozen = true;
   let installed = false;
@@ -130,9 +131,11 @@
     clearRefreshFlag();
   }
 
-  if (document.readyState === "complete") {
-    waitForFinishedGameLoad();
-  } else {
-    window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+  if (!restoredAfterSwipe) {
+    if (document.readyState === "complete") {
+      waitForFinishedGameLoad();
+    } else {
+      window.addEventListener("load", waitForFinishedGameLoad, { once: true });
+    }
   }
 })();
