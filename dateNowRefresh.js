@@ -25,13 +25,8 @@
         Math.abs(deltaX) > Math.abs(deltaY) ||
         refreshRequested) return;
 
-    // Unfreeze Date.now synchronously on the swipe, before requesting refresh.
-    // The refreshed document keeps it running until the game surface is stable.
-    if (typeof window.__chickenSetDateNowFrozen === "function") {
-      window.__chickenSetDateNowFrozen(false);
-    }
-
-    // Carry a one-time marker through the page reload.
+    // Mark this as a swipe-triggered refresh. Do not unfreeze here:
+    // the refreshed document will unfreeze after its initial load begins.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {
