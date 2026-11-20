@@ -190,11 +190,10 @@
   }
 
   if (preserveRunningAfterBrowserRefresh) {
-    // After the browser's follow-up refresh, restore Date.now and freeze
-    // the game only once the new document's controller is installed.
+    // After the browser's follow-up refresh, mark the game to freeze,
+    // but wait until its canvas is stable before installing the controller.
+    // This avoids freezing the game while the refreshed page is still loading.
     requestedFrozen = true;
-    installDateNowControl();
-    setFrozen(true);
     try {
       window.sessionStorage.removeItem(PRESERVE_RUNNING_FLAG);
     } catch (_) {}
