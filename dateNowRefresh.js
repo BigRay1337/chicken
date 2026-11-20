@@ -1,6 +1,7 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  const BROWSER_REFRESH_FLAG = "__chickenBrowserRefreshAfterGame";
 
   let swipeStartX = null;
   let swipeStartY = null;
@@ -38,6 +39,7 @@
     // Date.now=false and switches it back to true once the game has settled.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
+      window.sessionStorage.setItem(BROWSER_REFRESH_FLAG, "1");
     } catch (_) {}
 
     // Allow the same-document message handler to apply false before reload.
