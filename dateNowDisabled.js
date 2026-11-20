@@ -130,11 +130,23 @@
   }
 
   // A swipe-up sets the one-time refresh flag before reloading. On the
-  // refreshed document, start Date.now=false immediately (0/4 checks).
-  // The readiness loop below restores Date.now=true at 4/4 stable checks.
+  // refreshed document, keep Date.now frozen briefly while the game refresh
+  // gets underway. Then unfreeze for one animation frame and immediately
+  // freeze again, before the refreshed game finishes loading.
   if (refreshPending) {
     installDateNowControl();
-    setFrozen(false);
+    const swipeRefreshUnfreezeDelayMs = 625;
+    window.setTimeout(function () {
+      setFrozen(false);
+      const refreeze = function () {
+        setFrozen(true);
+      };
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(refreeze);
+      } else {
+        window.setTimeout(refreeze, 0);
+      }
+    }, swipeRefreshUnfreezeDelayMs);
   }
 
   if (document.readyState === "complete") {
