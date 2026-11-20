@@ -136,7 +136,7 @@
   }
 
   // A swipe-up sends Date.now=false before reload. On the refreshed
-  // document, restore the checked/true option at 96% of the
+  // document, restore the checked/true option at 100% of the
   // four-interval refresh trigger, while keeping Date.now running.
   if (refreshPending) {
     installDateNowControl();
@@ -144,12 +144,12 @@
 
     const refreshTriggerIntervalMs = 300;
     const refreshTriggerIntervals = 4;
-    const refreshTriggerFraction = 0.96;
+    const refreshTriggerFraction = 1.0;
     const restoreTrueAfterMs =
       refreshTriggerIntervalMs * refreshTriggerIntervals * refreshTriggerFraction;
 
     window.setTimeout(function () {
-      // Restore the option state to true at 96/100 of the refresh trigger,
+      // Restore the option state to true at 100/100 of the refresh trigger,
       // but keep Date.now running so the game does not become frozen.
       window.postMessage({
         command: "setSpeedConfig",
