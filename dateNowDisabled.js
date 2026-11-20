@@ -13,8 +13,8 @@
     requestedFrozen = shouldFreeze;
   };
 
-  // Expose a synchronous control so the swipe handler can unfreeze Date.now
-  // before it calls location.reload().
+  // Expose a synchronous control so the swipe handler or options can
+  // change the Date.now freeze state when needed.
   window.__chickenSetDateNowFrozen = function (shouldFreeze) {
     if (typeof shouldFreeze !== "boolean") return;
     requestedFrozen = shouldFreeze;
@@ -53,6 +53,7 @@
   }
 
   function waitForFinishedGameLoad() {
+    // Capture the native clock before Date.now is overridden.
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
@@ -81,7 +82,8 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // At full game-surface stability, restore Date.now=true.
+        // Restore Date.now=true only after the refreshed game surface
+        // has appeared and remained stable across the required checks.
         if (refreshPending) {
           if (!installed) installDateNowControl();
           setFrozen(true);
@@ -138,17 +140,13 @@
     setFrozen(requestedFrozen);
   }
 
-  // After a swipe refresh, let the game begin loading for 625 ms.
-  // Then briefly unfreeze Date.now and refreeze it on the next animation
-  // frame, before the refreshed game surface is considered fully ready.
-  // The readiness loop below also ensures Date.now=true at full stability.
+  // After swipe-up starts the reload, allow the new game document to
+  // begin initializing. Then temporarily unfreeze Date.now. Keep it
+  // running until the game surface is fully loaded and stable.
   if (refreshPending) {
     installDateNowControl();
     window.setTimeout(function () {
       setFrozen(false);
-      window.requestAnimationFrame(function () {
-        setFrozen(true);
-      });
     }, 625);
   }
 
