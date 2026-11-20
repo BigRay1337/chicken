@@ -4,7 +4,8 @@
   // Only run on the supported Dodge Bob game.
   if (!/spinquest\.com\/casino\/games\/iconic21_launch_spq_dodge_bob/i.test(location.href)) return;
 
-  let freezeChicken = true;
+  // Keep the Chicken sprite moving; Date.now settings must not freeze it.
+  let freezeChicken = false;
   const lastPlayerDraw = new WeakMap();
   const proto = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
   if (!proto || !proto.drawImage) return;
@@ -13,7 +14,7 @@
     if (!event.data || event.data.command !== "setSpeedConfig" || !event.data.config) return;
     // TRUE freezes the player; FALSE allows normal player movement.
     if (typeof event.data.config.cbDateNowChecked === "boolean") {
-      freezeChicken = event.data.config.cbDateNowChecked;
+      freezeChicken = false;
     }
   });
 
