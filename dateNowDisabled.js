@@ -133,23 +133,28 @@
   }
 
   // A swipe-up refresh carries a one-time marker into the reloaded page.
-  // At the very start of this document, unfreeze Date.now, allow one game
-  // frame to run, then immediately freeze it again.
+  // Let the refreshed game begin initializing before briefly unfreezing it.
   if (refreshPending) {
     installDateNowControl();
-    requestedFrozen = false;
-    setFrozen(false);
 
-    const refreezeAfterFirstFrame = function () {
-      requestedFrozen = true;
-      setFrozen(true);
-    };
+    const refreshStartDelayMs = 100;
+    window.setTimeout(function () {
+      // Date.now false: let Chicken advance during the early refresh phase.
+      requestedFrozen = false;
+      setFrozen(false);
 
-    if (typeof window.requestAnimationFrame === "function") {
-      window.requestAnimationFrame(refreezeAfterFirstFrame);
-    } else {
-      window.setTimeout(refreezeAfterFirstFrame, 16);
-    }
+      // Date.now true on the next frame: refreeze Chicken immediately after.
+      const refreezeAfterUnfreeze = function () {
+        requestedFrozen = true;
+        setFrozen(true);
+      };
+
+      if (typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(refreezeAfterUnfreeze);
+      } else {
+        window.setTimeout(refreezeAfterUnfreeze, 16);
+      }
+    }, refreshStartDelayMs);
   }
 
   if (document.readyState === "complete") {
