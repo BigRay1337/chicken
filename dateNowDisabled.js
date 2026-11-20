@@ -47,6 +47,7 @@
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
     const minimumWaitMs = 2500;
+    const toggleAtMs = Math.floor(minimumWaitMs / 2);
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
     let lastCanvas = null;
@@ -70,12 +71,13 @@
         stableChecks = surface ? 1 : 0;
       }
 
-      // During a swipe-triggered refresh, briefly unfreeze Date.now
-      // around the middle of the stable-load checks, then refreeze it
-      // immediately in the same refresh check.
+      // On a swipe-triggered reload, briefly switch Date.now off and
+      // immediately back on near the midpoint of the early load window.
+      // Require a visible, stable game canvas so this runs during game
+      // refresh rather than before the refreshed game surface exists.
       if (refreshPending &&
           !refreshToggleStarted &&
-          elapsed >= minimumWaitMs &&
+          elapsed >= toggleAtMs &&
           surface &&
           stableChecks >= Math.ceil(stableChecksRequired / 2)) {
         if (!installed) installDateNowControl();
@@ -89,11 +91,16 @@
       if (elapsed >= minimumWaitMs &&
           surface &&
           stableChecks >= stableChecksRequired) {
-        // Restore the frozen Date.now state only at the final stable check.
+        // Keep Date.now frozen after the midpoint toggle until the
+        // refreshed game has passed the full stable-canvas check.
         if (refreshPending) {
           if (!installed) installDateNowControl();
-          if (!refreshToggleStarted) setFrozen(false);
-          setFrozen(true);
+          if (!refreshToggleStarted) {
+            setFrozen(false);
+            setFrozen(true);
+          } else {
+            setFrozen(true);
+          }
           clearRefreshFlag();
         } else if (!installed) {
           installDateNowControl();
@@ -147,9 +154,8 @@
     setFrozen(requestedFrozen);
   }
 
-  // The swipe refresh marker is carried into the reloaded document.
-  // Date.now changes to false and immediately back to true at the
-  // midpoint of the stable-load checks during the swipe-triggered refresh.
+  // A swipe-up refresh carries a one-time marker into the reloaded page.
+  // Its Date.now false -> true pulse runs near the midpoint of early loading.
 
   if (document.readyState === "complete") {
     waitForFinishedGameLoad();
