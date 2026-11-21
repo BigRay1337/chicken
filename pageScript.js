@@ -17,7 +17,7 @@ function pageScript() {
   const originalDateNow = Date.now;
   let previousDateNowChecked = null;
   const STARTUP_INTERVAL_MS = 1;
-  const DATE_NOW_ZERO_SPEED_FALLBACK = 0.259999999990;
+  const DATE_NOW_ZERO_SPEED_FALLBACK = 0.371;
   const DATE_NOW_ADDITIONAL_FALLBACK = 259999999990;
   let pageInitializing = true;
 
@@ -250,21 +250,6 @@ pageScript();
 ;
 
 
-
-
-
-;
-;
-
-;
-;
-
-
-
-
-;
-
-;
 ;
 
 
@@ -279,22 +264,12 @@ pageScript();
 ;
 
 
-
-
 ;
-
-;
-;
-
-
-
-
 
 
 
 ;
 
-;
 ;
 
 
@@ -305,6 +280,30 @@ pageScript();
 ;
 
 ;
+
+;
+
+
+
+
+
+
+;
+
+;
+
+;
+
+
+
+
+
+
+
+;
+
+;
+
 ;
 
 
@@ -313,6 +312,165 @@ pageScript();
 
 
 ;
+
+;
+
+;
+
+
+
+
+
+
+;
+
+;
+
+;
+
+
+
+
+
+
+
+
+;
+
+;
+
+;
+
+
+
+
+
+
+;
+
+;
+
+;
+
+
+
+
+
+
+
+;
+
+;
+
+;
+
+
+
+
+
+
+
+;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
