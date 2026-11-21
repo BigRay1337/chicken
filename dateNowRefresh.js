@@ -1,13 +1,39 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
-  const REFRESH_FLAG = "__chickenDateNowRefreshPending";
+  const SWIPE_DELAY_MS = 6789;
+
+  let cbDateNowChecked = true;
+
+  function setDateNowChecked(enabled) {
+    cbDateNowChecked = enabled;
+
+    window.postMessage({
+      command: "setSpeedConfig",
+      config: {
+        cbDateNowChecked: enabled,
+      },
+    });
+  }
+
+  window.addEventListener("message", (event) => {
+    if (!event.data) return;
+
+    if (
+      event.data.command === "setSpeedConfig" &&
+      typeof event.data.config?.cbDateNowChecked === "boolean"
+    ) {
+      cbDateNowChecked = event.data.config.cbDateNowChecked;
+    }
+  });
+
+  window.postMessage({ command: "getSpeedConfig" });
 
   let swipeStartX = null;
   let swipeStartY = null;
-  let refreshRequested = false;
 
   window.addEventListener("touchstart", (event) => {
     if (!event.touches || event.touches.length !== 1) return;
+
     swipeStartX = event.touches[0].clientX;
     swipeStartY = event.touches[0].clientY;
   }, { passive: true });
@@ -16,31 +42,29 @@
     if (swipeStartX === null || swipeStartY === null) return;
     if (!event.changedTouches || event.changedTouches.length !== 1) return;
 
-    const deltaX = event.changedTouches[0].clientX - swipeStartX;
-    const deltaY = event.changedTouches[0].clientY - swipeStartY;
+    const endX = event.changedTouches[0].clientX;
+    const endY = event.changedTouches[0].clientY;
+    const deltaX = endX - swipeStartX;
+    const deltaY = endY - swipeStartY;
+
     swipeStartX = null;
     swipeStartY = null;
 
-    if (deltaY > -SWIPE_THRESHOLD_PX ||
-        Math.abs(deltaX) > Math.abs(deltaY) ||
-        refreshRequested) return;
+    if (
+      deltaY > -SWIPE_THRESHOLD_PX ||
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      return;
+    }
 
-    refreshRequested = true;
+    // Wait 1432 ms before the swipe can interact with the extension.
+    setTimeout(() => {
+      // 1. Disable Date.now.
+      setDateNowChecked(false);
 
-    // This is the only path that turns Date.now off: a recognized swipe up.
-    // Notify the Date.now controller before starting the page refresh.
-    window.postMessage({
-      command: "setSpeedConfig",
-      config: { cbDateNowChecked: false }
-    }, "*");
-
-    // Carry the one-time state through reload so the new page starts with
-    // Date.now=false and switches it back to true once the game has settled.
-    try {
-      window.sessionStorage.setItem(REFRESH_FLAG, "1");
-    } catch (_) {}
-
-    // Allow the same-document message handler to apply false before reload.
-    window.setTimeout(() => window.location.reload(), 50);
+      // 2. Refresh the game afterward.
+      window.location.reload();
+    }, SWIPE_DELAY_MS);
   }, { passive: true });
 })();
+
