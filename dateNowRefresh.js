@@ -6,15 +6,25 @@
   let swipeStartY = null;
   let refreshRequested = false;
 
+  // Capture touch events before game canvases or page handlers can stop bubbling.
   window.addEventListener("touchstart", (event) => {
-    if (!event.touches || event.touches.length !== 1) return;
+    if (!event.touches || event.touches.length !== 1) {
+      swipeStartX = null;
+      swipeStartY = null;
+      return;
+    }
+
     swipeStartX = event.touches[0].clientX;
     swipeStartY = event.touches[0].clientY;
-  }, { passive: true });
+  }, { passive: true, capture: true });
 
   window.addEventListener("touchend", (event) => {
     if (swipeStartX === null || swipeStartY === null) return;
-    if (!event.changedTouches || event.changedTouches.length !== 1) return;
+    if (!event.changedTouches || event.changedTouches.length !== 1) {
+      swipeStartX = null;
+      swipeStartY = null;
+      return;
+    }
 
     const deltaX = event.changedTouches[0].clientX - swipeStartX;
     const deltaY = event.changedTouches[0].clientY - swipeStartY;
@@ -27,20 +37,22 @@
 
     refreshRequested = true;
 
-    // This is the only path that turns Date.now off: a recognized swipe up.
-    // Notify the Date.now controller before starting the page refresh.
+    // Keep Date.now frozen until this recognized swipe-up initiates refresh.
     window.postMessage({
       command: "setSpeedConfig",
       config: { cbDateNowChecked: false }
     }, "*");
 
-    // Carry the one-time state through reload so the new page starts with
-    // Date.now=false and switches it back to true once the game has settled.
+    // Carry the one-time release through reload; pageScript.js consumes it.
     try {
       window.sessionStorage.setItem(REFRESH_FLAG, "1");
     } catch (_) {}
 
-    // Allow the same-document message handler to apply false before reload.
     window.setTimeout(() => window.location.reload(), 50);
-  }, { passive: true });
+  }, { passive: true, capture: true });
+
+  window.addEventListener("touchcancel", () => {
+    swipeStartX = null;
+    swipeStartY = null;
+  }, { passive: true, capture: true });
 })();
