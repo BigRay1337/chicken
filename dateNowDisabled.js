@@ -46,7 +46,7 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    const minimumWaitMs = 47331;
+    const minimumWaitMs = 2500;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
     let lastCanvas = null;
@@ -135,11 +135,6 @@
   if (refreshPending) {
     installDateNowControl();
     setFrozen(false);
-  } else {
-    // Freeze Date.now immediately on a normal load; do not wait for the
-    // long post-load readiness delay before enabling the freeze.
-    installDateNowControl();
-    setFrozen(true);
   }
 
   if (document.readyState === "complete") {
