@@ -46,7 +46,7 @@
   function waitForFinishedGameLoad() {
     const nativeNow = Date.now.bind(Date);
     const waitStartedAt = nativeNow();
-    const minimumWaitMs = 999999999999;
+    const minimumWaitMs = 47331;
     const stableChecksRequired = 4;
     const checkIntervalMs = 300;
     let lastCanvas = null;
