@@ -18,6 +18,18 @@ function pageScript() {
   let previousDateNowChecked = null;
   const STARTUP_INTERVAL_MS = 1;
   const DATE_NOW_ZERO_SPEED_FALLBACK = 0.259999999990;
+  const SWIPE_RELEASE_FLAG = "__chickenDateNowRefreshPending";
+  let swipeReleased = false;
+
+  // dateNowRefresh.js sets this flag only after a recognized swipe-up.
+  // Consume it once after the reload so Date.now can resume for the game.
+  try {
+    swipeReleased = window.sessionStorage.getItem(SWIPE_RELEASE_FLAG) === "1";
+    if (swipeReleased) {
+      window.sessionStorage.removeItem(SWIPE_RELEASE_FLAG);
+    }
+  } catch (_) {}
+
   let pageInitializing = true;
 
   let timers = [];
@@ -161,10 +173,10 @@ function pageScript() {
       const originalValue = originalDateNow();
 
       if (dateNowValue !== null) {
-        const multiplier = speedConfig.cbDateNowChecked
-          ? speedConfig.speed
-          : speedConfig.speed === DATE_NOW_ZERO_SPEED_FALLBACK
-            ? DATE_NOW_ZERO_SPEED_FALLBACK
+        const multiplier = swipeReleased
+          ? 1
+          : speedConfig.cbDateNowChecked
+            ? speedConfig.speed
             : DATE_NOW_ZERO_SPEED_FALLBACK;
         dateNowValue += (originalValue - previousDateNowValue) * multiplier;
       } else {
