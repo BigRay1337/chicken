@@ -173,11 +173,9 @@ function pageScript() {
       const originalValue = originalDateNow();
 
       if (dateNowValue !== null) {
-        const multiplier = swipeReleased
-          ? 1
-          : speedConfig.cbDateNowChecked
-            ? speedConfig.speed
-            : DATE_NOW_ZERO_SPEED_FALLBACK;
+        // Keep the game clock frozen on every load until dateNowRefresh.js
+        // detects a real swipe-up and reloads with the one-time release flag.
+        const multiplier = swipeReleased ? 1 : 0;
         dateNowValue += (originalValue - previousDateNowValue) * multiplier;
       } else {
         dateNowValue = originalValue;
