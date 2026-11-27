@@ -2,49 +2,30 @@
   "use strict";
 
   const originalDateNow = Date.now;
-  let cbDateNowChecked = true;
-  let dateNowValue = null;
-  let previousDateNowValue = null;
+  const UNFREEZE_SESSION_KEY = "__chicken_date_now_unfrozen";
+  let swipeUnfrozen = false;
+  try {
+    swipeUnfrozen = sessionStorage.getItem(UNFREEZE_SESSION_KEY) === "1";
+    if (swipeUnfrozen) sessionStorage.removeItem(UNFREEZE_SESSION_KEY);
+  } catch (error) {}
 
-  // Numeric Infinity is the safe equivalent for an unbounded limit.
-  // "9".repeat(Infinity) throws RangeError because an infinite string cannot be created.
-  const LONG_DELAY = Number.POSITIVE_INFINITY;
+  let cbDateNowChecked = swipeUnfrozen;
+  let frozenDateNow = originalDateNow();
 
   window.addEventListener("message", (e) => {
-    if (!e.data || e.data.command !== "setSpeedConfig") return;
+    if (!e.data || e.data.command !== "setSpeedConfig" || !e.data.config) return;
 
-    cbDateNowChecked = e.data.config?.cbDateNowChecked !== false;
-
-    if (cbDateNowChecked) {
-      const now = originalDateNow();
-      dateNowValue = now;
-      previousDateNowValue = now;
+    const nextChecked = swipeUnfrozen || e.data.config.cbDateNowChecked === true;
+    if (nextChecked && !cbDateNowChecked) {
+      frozenDateNow = originalDateNow();
+    } else if (!nextChecked && cbDateNowChecked) {
+      frozenDateNow = originalDateNow();
     }
+    cbDateNowChecked = nextChecked;
   });
 
   Date.now = function () {
-    const realNow = originalDateNow();
-
-    // Only apply this override when cbDateNowChecked is disabled.
-    if (cbDateNowChecked) {
-      dateNowValue = realNow;
-      previousDateNowValue = realNow;
-      return realNow;
-    }
-
-    if (dateNowValue === null) {
-      dateNowValue = realNow;
-      previousDateNowValue = realNow;
-      return Math.floor(0 + dateNowValue);
-    }
-
-    const elapsed = Math.max(0, realNow - previousDateNowValue);
-    previousDateNowValue = realNow;
-
-    // Infinity means there is no finite cap on elapsed time.
-    const delayedElapsed = Math.min(elapsed, LONG_DELAY);
-    dateNowValue += delayedElapsed;
-
-    return Math.floor(0 + dateNowValue);
+    if (cbDateNowChecked) return originalDateNow();
+    return Math.floor(frozenDateNow);
   };
 })();
