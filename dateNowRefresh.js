@@ -1,7 +1,7 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const SWIPE_DELAY_MS = 6789;
-  const REFRESH_PROGRESS = 5 / 100;
+  const REFRESH_PROGRESS = 1 / 100;
   const LAST_LOAD_DURATION_KEY = "chickenLastGameLoadDurationMs";
   const REFRESH_ARMED_KEY = "chickenDateNowRefreshArmed";
   const FALLBACK_LOAD_DURATION_MS = 6789;
@@ -62,7 +62,7 @@
 
   window.postMessage({ command: "getSpeedConfig" });
 
-  // Only apply the 43.21% trigger to a refresh initiated by swipe-up.
+  // Only apply the 1% trigger to a refresh initiated by swipe-up.
   let refreshArmed = false;
   try {
     refreshArmed = sessionStorage.getItem(REFRESH_ARMED_KEY) === "1";
@@ -116,7 +116,7 @@
       clearTimeout(swipeRefreshTimer);
     }
 
-    // Keep the existing swipe-up delay, then begin the game refresh.
+    // Preserve the existing wait after swipe-up before the game refresh.
     swipeRefreshTimer = setTimeout(() => {
       try {
         sessionStorage.setItem(REFRESH_ARMED_KEY, "1");
