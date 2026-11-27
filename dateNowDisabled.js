@@ -1,13 +1,16 @@
 (function () {
   "use strict";
   const originalDateNow = Date.now;
-  let isUnfrozen = false;
+  let isUnfrozen = true;
   const frozenValue = originalDateNow();
 
-  // Every newly loaded/refreshed document starts frozen.
+  // Keep real time during refresh/loading. The refresh script freezes it
+  // after the refreshed game page fires its load event.
   window.addEventListener("message", function (event) {
     if (event.source !== window || !event.data) return;
-    if (event.data.command === "chickenUnfreezeDateNow") {
+    if (event.data.command === "chickenFreezeDateNow") {
+      isUnfrozen = false;
+    } else if (event.data.command === "chickenUnfreezeDateNow") {
       isUnfrozen = true;
     }
   });
