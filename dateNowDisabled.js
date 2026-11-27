@@ -4,8 +4,6 @@
   let isUnfrozen = true;
   const frozenValue = originalDateNow();
 
-  // Keep real time during refresh/loading. The refresh script freezes it
-  // after the refreshed game page fires its load event.
   window.addEventListener("message", function (event) {
     if (event.source !== window || !event.data) return;
     if (event.data.command === "chickenFreezeDateNow") {
