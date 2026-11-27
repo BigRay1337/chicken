@@ -1,23 +1,35 @@
 (function () {
   "use strict";
   const SWIPE_UP_THRESHOLD_PX = 30;
+  const MINIMUM_WAIT_MS = 47331;
+  const RELOAD_DELAY_MS = 50;
+  const nativeSetTimeout = window.setTimeout.bind(window);
+
   let touchStartY = null;
   let pageLoaded = document.readyState === "complete";
   let isFrozen = false;
+  let reloadStarted = false;
+  let loadStartedAt = pageLoaded ? Date.now() : 0;
 
-  function freezeAfterLoad() {
-    if (isFrozen) return;
-    isFrozen = true;
-    window.postMessage({ command: "chickenFreezeDateNow" }, "*");
+  function freezeAfterWait() {
+    if (isFrozen || !pageLoaded) return;
+    const remaining = Math.max(0, MINIMUM_WAIT_MS - (Date.now() - loadStartedAt));
+    nativeSetTimeout(function () {
+      if (!pageLoaded || reloadStarted || isFrozen) return;
+      isFrozen = true;
+      window.postMessage({ command: "chickenFreezeDateNow" }, "*");
+    }, remaining);
   }
 
-  // After each game refresh, wait for the page load event before freezing.
+  // Let the game finish loading and preserve the existing 47,331 ms wait
+  // before freezing Date.now on each refreshed page.
   if (pageLoaded) {
-    freezeAfterLoad();
+    freezeAfterWait();
   } else {
     window.addEventListener("load", function () {
       pageLoaded = true;
-      freezeAfterLoad();
+      loadStartedAt = Date.now();
+      freezeAfterWait();
     }, { once: true });
   }
 
@@ -36,11 +48,15 @@
     const swipeDistance = touchStartY - event.changedTouches[0].clientY;
     touchStartY = null;
 
-    // Once loaded and frozen, an upward swipe of 30 px or more is the
-    // only action that unfreezes Date.now. It does not trigger a reload.
-    if (!pageLoaded || swipeDistance < SWIPE_UP_THRESHOLD_PX || !isFrozen) return;
+    // After the wait and freeze, swipe up unfreezes Date.now and refreshes
+    // the game screen. The next document repeats the wait, then freezes.
+    if (!pageLoaded || swipeDistance < SWIPE_UP_THRESHOLD_PX || !isFrozen || reloadStarted) return;
 
+    reloadStarted = true;
     isFrozen = false;
     window.postMessage({ command: "chickenUnfreezeDateNow" }, "*");
+    nativeSetTimeout(function () {
+      window.location.reload();
+    }, RELOAD_DELAY_MS);
   }, { capture: false, passive: true });
 })();
