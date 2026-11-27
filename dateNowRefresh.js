@@ -1,7 +1,7 @@
 (function () {
   const SWIPE_THRESHOLD_PX = 30;
   const SWIPE_DELAY_MS = 6789;
-  const REFRESH_PROGRESS = 10 / 100;
+  const REFRESH_PROGRESS = 5 / 100;
   const LAST_LOAD_DURATION_KEY = "chickenLastGameLoadDurationMs";
   const REFRESH_ARMED_KEY = "chickenDateNowRefreshArmed";
   const FALLBACK_LOAD_DURATION_MS = 6789;
