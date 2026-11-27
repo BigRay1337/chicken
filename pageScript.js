@@ -61,12 +61,11 @@ function pageScript() {
     if (!e.data || e.data.command !== "setSpeedConfig") return;
 
     speedConfig = {
-      speed: Number(e.data.config?.speed) || 0,
-      cbSetIntervalChecked: !!e.data.config?.cbSetIntervalChecked,
-      cbSetTimeoutChecked: !!e.data.config?.cbSetTimeoutChecked,
-      cbPerformanceNowChecked: !!e.data.config?.cbPerformanceNowChecked,
-      cbDateNowChecked: e.data.config?.cbDateNowChecked !== false,
-      cbRequestAnimationFrameChecked: !!e.data.config?.cbRequestAnimationFrameChecked,
+      ...speedConfig,
+      ...(e.data.config || {}),
+      speed: e.data.config?.speed === undefined
+        ? speedConfig.speed
+        : (Number(e.data.config.speed) || 0),
     };
 
     if (previousDateNowChecked === null) {
