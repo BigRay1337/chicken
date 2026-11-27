@@ -1,31 +1,18 @@
 (function () {
   "use strict";
-
   const originalDateNow = Date.now;
-  const UNFREEZE_SESSION_KEY = "__chicken_date_now_unfrozen";
-  let swipeUnfrozen = false;
-  try {
-    swipeUnfrozen = sessionStorage.getItem(UNFREEZE_SESSION_KEY) === "1";
-    if (swipeUnfrozen) sessionStorage.removeItem(UNFREEZE_SESSION_KEY);
-  } catch (error) {}
+  let isUnfrozen = false;
+  const frozenValue = originalDateNow();
 
-  let cbDateNowChecked = swipeUnfrozen;
-  let frozenDateNow = originalDateNow();
-
-  window.addEventListener("message", (e) => {
-    if (!e.data || e.data.command !== "setSpeedConfig" || !e.data.config) return;
-
-    const nextChecked = swipeUnfrozen || e.data.config.cbDateNowChecked === true;
-    if (nextChecked && !cbDateNowChecked) {
-      frozenDateNow = originalDateNow();
-    } else if (!nextChecked && cbDateNowChecked) {
-      frozenDateNow = originalDateNow();
+  // Every newly loaded/refreshed document starts frozen.
+  window.addEventListener("message", function (event) {
+    if (event.source !== window || !event.data) return;
+    if (event.data.command === "chickenUnfreezeDateNow") {
+      isUnfrozen = true;
     }
-    cbDateNowChecked = nextChecked;
   });
 
   Date.now = function () {
-    if (cbDateNowChecked) return originalDateNow();
-    return Math.floor(frozenDateNow);
+    return isUnfrozen ? originalDateNow() : frozenValue;
   };
 })();
