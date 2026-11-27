@@ -9,7 +9,7 @@ let speedConfig = {
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
-    speedConfig = request.config;
+    speedConfig = { ...speedConfig, ...(request.config || {}) };
     window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
