@@ -1,5 +1,5 @@
 let speedConfig = {
-  speed: 0.25,
+  speed: 0,
   cbSetIntervalChecked: true,
   cbSetTimeoutChecked: false,
   cbPerformanceNowChecked: false,
@@ -9,26 +9,18 @@ let speedConfig = {
 
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.command == "setSpeedConfig") {
-    // Merge partial updates so changing Date.now does not erase other settings.
-    speedConfig = {
-      ...speedConfig,
-      ...(request.config || {}),
-    };
-
-    window.postMessage({
-      ...request,
-      config: speedConfig,
-    });
+    speedConfig = request.config;
+    window.postMessage(request);
   } else if (request.command == "getSpeedConfig") {
     sendResponse(speedConfig);
   }
 });
 
 window.addEventListener("message", (e) => {
-  if (e.data && e.data.command === "getSpeedConfig") {
+  if (e.data.command === "getSpeedConfig") {
     window.postMessage({
       command: "setSpeedConfig",
       config: speedConfig,
     });
   }
-});
+});;
