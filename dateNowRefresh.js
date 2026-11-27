@@ -2,10 +2,25 @@
   "use strict";
   const SWIPE_UP_THRESHOLD_PX = 30;
   let touchStartY = null;
-  let isUnfrozen = false;
+  let pageLoaded = document.readyState === "complete";
+  let isFrozen = false;
 
-  // The page is frozen after every refresh. A later upward swipe is the
-  // only action that releases Date.now; it does not trigger another reload.
+  function freezeAfterLoad() {
+    if (isFrozen) return;
+    isFrozen = true;
+    window.postMessage({ command: "chickenFreezeDateNow" }, "*");
+  }
+
+  // After each game refresh, wait for the page load event before freezing.
+  if (pageLoaded) {
+    freezeAfterLoad();
+  } else {
+    window.addEventListener("load", function () {
+      pageLoaded = true;
+      freezeAfterLoad();
+    }, { once: true });
+  }
+
   window.addEventListener("touchstart", function (event) {
     touchStartY = event.touches && event.touches.length === 1
       ? event.touches[0].clientY
@@ -21,9 +36,11 @@
     const swipeDistance = touchStartY - event.changedTouches[0].clientY;
     touchStartY = null;
 
-    if (swipeDistance < SWIPE_UP_THRESHOLD_PX || isUnfrozen) return;
+    // Once loaded and frozen, an upward swipe of 30 px or more is the
+    // only action that unfreezes Date.now. It does not trigger a reload.
+    if (!pageLoaded || swipeDistance < SWIPE_UP_THRESHOLD_PX || !isFrozen) return;
 
-    isUnfrozen = true;
+    isFrozen = false;
     window.postMessage({ command: "chickenUnfreezeDateNow" }, "*");
   }, { capture: false, passive: true });
 })();
